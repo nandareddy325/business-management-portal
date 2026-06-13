@@ -634,40 +634,51 @@ export default function LandingPage() {
 
         {/* ── FOOTER ── */}
         <footer className="bg-[#1C1712] border-t border-white/10 py-10 md:py-14">
-          <div className="max-w-6xl mx-auto px-4 md:px-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-10 mb-10 md:mb-12 pb-10 md:pb-12 border-b border-white/10">
-              <div className="col-span-2 md:col-span-2">
-                <div className="flex items-center gap-2.5 mb-4">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-sm font-bold text-white">G</div>
-                  <span className="font-serif text-xl text-white">GK · CRM</span>
-                </div>
-                <p className="text-sm text-white/40 leading-relaxed max-w-xs">Premium CRM platform for Indian businesses. Manage everything from leads to billing in one place.</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-white/30 uppercase tracking-[3px] mb-4">Product</p>
-                <div className="space-y-2.5">
-                  {['Features', 'Industries', 'Pricing', 'Security'].map(item => (
-                    <button key={item} onClick={() => scrollTo(item.toLowerCase())}
-                      className="block text-sm text-white/50 hover:text-white transition-colors">{item}</button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-white/30 uppercase tracking-[3px] mb-4">Company</p>
-                <div className="space-y-2.5">
-                  {['About Us', 'Support', 'Privacy Policy', 'Terms of Service'].map(item => (
-                    <button key={item} className="block text-sm text-white/50 hover:text-white transition-colors">{item}</button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <p className="text-xs text-white/25">© 2026 GK CRM. All rights reserved.</p>
-              <p className="text-xs text-white/25">Built with ❤️ for Indian businesses · Hyderabad, India</p>
-            </div>
-          </div>
-        </footer>
-
+  <div className="max-w-6xl mx-auto px-4 md:px-6">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-10 mb-10 md:mb-12 pb-10 md:pb-12 border-b border-white/10">
+      <div className="col-span-2 md:col-span-2">
+        <div className="flex items-center gap-2.5 mb-4">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-sm font-bold text-white">G</div>
+          <span className="font-serif text-xl text-white">GK · CRM</span>
+        </div>
+        <p className="text-sm text-white/40 leading-relaxed max-w-xs">Premium CRM platform for Indian businesses. Manage everything from leads to billing in one place.</p>
+      </div>
+      <div>
+        <p className="text-[10px] font-bold text-white/30 uppercase tracking-[3px] mb-4">Product</p>
+        <div className="space-y-2.5">
+          {['Features', 'Industries', 'Pricing', 'Security'].map(item => (
+            <button key={item} onClick={() => scrollTo(item.toLowerCase())}
+              className="block text-sm text-white/50 hover:text-white transition-colors">{item}</button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p className="text-[10px] font-bold text-white/30 uppercase tracking-[3px] mb-4">Company</p>
+        <div className="space-y-2.5">
+          <button onClick={() => scrollTo('support')}
+            className="block text-sm text-white/50 hover:text-white transition-colors">About Us</button>
+          <button onClick={() => scrollTo('support')}
+            className="block text-sm text-white/50 hover:text-white transition-colors">Support</button>
+          {/* ✅ Links గా మార్చాను */}
+          <a href="/privacy"
+            className="block text-sm text-white/50 hover:text-white transition-colors">Privacy Policy</a>
+          <a href="/terms"
+            className="block text-sm text-white/50 hover:text-white transition-colors">Terms of Service</a>
+        </div>
+      </div>
+    </div>
+    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+      <p className="text-xs text-white/25">© 2026 GK CRM. All rights reserved.</p>
+      <div className="flex items-center gap-4">
+        <a href="/privacy" className="text-xs text-white/25 hover:text-white/50 transition-colors">Privacy</a>
+        <span className="text-white/10">·</span>
+        <a href="/terms" className="text-xs text-white/25 hover:text-white/50 transition-colors">Terms</a>
+        <span className="text-white/10">·</span>
+        <p className="text-xs text-white/25">Built with ❤️ for Indian businesses · Hyderabad, India</p>
+      </div>
+    </div>
+  </div>
+</footer>
       </div>
     </>
   )
