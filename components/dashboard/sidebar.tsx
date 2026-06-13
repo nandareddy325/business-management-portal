@@ -16,8 +16,21 @@ const INDUSTRIES: Record<string, { label: string; icon: string; slug: string }> 
   'clinics':         { label: 'Clinics',          icon: '🩺', slug: 'clinics' },
 }
 
+// ── Permission mapping ──
+// Each nav section belongs to a permission module
+const SECTION_PERMISSION: Record<string, string> = {
+  'PIPELINE':    'pipeline',
+  'MY PIPELINE': 'pipeline',
+  'PROJECTS':    'projects',
+  'HR & ADMIN':  'hr',
+  'FINANCE':     'finance',
+  'SYSTEM':      'pipeline', // admin only, always shown
+  'WORK':        'pipeline',
+}
+
 function buildNavGroups(industrySlug: string) {
   const IND = `/dashboard/industries/${industrySlug}`
+
   const adminNavGroups = [
     {
       section: 'PIPELINE', icon: '🎯',
@@ -61,7 +74,9 @@ function buildNavGroups(industrySlug: string) {
       ],
     },
   ]
-  const userNavGroups = [
+
+  // Employee nav — filtered by permissions
+  const employeeNavGroups = [
     {
       section: 'MY PIPELINE', icon: '🎯',
       items: [
@@ -73,14 +88,28 @@ function buildNavGroups(industrySlug: string) {
       ],
     },
     {
-      section: 'WORK', icon: '💼',
+      section: 'PROJECTS', icon: '🏗️',
       items: [
-        { label: 'My Projects', icon: '🏗️', href: '/crm/leads',    stage: null },
-        { label: 'Attendance',  icon: '📅', href: '/hr/attendance', stage: null },
+        { label: 'My Projects', icon: '🏗️', href: `${IND}/projects`, stage: null },
+        { label: 'Clients',     icon: '👥', href: `${IND}/clients`,  stage: null },
+      ],
+    },
+    {
+      section: 'HR & ADMIN', icon: '👔',
+      items: [
+        { label: 'Attendance', icon: '📅', href: '/hr/attendance', stage: null },
+      ],
+    },
+    {
+      section: 'FINANCE', icon: '💳',
+      items: [
+        { label: 'Invoices', icon: '🧾', href: '/billing/invoices', stage: null },
+        { label: 'Payments', icon: '💳', href: '/billing/payments', stage: null },
       ],
     },
   ]
-  return { adminNavGroups, userNavGroups, IND }
+
+  return { adminNavGroups, employeeNavGroups, IND }
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
@@ -104,9 +133,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, [pathname, industryFromUrl])
 
   const currentIndustry = INDUSTRIES[currentIndustrySlug]
-  const { adminNavGroups, userNavGroups, IND } = useMemo(() => buildNavGroups(currentIndustrySlug), [currentIndustrySlug])
+  const { adminNavGroups, employeeNavGroups, IND } = useMemo(() => buildNavGroups(currentIndustrySlug), [currentIndustrySlug])
 
-  const [role, setRole] = useState<'admin' | 'user'>('user')
+  const [role, setRole] = useState<'admin' | 'employee'>('employee')
   const [userName, setUserName] = useState('User')
   const [userInitials, setUserInitials] = useState('U')
   const [userCompany, setUserCompany] = useState('GK Digital')
@@ -116,12 +145,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [wonLeads, setWonLeads] = useState(0)
   const [activeStage, setActiveStage] = useState<string | null>(null)
   const [industryDropdownOpen, setIndustryDropdownOpen] = useState(false)
+
+  // ✅ Employee permissions
+  const [empPermissions, setEmpPermissions] = useState<string[]>(['pipeline'])
+
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     'PIPELINE': true, 'MY PIPELINE': true, 'PROJECTS': false,
     'HR & ADMIN': false, 'FINANCE': false, 'SYSTEM': false, 'WORK': true,
   })
 
-  // Sync activeStage from URL searchParams
   useEffect(() => {
     const urlStage = searchParams.get('stage')
     setActiveStage(urlStage || 'all')
@@ -132,25 +164,64 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-        const { data: profile } = await supabase.from('profiles').select('full_name, role, company_id').eq('id', user.id).single()
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name, role, company_id')
+          .eq('id', user.id)
+          .single()
+
         if (profile) {
-          const r = (['admin', 'tenant_admin', 'manager'].includes(profile.role)) ? 'admin' : 'user'
-          setRole(r)
+          const isAdmin = ['admin', 'tenant_admin', 'manager'].includes(profile.role)
+          setRole(isAdmin ? 'admin' : 'employee')
+
           if (profile.full_name) {
             setUserName(profile.full_name)
             const parts = profile.full_name.trim().split(' ')
             setUserInitials(parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : parts[0].slice(0, 2).toUpperCase())
           }
+
           if (profile.company_id) {
-            const { data: company } = await supabase.from('companies').select('name').eq('id', profile.company_id).single()
+            const { data: company } = await supabase
+              .from('companies').select('name').eq('id', profile.company_id).single()
             if (company?.name) setUserCompany(company.name)
-            const { data: ci } = await supabase.from('company_industries').select('industries(slug)').eq('company_id', profile.company_id).eq('is_active', true)
+
+            const { data: ci } = await supabase
+              .from('company_industries')
+              .select('industries(slug)')
+              .eq('company_id', profile.company_id)
+              .eq('is_active', true)
             if (ci) setActiveIndustries(ci.map((c: any) => c.industries?.slug).filter(Boolean))
-            const { data: leads } = await supabase.from('leads').select('pipeline_stage').eq('company_id', profile.company_id)
+
+            const { data: leads } = await supabase
+              .from('leads').select('pipeline_stage').eq('company_id', profile.company_id)
             if (leads) {
               const counts: Record<string, number> = {}
               leads.forEach(l => { const s = l.pipeline_stage || 'new'; counts[s] = (counts[s] || 0) + 1 })
               setStageCounts(counts); setTotalLeads(leads.length); setWonLeads(counts['won'] || 0)
+            }
+          }
+
+          // ✅ Fetch employee permissions if role = employee
+          if (!isAdmin) {
+            const { data: empData } = await supabase
+              .from('employees')
+              .select('permissions')
+              .eq('user_id', user.id)
+              .maybeSingle()
+
+            if (empData?.permissions && Array.isArray(empData.permissions)) {
+              setEmpPermissions(empData.permissions)
+            } else {
+              // fallback: email తో try
+              const { data: empByEmail } = await supabase
+                .from('employees')
+                .select('permissions')
+                .eq('email', user.email!)
+                .maybeSingle()
+              if (empByEmail?.permissions && Array.isArray(empByEmail.permissions)) {
+                setEmpPermissions(empByEmail.permissions)
+              }
             }
           }
         }
@@ -185,7 +256,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = '/login' }
   const winRate = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0
-  const navGroups = useMemo(() => role === 'admin' ? adminNavGroups : userNavGroups, [role, adminNavGroups, userNavGroups])
+
+  // ✅ Filter employee nav groups based on permissions
+  const navGroups = useMemo(() => {
+    if (role === 'admin') return adminNavGroups
+
+    // Employee — show only sections where permission exists
+    return employeeNavGroups.filter(group => {
+      const requiredPerm = SECTION_PERMISSION[group.section]
+      if (!requiredPerm) return false
+      return empPermissions.includes(requiredPerm)
+    })
+  }, [role, adminNavGroups, employeeNavGroups, empPermissions])
 
   const getBadge = (stage: string | null) => {
     if (!stage || stage === 'all') return totalLeads > 0 ? String(totalLeads) : null
@@ -194,11 +276,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const isActive = (href: string, stage: string | null) => {
     const hrefPath = href.split('?')[0]
-    // Non-IND pages
     if (hrefPath !== IND) {
       return pathname.startsWith(hrefPath) && hrefPath !== IND
     }
-    // IND page — use activeStage state (no window)
     if (!pathname.startsWith(IND)) return false
     if (stage === 'all') return activeStage === 'all' || activeStage === null
     return activeStage === stage
@@ -232,6 +312,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     return 'bg-[#E8E2D8] text-[#7A6E60]'
   }
 
+  // ✅ Permission chips for employee footer
+  const PERM_LABELS: Record<string, { label: string; color: string; bg: string }> = {
+    pipeline: { label: 'Pipeline', color: '#7C3AED', bg: '#F5F3FF' },
+    projects: { label: 'Projects', color: '#EA580C', bg: '#FFF7ED' },
+    hr:       { label: 'HR',       color: '#0284C7', bg: '#EFF6FF' },
+    finance:  { label: 'Finance',  color: '#16A34A', bg: '#F0FDF4' },
+  }
+
   return (
     <>
       {isOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm" onClick={onClose} />}
@@ -246,9 +334,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* ── LOGO ── */}
         <div className="px-5 pt-5 pb-4 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-sm font-black text-white shadow-md shadow-orange-200">
-              G
-            </div>
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-sm font-black text-white shadow-md shadow-orange-200">G</div>
             <div>
               <p className="font-serif text-[15px] text-[#1C1712] tracking-wide leading-none">GK · CRM</p>
               <p className="text-[8px] text-[#B8860B] uppercase tracking-[2.5px] font-bold mt-0.5">Premium Suite</p>
@@ -261,7 +347,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* ── INDUSTRY SECTION ── */}
         <div className="px-3 pb-3 flex-shrink-0">
-          {/* Active industry card */}
           <div className="flex items-center gap-2.5 bg-gradient-to-r from-[#F5F0E8] to-[#F0EBE0] border border-[#DDD5C4] rounded-2xl px-3 py-2.5 shadow-sm">
             <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-base shadow-sm border border-[#E8E2D8] flex-shrink-0">
               {currentIndustry.icon}
@@ -272,12 +357,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 {role === 'admin' ? '👑 Admin Portal' : '👤 User Portal'}
               </p>
             </div>
-            <div className="flex flex-col items-center gap-1 flex-shrink-0">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-200 animate-pulse" />
-            </div>
+            <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-200 animate-pulse flex-shrink-0" />
           </div>
 
-          {/* Industry dropdown */}
           {activeIndustries.length > 1 && (
             <div className="relative mt-2" onClick={e => e.stopPropagation()}>
               <button
@@ -296,14 +378,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     if (!ind) return null
                     const isCurrent = slug === currentIndustrySlug
                     return (
-                      <Link
-                        key={slug}
-                        href={`/dashboard/industries/${slug}`}
+                      <Link key={slug} href={`/dashboard/industries/${slug}`}
                         onClick={() => { handleIndustrySwitch(slug); setIndustryDropdownOpen(false) }}
                         className={`flex items-center gap-2.5 px-3 py-2.5 text-[11px] font-semibold transition-colors ${
                           isCurrent ? 'bg-[#1C1712] text-white' : 'text-[#7A6E60] hover:bg-[#F5F0E8] hover:text-[#1C1712]'
-                        }`}
-                      >
+                        }`}>
                         <span className="text-sm">{ind.icon}</span>
                         <span className="flex-1">{ind.label}</span>
                         {isCurrent && <span className="text-[8px] bg-white/20 px-2 py-0.5 rounded-full font-bold tracking-wide">ACTIVE</span>}
@@ -316,11 +395,30 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           )}
         </div>
 
-        {/* thin divider */}
         <div className="h-px bg-gradient-to-r from-transparent via-[#DDD5C4] to-transparent mx-3 flex-shrink-0" />
 
         {/* ── NAV ── */}
         <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
+
+          {/* ✅ Employee — show access chips at top */}
+          {role === 'employee' && empPermissions.length > 0 && (
+            <div className="mb-3 px-1">
+              <p className="text-[8px] font-black text-[#A89F94] uppercase tracking-[2px] mb-1.5">Your Access</p>
+              <div className="flex flex-wrap gap-1">
+                {empPermissions.map(pId => {
+                  const p = PERM_LABELS[pId]
+                  if (!p) return null
+                  return (
+                    <span key={pId} className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: p.bg, color: p.color }}>
+                      {p.label}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {navGroups.map((group) => {
             const isOpen_ = openSections[group.section] ?? true
             const hasActive = group.items.some(item => isActive(item.href, item.stage))
@@ -341,18 +439,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       const active = isActive(item.href, item.stage)
                       const badge = getBadge(item.stage)
                       return (
-                        <Link
-                          key={item.label}
-                          href={item.href}
+                        <Link key={item.label} href={item.href}
                           onClick={() => handleNavClick(item.stage, item.href)}
-                          className={`
-                            flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all text-[12px]
-                            ${active
+                          className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all text-[12px] ${
+                            active
                               ? 'bg-[#1C1712] text-white font-semibold shadow-md shadow-black/10'
                               : 'text-[#7A6E60] hover:text-[#1C1712] hover:bg-[#EDE8DF]'
-                            }
-                          `}
-                        >
+                          }`}>
                           <span className="text-[13px] leading-none flex-shrink-0">{item.icon}</span>
                           <span className="flex-1 truncate">{item.label}</span>
                           {badge && (
@@ -368,12 +461,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
             )
           })}
+
+          {/* ✅ No access message */}
+          {role === 'employee' && navGroups.length === 0 && (
+            <div className="text-center py-8 px-3">
+              <p className="text-2xl mb-2">🔒</p>
+              <p className="text-[11px] text-[#9A8F82] font-medium">No modules assigned</p>
+              <p className="text-[10px] text-[#B8B0A0] mt-1">Contact your admin</p>
+            </div>
+          )}
         </nav>
 
-        {/* thin divider */}
         <div className="h-px bg-gradient-to-r from-transparent via-[#DDD5C4] to-transparent mx-3 flex-shrink-0" />
 
-        {/* ── PIPELINE HEALTH ── */}
+        {/* ── PIPELINE HEALTH — admin only ── */}
         {role === 'admin' && (
           <div className="px-4 py-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-2.5">
@@ -405,7 +506,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
         )}
 
-        {/* thin divider */}
         <div className="h-px bg-gradient-to-r from-transparent via-[#DDD5C4] to-transparent mx-3 flex-shrink-0" />
 
         {/* ── FOOTER ── */}
@@ -417,18 +517,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <p className="text-[11px] font-semibold text-[#1C1712] truncate">{userName.split(' ')[0]}</p>
-                {role === 'admin' && (
-                  <span className="text-[7px] font-black bg-[#B8860B]/15 text-[#B8860B] px-1.5 py-0.5 rounded-full uppercase tracking-wide flex-shrink-0">
-                    Admin
-                  </span>
-                )}
+                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide flex-shrink-0 ${
+                  role === 'admin'
+                    ? 'bg-[#B8860B]/15 text-[#B8860B]'
+                    : 'bg-blue-100 text-blue-700'
+                }`}>
+                  {role === 'admin' ? 'Admin' : 'Staff'}
+                </span>
               </div>
               <p className="text-[9px] text-[#9A8F82] truncate">{userCompany}</p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="w-7 h-7 rounded-lg bg-white border border-[#DDD5C4] flex items-center justify-center text-[#9A8F82] hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all flex-shrink-0"
-            >
+            <button onClick={handleLogout}
+              className="w-7 h-7 rounded-lg bg-white border border-[#DDD5C4] flex items-center justify-center text-[#9A8F82] hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all flex-shrink-0">
               <LogOut size={12} />
             </button>
           </div>

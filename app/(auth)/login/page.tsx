@@ -28,7 +28,7 @@ export default function LoginPage() {
     const userId = authData.user?.id
     if (!userId) { setError('Login failed'); setLoading(false); return }
 
-    // 2. Single query — .maybeSingle() తో safe గా fetch
+    // 2. Profile fetch
     const { data: profile, error: profileErr } = await supabase
       .from('profiles')
       .select('company_id, role')
@@ -41,9 +41,24 @@ export default function LoginPage() {
       return
     }
 
-    // 3. Employee redirect
+    // 3. ✅ Employee redirect — dashboard industries కి పంపు
     if (profile?.role === 'employee') {
-      window.location.href = '/employee'
+      if (!profile.company_id) {
+        window.location.href = '/employee'
+        return
+      }
+
+      // Company active industries fetch చేయి
+      const { data: empIndustries } = await supabase
+        .from('company_industries')
+        .select('industries(slug)')
+        .eq('company_id', profile.company_id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: true })
+        .limit(1)
+
+      const slug = (empIndustries?.[0] as any)?.industries?.slug || 'interior-design'
+      window.location.href = `/dashboard/industries/${slug}`
       return
     }
 
@@ -179,13 +194,11 @@ export default function LoginPage() {
       <div className="hidden lg:flex w-[480px] flex-col justify-between p-12 relative overflow-hidden"
         style={{ background: 'linear-gradient(160deg, #1C1712 0%, #2d2218 60%, #1a150f 100%)' }}>
 
-        {/* Gold dots pattern */}
         <div className="absolute inset-0 pointer-events-none opacity-20"
           style={{ backgroundImage: 'radial-gradient(circle, #B8860B 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
         <div className="absolute inset-0 pointer-events-none"
           style={{ backgroundImage: 'radial-gradient(ellipse at 60% 40%, rgba(184,134,11,0.15), transparent 65%)' }} />
 
-        {/* Top badge */}
         <div className="relative">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-bold"
             style={{ borderColor: 'rgba(184,134,11,0.3)', color: '#B8860B', background: 'rgba(184,134,11,0.08)' }}>
@@ -194,7 +207,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Middle content */}
         <div className="relative space-y-8">
           <div>
             <h2 className="text-4xl font-bold text-white leading-tight mb-2">Welcome<br />back!</h2>
@@ -224,7 +236,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Bottom stats */}
         <div className="relative grid grid-cols-3 gap-4 pt-8 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
           {[
             { v: '3,800+', l: 'COMPANIES' },

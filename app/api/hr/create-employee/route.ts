@@ -10,7 +10,7 @@ const supabaseAdmin = createClient(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { full_name, email, phone, designation, department, join_date, salary, companyId } = body
+    const { full_name, email, phone, designation, department, join_date, salary, companyId, permissions } = body
 
     if (!full_name || !email || !companyId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -39,12 +39,12 @@ export async function POST(req: NextRequest) {
     const userId = authData.user.id
 
     await supabaseAdmin.from('profiles').upsert({
-  id: userId,
-  full_name,
-  email: email.trim(),
-  role: 'employee',
-  company_id: companyId,
-})
+      id: userId,
+      full_name,
+      email: email.trim(),
+      role: 'employee',
+      company_id: companyId,
+    })
 
     const { data: empData, error: empError } = await supabaseAdmin.from('employees').insert({
       company_id: companyId,
@@ -61,6 +61,8 @@ export async function POST(req: NextRequest) {
       is_active: true,
       portal_access: true,
       password_temp: password,
+      // ✅ Permissions save
+      permissions: permissions && permissions.length > 0 ? permissions : ['pipeline'],
     }).select().single()
 
     if (empError) {
