@@ -1,0 +1,15 @@
+[31mFailed to type check.
+[39m
+[36m./components/dashboard/add-lead-modal.tsx[39m:[33m85[39m:[33m3[39m
+[31m[1mType error[22m[39m: Type '{ name: string; phone: string; source: string; budget: string; propertyType: string; city: string; manualCity: string; interest: string; status: string; notes: string; }[]' is not assignable to type 'SingleLead[]'.
+  Property 'email' is missing in type '{ name: string; phone: string; source: string; budget: string; propertyType: string; city: string; manualCity: string; interest: string; status: string; notes: string; }' but required in type 'SingleLead'.
+
+  [90m83 |[0m   [36mif[0m (lines.length < [35m2[0m) [36mreturn[0m []
+  [90m84 |[0m   [36mconst[0m headers = lines[[35m0[0m].split([32m','[0m).map(h => h.trim().toLowerCase().replace([35m/\s+/g[0m, [32m'_'[0m))
+[31m[1m>[0m [90m85 |[0m   [36mreturn[0m lines.slice([35m1[0m).map(line => {
+  [90m   |[0m   [31m[1m^[0m
+  [90m86 |[0m     [36mconst[0m cols = line.split([32m','[0m).map(c => c.trim().replace([35m/^"|"$/g[0m, [32m''[0m))
+  [90m87 |[0m     [36mconst[0m get  = (keys: string[]) => { [36mfor[0m ([36mconst[0m k [36mof[0m keys) { [36mconst[0m idx = headers.indexOf...
+  [90m88 |[0m     [36mreturn[0m {
+Next.js build worker exited with code: 1 and signal: null
+[?25h
