@@ -16,15 +16,13 @@ const INDUSTRIES: Record<string, { label: string; icon: string; slug: string }> 
   'clinics':         { label: 'Clinics',          icon: '🩺', slug: 'clinics' },
 }
 
-// ── Permission mapping ──
-// Each nav section belongs to a permission module
 const SECTION_PERMISSION: Record<string, string> = {
   'PIPELINE':    'pipeline',
   'MY PIPELINE': 'pipeline',
   'PROJECTS':    'projects',
   'HR & ADMIN':  'hr',
   'FINANCE':     'finance',
-  'SYSTEM':      'pipeline', // admin only, always shown
+  'SYSTEM':      'pipeline',
   'WORK':        'pipeline',
 }
 
@@ -35,12 +33,18 @@ function buildNavGroups(industrySlug: string) {
     {
       section: 'PIPELINE', icon: '🎯',
       items: [
-        { label: 'Lead Pipeline', icon: '🎯', href: IND,                        stage: 'all' },
-        { label: 'Follow Ups',   icon: '🔄', href: `${IND}?stage=followup`,  stage: 'followup' },
-        { label: 'Site Visits',  icon: '🏠', href: `${IND}?stage=sitevisit`, stage: 'sitevisit' },
-        { label: 'Quotations',   icon: '💰', href: `${IND}?stage=quotation`, stage: 'quotation' },
-        { label: 'Won / Closed', icon: '✅', href: `${IND}?stage=won`,       stage: 'won' },
-        { label: 'Lost',         icon: '❌', href: `${IND}?stage=lost`,      stage: 'lost' },
+        { label: 'Lead Pipeline',      icon: '🎯', href: IND,                               stage: 'all' },
+        { label: 'Called',             icon: '📞', href: `${IND}?stage=called`,             stage: 'called' },
+        { label: 'Interested',         icon: '✨', href: `${IND}?stage=interested`,         stage: 'interested' },
+        { label: 'Follow Ups',         icon: '🔄', href: `${IND}?stage=followup`,           stage: 'followup' },
+        { label: 'Site Visits',        icon: '🏠', href: `${IND}?stage=sitevisit`,          stage: 'sitevisit' },
+        { label: 'Design Discussion',  icon: '🎨', href: `${IND}?stage=design`,             stage: 'design' },
+        { label: 'Quotation Sent',     icon: '💰', href: `${IND}?stage=quotation`,          stage: 'quotation' },
+        { label: 'Negotiation',        icon: '🤝', href: `${IND}?stage=negotiation`,        stage: 'negotiation' },
+        { label: 'Advance Received',   icon: '💵', href: `${IND}?stage=advance`,            stage: 'advance' },
+        { label: 'Won / Closed',       icon: '✅', href: `${IND}?stage=won`,               stage: 'won' },
+        { label: 'Project Started',    icon: '🚀', href: `${IND}?stage=project_started`,    stage: 'project_started' },
+        { label: 'Lost',               icon: '❌', href: `${IND}?stage=lost`,              stage: 'lost' },
       ],
     },
     {
@@ -75,16 +79,15 @@ function buildNavGroups(industrySlug: string) {
     },
   ]
 
-  // Employee nav — filtered by permissions
   const employeeNavGroups = [
     {
       section: 'MY PIPELINE', icon: '🎯',
       items: [
-        { label: 'My Leads',    icon: '🎯', href: IND,                        stage: 'all' },
-        { label: 'Follow Ups',  icon: '🔄', href: `${IND}?stage=followup`,  stage: 'followup' },
-        { label: 'Site Visits', icon: '🏠', href: `${IND}?stage=sitevisit`, stage: 'sitevisit' },
-        { label: 'Quotations',  icon: '💰', href: `${IND}?stage=quotation`, stage: 'quotation' },
-        { label: 'Won',         icon: '✅', href: `${IND}?stage=won`,       stage: 'won' },
+        { label: 'My Leads',          icon: '🎯', href: IND,                            stage: 'all' },
+        { label: 'Follow Ups',        icon: '🔄', href: `${IND}?stage=followup`,        stage: 'followup' },
+        { label: 'Site Visits',       icon: '🏠', href: `${IND}?stage=sitevisit`,       stage: 'sitevisit' },
+        { label: 'Quotation Sent',    icon: '💰', href: `${IND}?stage=quotation`,       stage: 'quotation' },
+        { label: 'Won',               icon: '✅', href: `${IND}?stage=won`,            stage: 'won' },
       ],
     },
     {
@@ -145,13 +148,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [wonLeads, setWonLeads] = useState(0)
   const [activeStage, setActiveStage] = useState<string | null>(null)
   const [industryDropdownOpen, setIndustryDropdownOpen] = useState(false)
-
-  // ✅ Employee permissions
   const [empPermissions, setEmpPermissions] = useState<string[]>(['pipeline'])
-
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     'PIPELINE': true, 'MY PIPELINE': true, 'PROJECTS': false,
-    'HR & ADMIN': false, 'FINANCE': false, 'SYSTEM': false, 'WORK': true,
+    'HR & ADMIN': false, 'FINANCE': false, 'SYSTEM': false,
   })
 
   useEffect(() => {
@@ -164,64 +164,37 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-
         const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name, role, company_id')
-          .eq('id', user.id)
-          .single()
-
+          .from('profiles').select('full_name, role, company_id').eq('id', user.id).single()
         if (profile) {
           const isAdmin = ['admin', 'tenant_admin', 'manager'].includes(profile.role)
           setRole(isAdmin ? 'admin' : 'employee')
-
           if (profile.full_name) {
             setUserName(profile.full_name)
             const parts = profile.full_name.trim().split(' ')
             setUserInitials(parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : parts[0].slice(0, 2).toUpperCase())
           }
-
           if (profile.company_id) {
-            const { data: company } = await supabase
-              .from('companies').select('name').eq('id', profile.company_id).single()
+            const { data: company } = await supabase.from('companies').select('name').eq('id', profile.company_id).single()
             if (company?.name) setUserCompany(company.name)
-
-            const { data: ci } = await supabase
-              .from('company_industries')
-              .select('industries(slug)')
-              .eq('company_id', profile.company_id)
-              .eq('is_active', true)
+            const { data: ci } = await supabase.from('company_industries').select('industries(slug)').eq('company_id', profile.company_id).eq('is_active', true)
             if (ci) setActiveIndustries(ci.map((c: any) => c.industries?.slug).filter(Boolean))
-
-            const { data: leads } = await supabase
-              .from('leads').select('pipeline_stage').eq('company_id', profile.company_id)
+            const { data: leads } = await supabase.from('leads').select('pipeline_stage').eq('company_id', profile.company_id)
             if (leads) {
               const counts: Record<string, number> = {}
               leads.forEach(l => { const s = l.pipeline_stage || 'new'; counts[s] = (counts[s] || 0) + 1 })
-              setStageCounts(counts); setTotalLeads(leads.length); setWonLeads(counts['won'] || 0)
+              setStageCounts(counts)
+              setTotalLeads(leads.length)
+              setWonLeads((counts['won'] || 0) + (counts['project_started'] || 0))
             }
           }
-
-          // ✅ Fetch employee permissions if role = employee
           if (!isAdmin) {
-            const { data: empData } = await supabase
-              .from('employees')
-              .select('permissions')
-              .eq('user_id', user.id)
-              .maybeSingle()
-
+            const { data: empData } = await supabase.from('employees').select('permissions').eq('user_id', user.id).maybeSingle()
             if (empData?.permissions && Array.isArray(empData.permissions)) {
               setEmpPermissions(empData.permissions)
             } else {
-              // fallback: email తో try
-              const { data: empByEmail } = await supabase
-                .from('employees')
-                .select('permissions')
-                .eq('email', user.email!)
-                .maybeSingle()
-              if (empByEmail?.permissions && Array.isArray(empByEmail.permissions)) {
-                setEmpPermissions(empByEmail.permissions)
-              }
+              const { data: empByEmail } = await supabase.from('employees').select('permissions').eq('email', user.email!).maybeSingle()
+              if (empByEmail?.permissions && Array.isArray(empByEmail.permissions)) setEmpPermissions(empByEmail.permissions)
             }
           }
         }
@@ -241,7 +214,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         if (!leads) return
         const counts: Record<string, number> = {}
         leads.forEach(l => { const s = l.pipeline_stage || 'new'; counts[s] = (counts[s] || 0) + 1 })
-        setStageCounts(counts); setTotalLeads(leads.length); setWonLeads(counts['won'] || 0)
+        setStageCounts(counts)
+        setTotalLeads(leads.length)
+        setWonLeads((counts['won'] || 0) + (counts['project_started'] || 0))
       }).subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
@@ -257,11 +232,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = '/login' }
   const winRate = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0
 
-  // ✅ Filter employee nav groups based on permissions
   const navGroups = useMemo(() => {
     if (role === 'admin') return adminNavGroups
-
-    // Employee — show only sections where permission exists
     return employeeNavGroups.filter(group => {
       const requiredPerm = SECTION_PERMISSION[group.section]
       if (!requiredPerm) return false
@@ -276,9 +248,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const isActive = (href: string, stage: string | null) => {
     const hrefPath = href.split('?')[0]
-    if (hrefPath !== IND) {
-      return pathname.startsWith(hrefPath) && hrefPath !== IND
-    }
+    if (hrefPath !== IND) return pathname.startsWith(hrefPath) && hrefPath !== IND
     if (!pathname.startsWith(IND)) return false
     if (stage === 'all') return activeStage === 'all' || activeStage === null
     return activeStage === stage
@@ -307,18 +277,30 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const badgeStyle = (stage: string | null, active: boolean) => {
     if (active) return 'bg-white/25 text-white'
     if (stage === 'followup') return 'bg-amber-100 text-amber-700'
-    if (stage === 'won') return 'bg-emerald-100 text-emerald-700'
+    if (stage === 'won' || stage === 'project_started') return 'bg-emerald-100 text-emerald-700'
+    if (stage === 'advance') return 'bg-green-100 text-green-700'
     if (stage === 'lost') return 'bg-red-100 text-red-600'
+    if (stage === 'negotiation') return 'bg-orange-100 text-orange-700'
+    if (stage === 'design') return 'bg-purple-100 text-purple-700'
     return 'bg-[#E8E2D8] text-[#7A6E60]'
   }
 
-  // ✅ Permission chips for employee footer
   const PERM_LABELS: Record<string, { label: string; color: string; bg: string }> = {
     pipeline: { label: 'Pipeline', color: '#7C3AED', bg: '#F5F3FF' },
     projects: { label: 'Projects', color: '#EA580C', bg: '#FFF7ED' },
     hr:       { label: 'HR',       color: '#0284C7', bg: '#EFF6FF' },
     finance:  { label: 'Finance',  color: '#16A34A', bg: '#F0FDF4' },
   }
+
+  // ✅ Pipeline health stages — updated
+  const pipelineHealthStages = [
+    { label: 'New',        stage: 'new',         color: 'bg-slate-400' },
+    { label: 'Follow Up',  stage: 'followup',    color: 'bg-amber-400' },
+    { label: 'Site Visit', stage: 'sitevisit',   color: 'bg-orange-400' },
+    { label: 'Quotation',  stage: 'quotation',   color: 'bg-blue-400' },
+    { label: 'Advance',    stage: 'advance',     color: 'bg-green-500' },
+    { label: 'Won',        stage: 'won',         color: 'bg-emerald-500' },
+  ]
 
   return (
     <>
@@ -345,7 +327,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        {/* ── INDUSTRY SECTION ── */}
+        {/* ── INDUSTRY ── */}
         <div className="px-3 pb-3 flex-shrink-0">
           <div className="flex items-center gap-2.5 bg-gradient-to-r from-[#F5F0E8] to-[#F0EBE0] border border-[#DDD5C4] rounded-2xl px-3 py-2.5 shadow-sm">
             <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-base shadow-sm border border-[#E8E2D8] flex-shrink-0">
@@ -362,17 +344,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           {activeIndustries.length > 1 && (
             <div className="relative mt-2" onClick={e => e.stopPropagation()}>
-              <button
-                onClick={() => setIndustryDropdownOpen(prev => !prev)}
-                className="w-full flex items-center gap-2 bg-[#F5F0E8] border border-[#DDD5C4] rounded-xl px-3 py-2 text-[11px] font-semibold text-[#1C1712] hover:bg-[#EDE8DF] transition-colors"
-              >
+              <button onClick={() => setIndustryDropdownOpen(prev => !prev)}
+                className="w-full flex items-center gap-2 bg-[#F5F0E8] border border-[#DDD5C4] rounded-xl px-3 py-2 text-[11px] font-semibold text-[#1C1712] hover:bg-[#EDE8DF] transition-colors">
                 <span className="text-sm">{currentIndustry.icon}</span>
                 <span className="flex-1 text-left truncate">{currentIndustry.label}</span>
                 <ChevronDown size={11} className={`text-[#7A6E60] transition-transform duration-200 ${industryDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-
               {industryDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#DDD5C4] rounded-xl shadow-xl shadow-black/10 z-50 overflow-hidden">
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#DDD5C4] rounded-xl shadow-xl z-50 overflow-hidden">
                   {activeIndustries.map((slug) => {
                     const ind = INDUSTRIES[slug]
                     if (!ind) return null
@@ -380,12 +359,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     return (
                       <Link key={slug} href={`/dashboard/industries/${slug}`}
                         onClick={() => { handleIndustrySwitch(slug); setIndustryDropdownOpen(false) }}
-                        className={`flex items-center gap-2.5 px-3 py-2.5 text-[11px] font-semibold transition-colors ${
-                          isCurrent ? 'bg-[#1C1712] text-white' : 'text-[#7A6E60] hover:bg-[#F5F0E8] hover:text-[#1C1712]'
-                        }`}>
+                        className={`flex items-center gap-2.5 px-3 py-2.5 text-[11px] font-semibold transition-colors ${isCurrent ? 'bg-[#1C1712] text-white' : 'text-[#7A6E60] hover:bg-[#F5F0E8] hover:text-[#1C1712]'}`}>
                         <span className="text-sm">{ind.icon}</span>
                         <span className="flex-1">{ind.label}</span>
-                        {isCurrent && <span className="text-[8px] bg-white/20 px-2 py-0.5 rounded-full font-bold tracking-wide">ACTIVE</span>}
+                        {isCurrent && <span className="text-[8px] bg-white/20 px-2 py-0.5 rounded-full font-bold">ACTIVE</span>}
                       </Link>
                     )
                   })}
@@ -400,7 +377,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* ── NAV ── */}
         <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
 
-          {/* ✅ Employee — show access chips at top */}
           {role === 'employee' && empPermissions.length > 0 && (
             <div className="mb-3 px-1">
               <p className="text-[8px] font-black text-[#A89F94] uppercase tracking-[2px] mb-1.5">Your Access</p>
@@ -408,12 +384,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 {empPermissions.map(pId => {
                   const p = PERM_LABELS[pId]
                   if (!p) return null
-                  return (
-                    <span key={pId} className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: p.bg, color: p.color }}>
-                      {p.label}
-                    </span>
-                  )
+                  return <span key={pId} className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: p.bg, color: p.color }}>{p.label}</span>
                 })}
               </div>
             </div>
@@ -424,16 +395,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             const hasActive = group.items.some(item => isActive(item.href, item.stage))
             return (
               <div key={group.section} className="mb-1">
-                <button
-                  onClick={() => toggleSection(group.section)}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all ${hasActive ? 'bg-[#EDE8DF]' : 'hover:bg-[#F5F0E8]'}`}
-                >
+                <button onClick={() => toggleSection(group.section)}
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all ${hasActive ? 'bg-[#EDE8DF]' : 'hover:bg-[#F5F0E8]'}`}>
                   <span className="text-[13px]">{group.icon}</span>
                   <span className="flex-1 text-[9px] font-black text-[#A89F94] uppercase tracking-[2px] text-left">{group.section}</span>
                   <ChevronDown size={11} className={`text-[#C4BAB0] transition-transform duration-200 flex-shrink-0 ${isOpen_ ? 'rotate-0' : '-rotate-90'}`} />
                 </button>
-
-                <div className={`overflow-hidden transition-all duration-200 ${isOpen_ ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className={`overflow-hidden transition-all duration-200 ${isOpen_ ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
                   <div className="space-y-0.5 pt-0.5 pl-1">
                     {group.items.map((item) => {
                       const active = isActive(item.href, item.stage)
@@ -442,9 +410,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         <Link key={item.label} href={item.href}
                           onClick={() => handleNavClick(item.stage, item.href)}
                           className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all text-[12px] ${
-                            active
-                              ? 'bg-[#1C1712] text-white font-semibold shadow-md shadow-black/10'
-                              : 'text-[#7A6E60] hover:text-[#1C1712] hover:bg-[#EDE8DF]'
+                            active ? 'bg-[#1C1712] text-white font-semibold shadow-md shadow-black/10' : 'text-[#7A6E60] hover:text-[#1C1712] hover:bg-[#EDE8DF]'
                           }`}>
                           <span className="text-[13px] leading-none flex-shrink-0">{item.icon}</span>
                           <span className="flex-1 truncate">{item.label}</span>
@@ -462,7 +428,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             )
           })}
 
-          {/* ✅ No access message */}
           {role === 'employee' && navGroups.length === 0 && (
             <div className="text-center py-8 px-3">
               <p className="text-2xl mb-2">🔒</p>
@@ -474,7 +439,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <div className="h-px bg-gradient-to-r from-transparent via-[#DDD5C4] to-transparent mx-3 flex-shrink-0" />
 
-        {/* ── PIPELINE HEALTH — admin only ── */}
+        {/* ── PIPELINE HEALTH ── */}
         {role === 'admin' && (
           <div className="px-4 py-3 flex-shrink-0">
             <div className="flex items-center justify-between mb-2.5">
@@ -484,12 +449,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </span>
             </div>
             <div className="space-y-1.5">
-              {[
-                { label: 'New',        stage: 'new',       color: 'bg-slate-400' },
-                { label: 'Follow Up',  stage: 'followup',  color: 'bg-amber-400' },
-                { label: 'Site Visit', stage: 'sitevisit', color: 'bg-orange-400' },
-                { label: 'Won',        stage: 'won',       color: 'bg-emerald-500' },
-              ].map(item => {
+              {pipelineHealthStages.map(item => {
                 const count = stageCounts[item.stage] || 0
                 const pct = totalLeads > 0 ? (count / totalLeads) * 100 : 0
                 return (
@@ -517,11 +477,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
                 <p className="text-[11px] font-semibold text-[#1C1712] truncate">{userName.split(' ')[0]}</p>
-                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide flex-shrink-0 ${
-                  role === 'admin'
-                    ? 'bg-[#B8860B]/15 text-[#B8860B]'
-                    : 'bg-blue-100 text-blue-700'
-                }`}>
+                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide flex-shrink-0 ${role === 'admin' ? 'bg-[#B8860B]/15 text-[#B8860B]' : 'bg-blue-100 text-blue-700'}`}>
                   {role === 'admin' ? 'Admin' : 'Staff'}
                 </span>
               </div>

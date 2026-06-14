@@ -6,14 +6,20 @@ import { supabase } from '@/lib/supabase'
 import { fetchLeads, insertLeadsBulk } from '@/lib/supabase-helpers'
 import { AddLeadModal } from '@/components/dashboard/add-lead-modal'
 
+// ✅ Updated Pipeline Stages
 const PIPELINE_STAGES = [
-  { key: 'new',       label: 'New Lead',   icon: '🎯', color: '#64748B', light: '#F8FAFC', border: '#E2E8F0' },
-  { key: 'called',    label: 'Called',     icon: '📞', color: '#7C3AED', light: '#F5F3FF', border: '#DDD6FE' },
-  { key: 'followup',  label: 'Follow Up',  icon: '🔄', color: '#D97706', light: '#FFFBEB', border: '#FDE68A' },
-  { key: 'sitevisit', label: 'Site Visit', icon: '🏠', color: '#EA580C', light: '#FFF7ED', border: '#FED7AA' },
-  { key: 'quotation', label: 'Quotation',  icon: '💰', color: '#2563EB', light: '#EFF6FF', border: '#BFDBFE' },
-  { key: 'won',       label: 'Won',        icon: '✅', color: '#059669', light: '#ECFDF5', border: '#A7F3D0' },
-  { key: 'lost',      label: 'Lost',       icon: '❌', color: '#DC2626', light: '#FEF2F2', border: '#FECACA' },
+  { key: 'new',             label: 'New Lead',         icon: '🎯', color: '#64748B', light: '#F8FAFC', border: '#E2E8F0' },
+  { key: 'called',          label: 'Called',           icon: '📞', color: '#7C3AED', light: '#F5F3FF', border: '#DDD6FE' },
+  { key: 'interested',      label: 'Interested',       icon: '✨', color: '#0891B2', light: '#ECFEFF', border: '#A5F3FC' },
+  { key: 'followup',        label: 'Follow Up',        icon: '🔄', color: '#D97706', light: '#FFFBEB', border: '#FDE68A' },
+  { key: 'sitevisit',       label: 'Site Visit',       icon: '🏠', color: '#EA580C', light: '#FFF7ED', border: '#FED7AA' },
+  { key: 'design',          label: 'Design Discussion',icon: '🎨', color: '#9333EA', light: '#FAF5FF', border: '#E9D5FF' },
+  { key: 'quotation',       label: 'Quotation Sent',   icon: '💰', color: '#2563EB', light: '#EFF6FF', border: '#BFDBFE' },
+  { key: 'negotiation',     label: 'Negotiation',      icon: '🤝', color: '#B45309', light: '#FFFBEB', border: '#FDE68A' },
+  { key: 'advance',         label: 'Advance Received', icon: '💵', color: '#059669', light: '#ECFDF5', border: '#A7F3D0' },
+  { key: 'won',             label: 'Won',              icon: '✅', color: '#16A34A', light: '#F0FDF4', border: '#BBF7D0' },
+  { key: 'project_started', label: 'Project Started',  icon: '🚀', color: '#0F766E', light: '#F0FDFA', border: '#99F6E4' },
+  { key: 'lost',            label: 'Lost',             icon: '❌', color: '#DC2626', light: '#FEF2F2', border: '#FECACA' },
 ]
 
 const GRADIENTS = [
@@ -57,8 +63,17 @@ function AdvancedCallPopup({ lead, onClose, onUpdatePipeline }: {
     if (!outcome) return
     setSaving(true)
     const stageMap: Record<string, string> = {
-      interested: 'followup', followup: 'followup',
-      sitevisit: 'sitevisit', notinterested: 'lost', called: 'called',
+      interested:      'interested',
+      followup:        'followup',
+      sitevisit:       'sitevisit',
+      design:          'design',
+      quotation:       'quotation',
+      negotiation:     'negotiation',
+      advance:         'advance',
+      won:             'won',
+      project_started: 'project_started',
+      notinterested:   'lost',
+      called:          'called',
     }
     const newStage = stageMap[outcome] || 'called'
     try {
@@ -74,10 +89,11 @@ function AdvancedCallPopup({ lead, onClose, onUpdatePipeline }: {
     finally { setSaving(false) }
   }
 
+  // ✅ Updated outcomes
   const outcomes = [
-    { id: 'interested',    label: '✅ Interested',     color: '#059669', light: '#ECFDF5', desc: 'Want to proceed' },
-    { id: 'followup',      label: '🔄 Follow Up',      color: '#D97706', light: '#FFFBEB', desc: 'Call back needed' },
-    { id: 'sitevisit',     label: '🏠 Site Visit',     color: '#EA580C', light: '#FFF7ED', desc: 'Wants to visit' },
+    { id: 'interested',  label: '✨ Interested',      color: '#0891B2', light: '#ECFEFF', desc: 'Showing interest' },
+    { id: 'followup',    label: '🔄 Follow Up',        color: '#D97706', light: '#FFFBEB', desc: 'Call back needed' },
+    { id: 'sitevisit',   label: '🏠 Site Visit',       color: '#EA580C', light: '#FFF7ED', desc: 'Wants to visit' },
     { id: 'notinterested', label: '❌ Not Interested', color: '#DC2626', light: '#FEF2F2', desc: 'Mark as lost' },
   ]
 
@@ -101,9 +117,6 @@ function AdvancedCallPopup({ lead, onClose, onUpdatePipeline }: {
           <div className="flex items-center justify-center gap-2 mt-2">
             <span className="text-[10px] font-bold px-3 py-1 rounded-full"
               style={{ background: stg.light, color: stg.color }}>{stg.icon} {stg.label}</span>
-            {lead.source && lead.source !== '—' && (
-              <span className="text-[10px] font-bold px-3 py-1 rounded-full bg-white/10 text-white/70">📍 {lead.source}</span>
-            )}
           </div>
           {phase === 'calling' && (
             <div className="mt-3 flex items-center justify-center gap-2 bg-white/8 rounded-full px-4 py-1.5">
@@ -116,6 +129,7 @@ function AdvancedCallPopup({ lead, onClose, onUpdatePipeline }: {
             <p className="mt-2 text-white/40 text-xs">📵 Call ended · {fmt(seconds)}</p>
           )}
         </div>
+
         <div className="px-5 py-4 border-b border-[#F0EBE0]">
           <p className="text-[9px] font-black text-[#9A8F82] uppercase tracking-widest mb-3">Customer Details</p>
           <div className="grid grid-cols-3 gap-2 mb-2">
@@ -131,18 +145,13 @@ function AdvancedCallPopup({ lead, onClose, onUpdatePipeline }: {
             ))}
           </div>
           {lead.requirement && lead.requirement !== '—' && (
-            <div className="rounded-xl p-2.5 mb-2" style={{ background: '#F7F5F1' }}>
+            <div className="rounded-xl p-2.5" style={{ background: '#F7F5F1' }}>
               <p className="text-[8px] font-black text-[#9A8F82] uppercase tracking-wider">Requirement</p>
               <p className="text-xs text-[#1C1712] mt-0.5">{lead.requirement}</p>
             </div>
           )}
-          {lead.email && lead.email !== '—' && (
-            <div className="rounded-xl p-2.5" style={{ background: '#F7F5F1' }}>
-              <p className="text-[8px] font-black text-[#9A8F82] uppercase tracking-wider">Email</p>
-              <p className="text-xs text-[#1C1712] mt-0.5">{lead.email}</p>
-            </div>
-          )}
         </div>
+
         {phase === 'pre' && (
           <div className="p-5 space-y-2">
             <button onClick={startCall}
@@ -157,6 +166,7 @@ function AdvancedCallPopup({ lead, onClose, onUpdatePipeline }: {
             <button onClick={onClose} className="w-full text-[#B8B0A0] text-xs hover:text-[#1C1712] py-1.5 transition-colors">Cancel</button>
           </div>
         )}
+
         {phase === 'calling' && (
           <div className="p-5 space-y-3">
             <div className="text-center py-3 rounded-2xl" style={{ background: '#F0FDF4' }}>
@@ -170,6 +180,7 @@ function AdvancedCallPopup({ lead, onClose, onUpdatePipeline }: {
             </button>
           </div>
         )}
+
         {phase === 'post' && (
           <div className="p-5 space-y-4">
             <div>
@@ -238,7 +249,6 @@ export default function InteriorDesignDashboard() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
-  // Sync filter when URL stage changes
   useEffect(() => {
     setStageFilter(urlStage || 'all')
     if (urlStage) setActiveTab('list')
@@ -279,14 +289,18 @@ export default function InteriorDesignDashboard() {
 
   const todayStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
   const todayLeads = leads.filter(l => l.date === 'Today' || l.date === todayStr)
-  const wonLeads = leads.filter(l => l.pipeline === 'won')
-  const activeLeads = leads.filter(l => !['won', 'lost'].includes(l.pipeline))
+  const wonLeads = leads.filter(l => l.pipeline === 'won' || l.pipeline === 'project_started')
+  const activeLeads = leads.filter(l => !['won', 'lost', 'project_started'].includes(l.pipeline))
+  const followupsDue = leads.filter(l => l.pipeline === 'followup')
+  const siteVisits = leads.filter(l => l.pipeline === 'sitevisit')
+  const quotationsPending = leads.filter(l => l.pipeline === 'quotation')
+  const winRate = leads.length > 0 ? Math.round((wonLeads.length / leads.length) * 100) : 0
+
   const filteredLeads = leads.filter(l => {
     const ms = l.name.toLowerCase().includes(search.toLowerCase()) || l.phone.includes(search)
     const mf = stageFilter === 'all' ? true : l.pipeline === stageFilter
     return ms && mf
   })
-  const winRate = leads.length > 0 ? Math.round((wonLeads.length / leads.length) * 100) : 0
 
   const updatePipeline = async (leadId: string, stage: string) => {
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, pipeline: stage } : l))
@@ -329,7 +343,7 @@ export default function InteriorDesignDashboard() {
     <>
       <main className="flex-1 p-4 md:p-6 space-y-4">
 
-        {/* TOP ROW */}
+        {/* ── TOP ROW ── */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <div className="col-span-2 lg:col-span-1 relative overflow-hidden rounded-2xl p-4 flex flex-col justify-between"
             style={{ background: 'linear-gradient(135deg, #1C1712 0%, #2d2218 100%)' }}>
@@ -354,12 +368,16 @@ export default function InteriorDesignDashboard() {
           </div>
 
           {[
-            { label: 'Total Leads', value: leads.length,       icon: '🎯', color: '#1C1712', trend: 'All time' },
-            { label: 'Today',       value: todayLeads.length,  icon: '📅', color: '#2563EB', trend: 'Added today' },
-            { label: 'Active',      value: activeLeads.length, icon: '🔥', color: '#D97706', trend: 'In pipeline' },
-            { label: 'Won',         value: wonLeads.length,    icon: '✦',  color: '#059669', trend: winRate + '% rate' },
+            { label: 'Total Leads',    value: leads.length,            icon: '🎯', color: '#1C1712', bg: 'bg-white',      border: 'border-[#E8E2D8]', trend: 'All time' },
+            { label: 'Follow-ups Due', value: followupsDue.length,     icon: '🔄', color: '#D97706', bg: 'bg-amber-50',   border: 'border-amber-200', trend: 'Need callback',
+              onClick: () => { setStageFilter('followup'); setActiveTab('list') } },
+            { label: 'Site Visits',    value: siteVisits.length,       icon: '🏠', color: '#EA580C', bg: 'bg-orange-50',  border: 'border-orange-200', trend: 'Scheduled',
+              onClick: () => { setStageFilter('sitevisit'); setActiveTab('list') } },
+            { label: 'Quotations',     value: quotationsPending.length, icon: '💰', color: '#2563EB', bg: 'bg-blue-50',    border: 'border-blue-200', trend: 'Pending',
+              onClick: () => { setStageFilter('quotation'); setActiveTab('list') } },
           ].map((s, i) => (
-            <div key={i} className="bg-white rounded-2xl p-4 border border-[#E8E2D8] hover:shadow-md hover:-translate-y-0.5 transition-all cursor-default">
+            <div key={i} onClick={s.onClick}
+              className={`${s.bg} rounded-2xl p-4 border ${s.border} hover:shadow-md hover:-translate-y-0.5 transition-all ${s.onClick ? 'cursor-pointer' : 'cursor-default'}`}>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[9px] font-bold text-[#9A8F82] uppercase tracking-wider">{s.label}</p>
                 <span className="text-base">{s.icon}</span>
@@ -370,7 +388,25 @@ export default function InteriorDesignDashboard() {
           ))}
         </div>
 
-        {/* PIPELINE STRIP */}
+        {/* ── SECOND ROW ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {[
+            { label: "Today's Leads",   value: todayLeads.length,  icon: '📅', color: '#2563EB', bg: 'bg-blue-50',    border: 'border-blue-100',    trend: 'Added today' },
+            { label: 'Active Pipeline', value: activeLeads.length, icon: '🔥', color: '#D97706', bg: 'bg-amber-50',   border: 'border-amber-100',   trend: 'In progress' },
+            { label: 'Won Deals',       value: wonLeads.length,    icon: '✅', color: '#059669', bg: 'bg-emerald-50', border: 'border-emerald-100', trend: `${winRate}% win rate` },
+          ].map((s, i) => (
+            <div key={i} className={`${s.bg} border ${s.border} rounded-2xl px-4 py-3 flex items-center gap-3 hover:shadow-sm transition-all`}>
+              <span className="text-xl">{s.icon}</span>
+              <div>
+                <p className="text-[9px] font-bold text-[#9A8F82] uppercase tracking-wider">{s.label}</p>
+                <p className="font-serif text-xl font-bold" style={{ color: s.color }}>{s.value}</p>
+                <p className="text-[9px] text-[#B8B0A0]">{s.trend}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── PIPELINE STRIP ── */}
         <div className="bg-white rounded-2xl border border-[#E8E2D8] p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-bold text-[#1C1712]">Pipeline Overview</p>
@@ -384,16 +420,16 @@ export default function InteriorDesignDashboard() {
               return (
                 <button key={stage.key}
                   onClick={() => { setStageFilter(s => s === stage.key ? 'all' : stage.key); setActiveTab('list') }}
-                  className="flex-1 min-w-[80px] p-2.5 rounded-xl border text-center transition-all hover:shadow-md relative overflow-hidden"
+                  className="flex-1 min-w-[72px] p-2 rounded-xl border text-center transition-all hover:shadow-md relative overflow-hidden"
                   style={{
                     background: active ? stage.color : stage.light,
                     borderColor: active ? stage.color : stage.border,
                     transform: active ? 'scale(1.03)' : 'scale(1)',
                     boxShadow: active ? `0 4px 16px ${stage.color}30` : 'none',
                   }}>
-                  <p className="text-base mb-1">{stage.icon}</p>
-                  <p className="font-serif text-lg font-bold" style={{ color: active ? 'white' : stage.color }}>{count}</p>
-                  <p className="text-[8px] font-bold uppercase tracking-wide mt-0.5" style={{ color: active ? 'rgba(255,255,255,0.8)' : stage.color }}>{stage.label}</p>
+                  <p className="text-sm mb-0.5">{stage.icon}</p>
+                  <p className="font-serif text-base font-bold" style={{ color: active ? 'white' : stage.color }}>{count}</p>
+                  <p className="text-[7px] font-bold uppercase tracking-wide leading-tight" style={{ color: active ? 'rgba(255,255,255,0.8)' : stage.color }}>{stage.label}</p>
                   <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: active ? 'rgba(255,255,255,0.3)' : stage.border }}>
                     <div className="h-full" style={{ width: `${pct}%`, background: active ? 'white' : stage.color }} />
                   </div>
@@ -403,7 +439,7 @@ export default function InteriorDesignDashboard() {
           </div>
         </div>
 
-        {/* LIST VIEW */}
+        {/* ── LIST VIEW ── */}
         {activeTab === 'list' && (
           <div className="bg-white rounded-2xl border border-[#E8E2D8] overflow-hidden">
             <div className="px-5 py-3.5 border-b border-[#F0EBE0] flex flex-col gap-3">
@@ -447,20 +483,6 @@ export default function InteriorDesignDashboard() {
                     {d === 'all' ? 'All Time' : d === 'today' ? 'Today' : d === 'yesterday' ? 'Yesterday' : 'This Week'}
                   </button>
                 ))}
-                <div className="flex items-center gap-1.5 bg-[#F7F5F1] border border-[#E8E2D8] rounded-xl px-3 py-1.5 focus-within:border-[#B8860B] transition-colors">
-                  <span className="text-xs">📅</span>
-                  <input type="date" value={dateFrom}
-                    onChange={e => { setDateFrom(e.target.value); setDateFilter('custom') }}
-                    className="bg-transparent text-xs text-[#1C1712] outline-none w-28" />
-                  <span className="text-xs text-[#9A8F82]">→</span>
-                  <input type="date" value={dateTo}
-                    onChange={e => { setDateTo(e.target.value); setDateFilter('custom') }}
-                    className="bg-transparent text-xs text-[#1C1712] outline-none w-28" />
-                  {dateFilter === 'custom' && (
-                    <button onClick={() => { setDateFilter('all'); setDateFrom(''); setDateTo('') }}
-                      className="text-[10px] text-red-400 hover:text-red-600 ml-1">✕</button>
-                  )}
-                </div>
                 <button onClick={() => setLeadModalOpen(true)}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all hover:scale-105"
                   style={{ background: 'linear-gradient(135deg, #1C1712, #2d2822)' }}>
@@ -570,22 +592,14 @@ export default function InteriorDesignDashboard() {
                 <p className="text-[10px] text-[#9A8F82]">
                   <span className="font-bold text-[#1C1712]">{filteredLeads.length}</span> of <span className="font-bold text-[#1C1712]">{leads.length}</span> leads
                 </p>
-                <div className="flex gap-1">
-                  {['← Prev', '1', 'Next →'].map((b, i) => (
-                    <button key={b} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${i === 1 ? 'text-white' : 'border border-[#E8E2D8] text-[#7A6E60] hover:bg-[#F5F0E8]'}`}
-                      style={i === 1 ? { background: 'linear-gradient(135deg, #1C1712, #2d2822)' } : {}}>
-                      {b}
-                    </button>
-                  ))}
-                </div>
               </div>
             )}
           </div>
         )}
 
-        {/* PIPELINE BOARD */}
+        {/* ── PIPELINE BOARD ── */}
         {activeTab === 'pipeline' && (
-          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
             {PIPELINE_STAGES.map(stage => {
               const stageLeads = leads.filter(l => l.pipeline === stage.key)
               return (
@@ -595,12 +609,12 @@ export default function InteriorDesignDashboard() {
                     style={{ background: stage.light, borderColor: stage.border }}>
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm">{stage.icon}</span>
-                      <p className="text-[10px] font-black uppercase tracking-wide" style={{ color: stage.color }}>{stage.label}</p>
+                      <p className="text-[9px] font-black uppercase tracking-wide truncate" style={{ color: stage.color }}>{stage.label}</p>
                     </div>
-                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white"
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black text-white flex-shrink-0"
                       style={{ background: stage.color }}>{stageLeads.length}</span>
                   </div>
-                  <div className="p-2 flex flex-col gap-2 min-h-[120px]">
+                  <div className="p-2 flex flex-col gap-2 min-h-[100px]">
                     {stageLeads.map((lead, i) => (
                       <div key={lead.id} onClick={() => setMoveModal(lead)}
                         className="rounded-xl p-2.5 cursor-pointer transition-all hover:shadow-md border"
@@ -626,7 +640,7 @@ export default function InteriorDesignDashboard() {
                       </div>
                     ))}
                     {!stageLeads.length && (
-                      <div className="flex-1 flex items-center justify-center py-8">
+                      <div className="flex-1 flex items-center justify-center py-6">
                         <p className="text-[10px] text-[#D4CFC8]">Empty</p>
                       </div>
                     )}
@@ -644,8 +658,8 @@ export default function InteriorDesignDashboard() {
         {moveModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMoveModal(null)} />
-            <div className="relative bg-white rounded-2xl w-full max-w-sm overflow-hidden" style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}>
-              <div className="px-5 py-4 border-b border-[#F0EBE0] flex items-center justify-between">
+            <div className="relative bg-white rounded-2xl w-full max-w-sm overflow-hidden" style={{ boxShadow: '0 24px 64px rgba(0,0,0,0.25)', maxHeight: '85vh', overflowY: 'auto' }}>
+              <div className="px-5 py-4 border-b border-[#F0EBE0] flex items-center justify-between sticky top-0 bg-white">
                 <div>
                   <h3 className="font-bold text-[#1C1712]">Move Lead</h3>
                   <p className="text-xs text-[#9A8F82]">{moveModal.name} · {moveModal.phone}</p>
