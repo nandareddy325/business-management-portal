@@ -26,6 +26,7 @@ export function AttendanceStatusDropdown({ employeeId, companyId, date, currentS
   const [status, setStatus] = useState(currentStatus)
   const [loading, setLoading] = useState(false)
   const [dropUp, setDropUp] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
 
   const current = OPTIONS.find(o => o.value === status)
@@ -41,18 +42,34 @@ export function AttendanceStatusDropdown({ employeeId, companyId, date, currentS
   const handleSelect = async (value: string) => {
     setOpen(false)
     if (value === status) return
-    setLoading(true)
 
-    if (recordId) {
-      await supabase.from('attendance').update({ status: value }).eq('id', recordId)
-    } else {
-      await supabase.from('attendance').insert({
-        company_id: companyId,
-        employee_id: employeeId,
-        attendance_date: date,
-        status: value,
-        check_in: value === 'present' ? `${date}T09:00:00` : null,
-      })
+    const previousStatus = status
+    setLoading(true)
+    setError(null)
+
+    // Keep check_in consistent with status on both insert AND update,
+    // so switching away from "present" clears any stale check-in time.
+    const checkIn = value === 'present' ? `${date}T09:00:00` : null
+
+    const { error: dbError } = recordId
+      ? await supabase
+          .from('attendance')
+          .update({ status: value, check_in: checkIn })
+          .eq('id', recordId)
+      : await supabase.from('attendance').insert({
+          company_id: companyId,
+          employee_id: employeeId,
+          attendance_date: date,
+          status: value,
+          check_in: checkIn,
+        })
+
+    if (dbError) {
+      console.error('Failed to update attendance:', dbError.message)
+      setError('Failed to save. Try again.')
+      setStatus(previousStatus)
+      setLoading(false)
+      return
     }
 
     setStatus(value)
@@ -75,10 +92,16 @@ export function AttendanceStatusDropdown({ employeeId, companyId, date, currentS
         <ChevronDown size={10} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
+      {error && (
+        <p className="absolute top-full mt-1 left-0 text-[10px] text-red-500 whitespace-nowrap">
+          {error}
+        </p>
+      )}
+
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className={`absolute ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'} left-0 bg-white border border-[#E2D9C8] rounded-xl shadow-xl z-50  min-w-[120px]`}>
+          <div className={`absolute ${dropUp ? 'bottom-full mb-1' : 'top-full mt-1'} left-0 bg-white border border-[#E2D9C8] rounded-xl shadow-xl z-50 min-w-[120px]`}>
             {OPTIONS.map(opt => (
               <button
                 key={opt.value}
