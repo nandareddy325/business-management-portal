@@ -151,6 +151,16 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     'HR & ADMIN': false, 'FINANCE': false, 'SYSTEM': false,
   })
 
+  // ── Lock background scroll while the mobile drawer is open ──
+  useEffect(() => {
+    if (isOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
   useEffect(() => {
     const urlStage = searchParams.get('stage')
     setActiveStage(urlStage || 'all')
@@ -227,7 +237,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, [industryDropdownOpen])
 
   const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = '/login' }
-  const winRate = totalLeads > 0 ? Math.round((wonLeads / totalLeads) * 100) : 0
 
   const navGroups = useMemo(() => {
     if (role === 'admin') return adminNavGroups
@@ -282,14 +291,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     finance:  { label: 'Finance',  color: '#16A34A', bg: '#F0FDF4' },
   }
 
-  const pipelineHealthStages = [
-    { label: 'New',        stage: 'new',       color: '#94A3B8' },
-    { label: 'Follow Up',  stage: 'followup',  color: '#F59E0B' },
-    { label: 'Site Visit', stage: 'sitevisit', color: '#F97316' },
-    { label: 'Quotation',  stage: 'quotation', color: '#3B82F6' },
-    { label: 'Won',        stage: 'won',       color: '#22C55E' },
-  ]
-
   // Badge color for nav items
   const getBadgeStyle = (stage: string | null, active: boolean): React.CSSProperties => {
     if (active) return { background: 'rgba(255,255,255,0.22)', color: '#fff' }
@@ -311,7 +312,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       )}
 
       <aside style={{
-        position: 'fixed', top: 0, left: 0, height: '100%', width: 236, zIndex: 50,
+        position: 'fixed', top: 0, left: 0, height: '100%', width: 236, maxWidth: '82vw', zIndex: 50,
         display: 'flex', flexDirection: 'column',
         background: '#FFFFFF',
         borderRight: '1px solid #EBEBEB',
@@ -319,6 +320,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
         fontFamily: "'Inter', sans-serif",
+        paddingTop: 'env(safe-area-inset-top)',
       }}
         className="lg:translate-x-0"
       >
@@ -332,9 +334,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <p style={{ fontSize: 9, fontWeight: 700, color: '#F5C518', textTransform: 'uppercase', letterSpacing: 2, margin: 0 }}>Premium Suite</p>
             </div>
           </div>
-          <button onClick={onClose} className="lg:hidden"
-            style={{ width: 28, height: 28, borderRadius: 10, background: '#F5F5F3', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888' }}>
-            <X size={13} />
+          <button onClick={onClose} className="lg:hidden" aria-label="Close menu"
+            style={{ width: 36, height: 36, borderRadius: 10, background: '#F5F5F3', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888' }}>
+            <X size={16} />
           </button>
         </div>
 
@@ -357,7 +359,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           {activeIndustries.length > 1 && (
             <div style={{ position: 'relative', marginTop: 8 }} onClick={e => e.stopPropagation()}>
               <button onClick={() => setIndustryDropdownOpen(prev => !prev)}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, background: '#F5F5F3', border: '1px solid #EBEBEB', borderRadius: 12, padding: '8px 12px', fontSize: 11, fontWeight: 600, color: '#1C1C1E', cursor: 'pointer' }}>
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, background: '#F5F5F3', border: '1px solid #EBEBEB', borderRadius: 12, padding: '11px 12px', fontSize: 11, fontWeight: 600, color: '#1C1C1E', cursor: 'pointer' }}>
                 <span style={{ fontSize: 13 }}>{currentIndustry.icon}</span>
                 <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentIndustry.label}</span>
                 <ChevronDown size={11} style={{ color: '#AAA', transform: industryDropdownOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
@@ -370,7 +372,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     return (
                       <Link key={slug} href={`/dashboard/industries/${slug}`}
                         onClick={() => { handleIndustrySwitch(slug); setIndustryDropdownOpen(false) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', fontSize: 11, fontWeight: 600, background: isCurrent ? '#1C1C1E' : 'transparent', color: isCurrent ? '#fff' : '#666', textDecoration: 'none', transition: 'background 0.15s' }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', fontSize: 11, fontWeight: 600, background: isCurrent ? '#1C1C1E' : 'transparent', color: isCurrent ? '#fff' : '#666', textDecoration: 'none', transition: 'background 0.15s' }}>
                         <span style={{ fontSize: 14 }}>{ind.icon}</span>
                         <span style={{ flex: 1 }}>{ind.label}</span>
                         {isCurrent && <span style={{ fontSize: 8, background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 20, fontWeight: 800, letterSpacing: 1 }}>ACTIVE</span>}
@@ -387,7 +389,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,#EBEBEB,transparent)', margin: '0 12px', flexShrink: 0 }} />
 
         {/* ── NAV ── */}
-        <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}
+        <nav style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '10px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}
           className="scroll-hide">
 
           {/* Employee permission badges */}
@@ -410,7 +412,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <Link href="/dashboard"
                 onClick={() => onClose()}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', borderRadius: 14,
+                  display: 'flex', alignItems: 'center', gap: 9, padding: '12px 12px', borderRadius: 14,
                   background: isDashActive ? '#1C1C1E' : '#F5F5F3',
                   color: isDashActive ? '#fff' : '#1C1C1E',
                   fontWeight: 700, fontSize: 13, textDecoration: 'none',
@@ -436,7 +438,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <div key={group.section} style={{ marginBottom: 2 }}>
                 {/* Section header */}
                 <button onClick={() => toggleSection(group.section)}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 12, border: 'none', background: hasActive ? '#F5F5F3' : 'transparent', cursor: 'pointer', transition: 'background 0.15s' }}>
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 10px', borderRadius: 12, border: 'none', background: hasActive ? '#F5F5F3' : 'transparent', cursor: 'pointer', transition: 'background 0.15s' }}>
                   <span style={{ fontSize: 13 }}>{group.icon}</span>
                   <span style={{ flex: 1, textAlign: 'left', fontSize: 9, fontWeight: 800, color: '#BBB', textTransform: 'uppercase', letterSpacing: 2 }}>{group.section}</span>
                   <ChevronDown size={11} style={{ color: '#CCC', transform: isOpen_ ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
@@ -452,7 +454,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                         <Link key={item.label} href={item.href}
                           onClick={() => handleNavClick(item.stage, item.href)}
                           style={{
-                            display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 12,
+                            display: 'flex', alignItems: 'center', gap: 9, padding: '11px 10px', borderRadius: 12,
                             background: active ? '#1C1C1E' : 'transparent',
                             color: active ? '#fff' : '#555',
                             fontWeight: active ? 700 : 500,
@@ -490,38 +492,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Divider */}
         <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,#EBEBEB,transparent)', margin: '0 12px', flexShrink: 0 }} />
 
-        {/* ── PIPELINE HEALTH ── */}
-        {role === 'admin' && (
-          <div style={{ padding: '14px 16px', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <p style={{ fontSize: 9, fontWeight: 800, color: '#BBB', textTransform: 'uppercase', letterSpacing: 2, margin: 0 }}>Pipeline Health</p>
-              <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: winRate > 0 ? '#DCFCE7' : '#F5F5F3', color: winRate > 0 ? '#15803D' : '#AAA' }}>
-                {winRate}% win
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-              {pipelineHealthStages.map(item => {
-                const count = stageCounts[item.stage] || 0
-                const pct = totalLeads > 0 ? (count / totalLeads) * 100 : 0
-                return (
-                  <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <p style={{ fontSize: 9, color: '#BBB', width: 52, flexShrink: 0, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</p>
-                    <div style={{ flex: 1, height: 5, background: '#F0F0EE', borderRadius: 10, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: item.color, borderRadius: 10, transition: 'width 0.7s ease' }} />
-                    </div>
-                    <span style={{ fontSize: 9, color: '#CCC', width: 14, textAlign: 'right', flexShrink: 0 }}>{count}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Divider */}
-        <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,#EBEBEB,transparent)', margin: '0 12px', flexShrink: 0 }} />
-
         {/* ── USER FOOTER ── */}
-        <div style={{ padding: '12px', flexShrink: 0 }}>
+        <div style={{ padding: '12px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#F9F9F7', border: '1px solid #EBEBEB', borderRadius: 16, padding: '10px 12px' }}>
             {/* Avatar */}
             <div style={{ width: 34, height: 34, borderRadius: 12, background: `linear-gradient(135deg,${avatarColor.from},${avatarColor.to})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0, boxShadow: `0 4px 10px ${avatarColor.from}40` }}>
@@ -536,11 +508,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
               <p style={{ fontSize: 10, color: '#BBB', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userCompany}</p>
             </div>
-            <button onClick={handleLogout}
-              style={{ width: 28, height: 28, borderRadius: 10, border: '1px solid #EBEBEB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#BBB', flexShrink: 0, transition: 'all 0.15s' }}
+            <button onClick={handleLogout} aria-label="Log out"
+              style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid #EBEBEB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#BBB', flexShrink: 0, transition: 'all 0.15s' }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#FEF2F2'; (e.currentTarget as HTMLElement).style.color = '#EF4444'; (e.currentTarget as HTMLElement).style.borderColor = '#FECACA' }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; (e.currentTarget as HTMLElement).style.color = '#BBB'; (e.currentTarget as HTMLElement).style.borderColor = '#EBEBEB' }}>
-              <LogOut size={12} />
+              <LogOut size={14} />
             </button>
           </div>
         </div>
