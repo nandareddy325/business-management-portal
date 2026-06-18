@@ -38,13 +38,19 @@ export async function POST(req: NextRequest) {
 
     const userId = authData.user.id
 
-    await supabaseAdmin.from('profiles').upsert({
+    // ✅ FIX 1: Profile upsert error check
+    const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
       id: userId,
       full_name,
       email: email.trim(),
       role: 'employee',
       company_id: companyId,
     })
+
+    if (profileError) {
+      await supabaseAdmin.auth.admin.deleteUser(userId)
+      return NextResponse.json({ error: 'Profile creation failed: ' + profileError.message }, { status: 400 })
+    }
 
     const { data: empData, error: empError } = await supabaseAdmin.from('employees').insert({
       company_id: companyId,
@@ -66,17 +72,24 @@ export async function POST(req: NextRequest) {
     }).select().single()
 
     if (empError) {
+      // ✅ FIX 2: Cleanup profile row too, not just auth user
       await supabaseAdmin.auth.admin.deleteUser(userId)
+      await supabaseAdmin.from('profiles').delete().eq('id', userId)
       return NextResponse.json({ error: empError.message }, { status: 400 })
     }
 
-    await supabaseAdmin.from('leave_balances').insert({
+    // ✅ FIX 3: Leave balance error check (log only, don't rollback employee)
+    const { error: leaveError } = await supabaseAdmin.from('leave_balances').insert({
       employee_id: empData.id,
       company_id: companyId,
       year: new Date().getFullYear(),
       cl_total: 12, sl_total: 12, el_total: 15,
       cl_used: 0, sl_used: 0, el_used: 0,
     })
+
+    if (leaveError) {
+      console.error('Leave balance creation failed:', leaveError.message)
+    }
 
     return NextResponse.json({
       success: true,

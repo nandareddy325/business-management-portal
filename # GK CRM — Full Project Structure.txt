@@ -1,0 +1,268 @@
+# GK CRM — Full Project Structure
+# business-management-portal
+
+app/
+├── (auth)/
+│   ├── login/
+│   │   └── page.tsx
+│   ├── register/
+│   │   └── page.tsx
+│   ├── forgot-password/
+│   │   └── page.tsx
+│   └── reset-password/
+│       └── page.tsx
+│
+├── (dashboard)/
+│   ├── layout.tsx                          ← Sidebar + Header wrapper
+│   │
+│   ├── dashboard/
+│   │   └── page.tsx                        ← /dashboard (Overview page)
+│   │
+│   ├── dashboard/industries/
+│   │   ├── interior-design/
+│   │   │   ├── page.tsx                    ← Lead Pipeline
+│   │   │   ├── clients/
+│   │   │   │   └── page.tsx
+│   │   │   ├── designs/
+│   │   │   │   └── page.tsx
+│   │   │   ├── materials/
+│   │   │   │   └── page.tsx
+│   │   │   └── projects/
+│   │   │       └── page.tsx
+│   │   ├── real-estate/
+│   │   │   └── page.tsx
+│   │   ├── hospital/
+│   │   │   └── page.tsx
+│   │   ├── b2b-business/
+│   │   │   └── page.tsx
+│   │   └── clinics/
+│   │       └── page.tsx
+│   │
+│   ├── billing/
+│   │   ├── invoices/
+│   │   │   └── page.tsx
+│   │   └── payments/
+│   │       └── page.tsx
+│   │
+│   ├── crm/
+│   │   ├── customers/
+│   │   │   └── page.tsx
+│   │   └── leads/
+│   │       └── page.tsx
+│   │
+│   ├── hr/
+│   │   ├── employees/
+│   │   │   └── page.tsx
+│   │   ├── attendance/
+│   │   │   └── page.tsx
+│   │   └── work-reports/
+│   │       └── page.tsx
+│   │
+│   ├── reports/
+│   │   └── page.tsx
+│   │
+│   └── settings/
+│       ├── company/
+│       │   └── page.tsx
+│       └── users/
+│           └── page.tsx
+│
+├── (employee)/
+│   ├── layout.tsx
+│   └── employee/
+│       ├── page.tsx
+│       ├── leave/
+│       │   └── page.tsx
+│       ├── profile/
+│       │   └── page.tsx
+│       └── reports/
+│           └── page.tsx
+│
+├── (super-admin)/
+│   ├── layout.tsx
+│   └── admin/
+│       ├── dashboard/
+│       │   └── page.tsx
+│       ├── tenants/
+│       │   └── page.tsx
+│       ├── revenue/
+│       │   └── page.tsx
+│       └── subscriptions/
+│           └── page.tsx
+│
+├── (marketing)/
+│   ├── layout.tsx
+│   └── page.tsx                            ← Landing page (/)
+│
+├── api/
+│   ├── auth/
+│   │   ├── route.ts
+│   │   └── signout/
+│   │       └── route.ts
+│   ├── hr/
+│   │   └── create-employee/
+│   │       └── route.ts
+│   ├── industries/
+│   │   └── add/
+│   │       └── route.ts
+│   └── razorpay/
+│       ├── create-order/
+│       │   └── route.ts
+│       └── verify/
+│           └── route.ts
+│
+├── pricing/
+│   └── page.tsx
+├── privacy/
+│   └── page.tsx
+├── terms/
+│   └── page.tsx
+├── globals.css
+├── layout.tsx                              ← Root layout
+└── proxy.ts
+
+components/
+├── dashboard/
+│   ├── add-lead-modal.tsx
+│   ├── attendance-mini.tsx
+│   ├── charts.tsx
+│   ├── DashboardShell.tsx
+│   ├── header.tsx
+│   ├── IndustryDashboard.tsx
+│   ├── layout-dashboard.tsx
+│   ├── lead-detail-panel.tsx
+│   ├── leads-table.tsx
+│   ├── project-progress.tsx
+│   ├── recent-activities.tsx
+│   ├── sidebar.tsx                         ← ✅ Updated (new style)
+│   ├── stats-cards.tsx
+│   └── DashboardShell.tsx
+│
+├── billing/
+│   ├── create-invoice-button.tsx
+│   └── record-payment-button.tsx
+│
+├── employee/
+│   ├── apply-leave-button.tsx
+│   └── submit-report-button.tsx
+│
+├── hr/
+│   ├── add-employee-button.tsx
+│   ├── attendance-status-dropdown.tsx
+│   ├── date-picker.tsx
+│   └── mark-attendance-button.tsx
+│
+├── interior/
+│   ├── add-client-button.tsx
+│   ├── add-design-button.tsx
+│   ├── add-material-button.tsx
+│   └── add-project-button.tsx
+│
+├── super-admin/
+│   ├── AdminSidebar.tsx
+│   └── TenantActions.tsx
+│
+├── ui/                                     ← shadcn/ui components
+│
+└── AddIndustryModal.tsx
+
+config/
+├── industries.config.ts
+└── plans.config.ts
+
+hooks/
+├── use-auth.ts
+└── use-industry.ts
+
+lib/
+├── supabase/
+├── industries.ts
+├── mock-data.ts
+├── supabase-helpers.ts
+├── supabase.ts
+└── utils.ts
+
+modules/
+├── auth/
+│   ├── repository.ts
+│   └── service.ts
+├── billing/
+│   ├── repository.ts
+│   └── service.ts
+├── crm/
+│   ├── repository.ts
+│   └── service.ts
+├── hr/
+│   ├── repository.ts
+│   └── service.ts
+├── rbac/
+│   ├── guard.tsx
+│   └── permissions.ts
+├── subscription/
+│   └── service.ts
+└── tenant/
+    ├── repository.ts
+    └── service.ts
+
+services/
+├── admin.service.ts
+├── api-client.ts
+├── auth.service.ts
+├── billing.service.ts
+├── crm.service.ts
+├── hr.service.ts
+├── index.ts
+└── tenant.service.ts
+
+store/
+└── auth.store.ts
+
+types/
+├── database.ts
+└── index.ts
+
+public/
+
+# Root files
+.env.local
+.gitignore
+next.config.ts
+package.json
+postcss.config.mjs
+tailwind.config.ts
+tsconfig.json
+
+# ═══════════════════════════════════════════
+# KEY FILES — Meeru Update Chesina Files
+# ═══════════════════════════════════════════
+
+# 1. Sidebar (new white/yellow style):
+#    components/dashboard/sidebar.tsx
+
+# 2. Interior Design Pipeline Page:
+#    app/(dashboard)/dashboard/industries/interior-design/page.tsx
+
+# 3. Main Dashboard Overview:
+#    app/(dashboard)/dashboard/page.tsx
+
+# ═══════════════════════════════════════════
+# ROUTES REFERENCE
+# ═══════════════════════════════════════════
+
+# /                           → Landing page
+# /login                      → Login
+# /dashboard                  → 📊 Overview (Pipeline, Projects, HR, Finance, System)
+# /dashboard/industries/interior-design        → Lead Pipeline
+# /dashboard/industries/interior-design?stage=followup  → Filtered view
+# /dashboard/industries/interior-design/projects        → Projects
+# /dashboard/industries/interior-design/clients         → Clients
+# /dashboard/industries/interior-design/designs         → Designs
+# /dashboard/industries/interior-design/materials       → Materials
+# /billing/invoices            → Invoices
+# /billing/payments            → Payments
+# /hr/employees                → HRMS
+# /hr/attendance               → Attendance
+# /reports                     → Reports
+# /settings/company            → Company Settings
+# /settings/users              → User Management
+# /admin/dashboard             → Super Admin

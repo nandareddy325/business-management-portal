@@ -1,6 +1,3 @@
-// app/(super-admin)/layout.tsx
-// ✅ Server Component — secure server-side role check
-// ❌ Old version was 'use client' + useEffect — easily bypassed
 
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'

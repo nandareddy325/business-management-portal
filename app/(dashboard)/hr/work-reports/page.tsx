@@ -205,7 +205,7 @@ export default function WorkReportsPage() {
             <button onClick={() => { setShowForm(false); setError('') }} className="text-gray-600 hover:text-gray-400 text-lg">✕</button>
           </div>
 
-          <div className="p-5 space-y-5">
+          <div className="p-5 space-y-5">   
 
             {/* Tasks Completed */}
             <div>

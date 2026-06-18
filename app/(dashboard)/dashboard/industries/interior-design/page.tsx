@@ -375,8 +375,7 @@ export default function InteriorDesignDashboard() {
   const [callLead, setCallLead] = useState<Lead | null>(null)
   const [moveModal, setMoveModal] = useState<Lead | null>(null)
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
-const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)  // ← ఇది add చేయి
-
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
 
   useEffect(() => { setStageFilter(urlStage || 'all'); if (urlStage) setActiveTab('list') }, [urlStage])
 
@@ -474,10 +473,10 @@ const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)  // �
       <main className="dash-bg flex-1 p-4 md:p-6 space-y-5">
 
         {/* ── HEADER ── */}
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>Interior Design</p>
-            <h1 className="text-2xl md:text-3xl font-bold text-[#1C1712]">{greeting}, {userName} 👋</h1>
+            <h1 className="text-xl md:text-3xl font-bold text-[#1C1712] leading-tight">{greeting}, {userName} 👋</h1>
             <p className="text-sm mt-1 text-[#9A8F82]">{leads.length} leads total · {activeLeads.length} active · {winRate}% conversion</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -534,29 +533,32 @@ const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)  // �
             <p className="text-xs font-bold text-[#9A8F82] uppercase tracking-widest">Pipeline</p>
             <p className="text-[10px] text-[#B8B0A0]">{leads.length} leads</p>
           </div>
-          <div className="flex gap-2 scroll-x overflow-x-auto pb-1">
-            {PIPELINE_STAGES.map(stage => {
-              const count = leads.filter(l => l.pipeline === stage.key).length
-              const pct = leads.length > 0 ? (count / leads.length) * 100 : 0
-              const active = stageFilter === stage.key
-              return (
-                <button key={stage.key}
-                  onClick={() => { setStageFilter(s => s === stage.key ? 'all' : stage.key); setActiveTab('list') }}
-                  className="flex-1 min-w-[72px] p-2.5 rounded-xl text-center transition-all relative overflow-hidden"
-                  style={{
-                    background: active ? `${stage.accent}20` : '#FAFAF8',
-                    border: `1px solid ${active ? stage.accent + '60' : '#E8E2D8'}`,
-                    boxShadow: active ? `0 0 16px ${stage.accent}20` : 'none',
-                  }}>
-                  <p className="text-base mb-1">{stage.icon}</p>
-                  <p className="text-lg font-black text-[#1C1712]">{count}</p>
-                  <p className="text-[7px] font-bold uppercase leading-tight mt-0.5" style={{ color: active ? stage.color : '#9A8F82' }}>{stage.label}</p>
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F0EBE0]">
-                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: stage.accent }} />
-                  </div>
-                </button>
-              )
-            })}
+          <div className="relative">
+            <div className="flex gap-2 scroll-x overflow-x-auto pb-1">
+              {PIPELINE_STAGES.map(stage => {
+                const count = leads.filter(l => l.pipeline === stage.key).length
+                const pct = leads.length > 0 ? (count / leads.length) * 100 : 0
+                const active = stageFilter === stage.key
+                return (
+                  <button key={stage.key}
+                    onClick={() => { setStageFilter(s => s === stage.key ? 'all' : stage.key); setActiveTab('list') }}
+                    className="flex-1 min-w-[72px] p-2.5 rounded-xl text-center transition-all relative overflow-hidden"
+                    style={{
+                      background: active ? `${stage.accent}20` : '#FAFAF8',
+                      border: `1px solid ${active ? stage.accent + '60' : '#E8E2D8'}`,
+                      boxShadow: active ? `0 0 16px ${stage.accent}20` : 'none',
+                    }}>
+                    <p className="text-base mb-1">{stage.icon}</p>
+                    <p className="text-lg font-black text-[#1C1712]">{count}</p>
+                    <p className="text-[7px] font-bold uppercase leading-tight mt-0.5" style={{ color: active ? stage.color : '#9A8F82' }}>{stage.label}</p>
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F0EBE0]">
+                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: stage.accent }} />
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="pointer-events-none absolute right-0 top-0 bottom-1 w-10 sm:hidden" style={{ background: 'linear-gradient(90deg, transparent, #FFFFFF)' }} />
           </div>
         </div>
 
@@ -628,71 +630,118 @@ const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)  // �
                 )}
               </div>
             ) : (
-              <div className="overflow-x-auto scroll-x">
-                <table className="w-full">
-                  <thead>
-                    <tr style={{ background: '#FAFAF8', borderBottom: '1px solid #F0EBE0' }}>
-                      {['#', 'Lead', 'Phone', 'Requirement', 'Budget', 'Stage', 'Date', ''].map((h, i) => (
-                        <th key={i} className="text-left text-[9px] font-black uppercase tracking-[2px] px-4 py-3 whitespace-nowrap first:pl-5 last:pr-5 text-[#9A8F82]">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredLeads.map((lead, i) => {
-                      const stg = getStg(lead.pipeline)
-                      const g = GRADIENTS[i % GRADIENTS.length]
-                      const isHov = hoveredRow === lead.id
-                      return (
-                        <tr key={lead.id}
-                          onClick={() => setSelectedLeadId(lead.id)}
-                          onMouseEnter={() => setHoveredRow(lead.id)}
-                          onMouseLeave={() => setHoveredRow(null)}
-                          className="transition-all"
-                          style={{ borderBottom: '1px solid #F7F5F1', background: isHov ? '#FDFAF8' : 'white' }}>
-                          <td className="pl-5 pr-2 py-3.5"><span className="text-[10px] font-bold text-[#C4BAB0]">{i + 1}</span></td>
-                          <td className="pl-2 pr-4 py-3.5">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
-                                style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 4px 12px ${g[0]}40` }}>
-                                {ini(lead.name)}
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-[#1C1712]">{lead.name}</p>
-                                <p className="text-[10px] text-[#B8B0A0]">{lead.email || '—'}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5"><p className="text-sm font-mono font-semibold text-[#1C1712]">{lead.phone}</p></td>
-                          <td className="px-4 py-3.5"><p className="text-xs max-w-[120px] truncate text-[#7A6E60]">{lead.requirement}</p></td>
-                          <td className="px-4 py-3.5"><p className="text-xs font-bold text-[#1C1712]">{lead.budget}</p></td>
-                          <td className="px-4 py-3.5">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg"
-                              style={{ background: `${stg.accent}18`, border: `1px solid ${stg.accent}40`, color: stg.color }}>
-                              {stg.icon} {stg.label}
+              <>
+                {/* ── MOBILE CARD LIST ── */}
+                <div className="sm:hidden divide-y divide-[#F7F5F1]">
+                  {filteredLeads.map((lead, i) => {
+                    const stg = getStg(lead.pipeline)
+                    const g = GRADIENTS[i % GRADIENTS.length]
+                    return (
+                      <div key={lead.id} onClick={() => setSelectedLeadId(lead.id)} className="px-4 py-3.5 active:bg-[#FDFAF8]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white flex-shrink-0"
+                            style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 4px 12px ${g[0]}40` }}>
+                            {ini(lead.name)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-[#1C1712] truncate">{lead.name}</p>
+                            <p className="text-xs font-mono text-[#7A6E60]">{lead.phone}</p>
+                          </div>
+                          <button onClick={e => { e.stopPropagation(); setCallLead(lead) }}
+                            className="w-9 h-9 rounded-xl flex items-center justify-center text-white flex-shrink-0"
+                            style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 12px rgba(16,185,129,0.4)' }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg"
+                            style={{ background: `${stg.accent}18`, border: `1px solid ${stg.accent}40`, color: stg.color }}>
+                            {stg.icon} {stg.label}
+                          </span>
+                          {lead.budget !== '—' && (
+                            <span className="text-[10px] font-bold px-2 py-1 rounded-lg bg-[#FFFBEB] border border-[#FDE68A] text-amber-700">
+                              💰 {lead.budget}
                             </span>
-                          </td>
-                          <td className="px-4 py-3.5"><p className="text-[10px] whitespace-nowrap text-[#B8B0A0]">{lead.date}</p></td>
-                          <td className="pr-5 pl-2 py-3.5">
-                            <div className={`flex gap-1.5 items-center transition-all duration-200 ${isHov ? 'opacity-100' : 'opacity-0'}`}>
-                              <button onClick={() => setMoveModal(lead)}
-                                className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-[#F5F0E8] text-[#1C1712] border border-[#E8E2D8] hover:scale-105 transition-all">
-                                Move
-                              </button>
-                              <button onClick={() => setCallLead(lead)}
-                                className="w-8 h-8 rounded-xl flex items-center justify-center text-white hover:scale-110 transition-all"
-                                style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 12px rgba(16,185,129,0.4)' }}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-                                </svg>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          )}
+                          {lead.requirement && lead.requirement !== '—' && (
+                            <span className="text-[10px] text-[#9A8F82] truncate max-w-[140px]">{lead.requirement}</span>
+                          )}
+                          <span className="text-[10px] text-[#B8B0A0] ml-auto flex-shrink-0">{lead.date}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* ── DESKTOP TABLE ── */}
+                <div className="hidden sm:block overflow-x-auto scroll-x">
+                  <table className="w-full">
+                    <thead>
+                      <tr style={{ background: '#FAFAF8', borderBottom: '1px solid #F0EBE0' }}>
+                        {['#', 'Lead', 'Phone', 'Requirement', 'Budget', 'Stage', 'Date', ''].map((h, i) => (
+                          <th key={i} className="text-left text-[9px] font-black uppercase tracking-[2px] px-4 py-3 whitespace-nowrap first:pl-5 last:pr-5 text-[#9A8F82]">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredLeads.map((lead, i) => {
+                        const stg = getStg(lead.pipeline)
+                        const g = GRADIENTS[i % GRADIENTS.length]
+                        const isHov = hoveredRow === lead.id
+                        return (
+                          <tr key={lead.id}
+                            onClick={() => setSelectedLeadId(lead.id)}
+                            onMouseEnter={() => setHoveredRow(lead.id)}
+                            onMouseLeave={() => setHoveredRow(null)}
+                            className="transition-all"
+                            style={{ borderBottom: '1px solid #F7F5F1', background: isHov ? '#FDFAF8' : 'white' }}>
+                            <td className="pl-5 pr-2 py-3.5"><span className="text-[10px] font-bold text-[#C4BAB0]">{i + 1}</span></td>
+                            <td className="pl-2 pr-4 py-3.5">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
+                                  style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 4px 12px ${g[0]}40` }}>
+                                  {ini(lead.name)}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-[#1C1712]">{lead.name}</p>
+                                  <p className="text-[10px] text-[#B8B0A0]">{lead.email || '—'}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3.5"><p className="text-sm font-mono font-semibold text-[#1C1712]">{lead.phone}</p></td>
+                            <td className="px-4 py-3.5"><p className="text-xs max-w-[120px] truncate text-[#7A6E60]">{lead.requirement}</p></td>
+                            <td className="px-4 py-3.5"><p className="text-xs font-bold text-[#1C1712]">{lead.budget}</p></td>
+                            <td className="px-4 py-3.5">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-lg"
+                                style={{ background: `${stg.accent}18`, border: `1px solid ${stg.accent}40`, color: stg.color }}>
+                                {stg.icon} {stg.label}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5"><p className="text-[10px] whitespace-nowrap text-[#B8B0A0]">{lead.date}</p></td>
+                            <td className="pr-5 pl-2 py-3.5">
+                              <div className={`flex gap-1.5 items-center transition-all duration-200 ${isHov ? 'opacity-100' : 'opacity-0'}`}>
+                                <button onClick={() => setMoveModal(lead)}
+                                  className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-[#F5F0E8] text-[#1C1712] border border-[#E8E2D8] hover:scale-105 transition-all">
+                                  Move
+                                </button>
+                                <button onClick={() => setCallLead(lead)}
+                                  className="w-8 h-8 rounded-xl flex items-center justify-center text-white hover:scale-110 transition-all"
+                                  style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 12px rgba(16,185,129,0.4)' }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
 
             {filteredLeads.length > 0 && (
@@ -836,12 +885,12 @@ const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)  // �
 
       </main>
       {selectedLeadId && (
-  <LeadDetailPanel
-    leadId={selectedLeadId}
-    onClose={() => setSelectedLeadId(null)}
-    onStageUpdate={updatePipeline}
-  />
-)}
+        <LeadDetailPanel
+          leadId={selectedLeadId}
+          onClose={() => setSelectedLeadId(null)}
+          onStageUpdate={updatePipeline}
+        />
+      )}
 
       <AddLeadModal
         isOpen={leadModalOpen}

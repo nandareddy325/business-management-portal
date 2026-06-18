@@ -266,21 +266,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const toggleSection = (section: string) => setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
 
-  const getGradient = (i: string) => {
-    const g = ['from-violet-500 to-purple-700', 'from-blue-500 to-cyan-700', 'from-emerald-500 to-teal-700', 'from-amber-500 to-orange-600', 'from-pink-500 to-rose-700', 'from-indigo-500 to-blue-700']
-    return g[i.charCodeAt(0) % g.length]
-  }
-
-  const badgeStyle = (stage: string | null, active: boolean) => {
-    if (active) return 'bg-white/25 text-white'
-    if (stage === 'followup') return 'bg-amber-100 text-amber-700'
-    if (stage === 'won' || stage === 'project_started') return 'bg-emerald-100 text-emerald-700'
-    if (stage === 'advance') return 'bg-green-100 text-green-700'
-    if (stage === 'lost') return 'bg-red-100 text-red-600'
-    if (stage === 'negotiation') return 'bg-orange-100 text-orange-700'
-    if (stage === 'design') return 'bg-purple-100 text-purple-700'
-    return 'bg-[#E8E2D8] text-[#7A6E60]'
-  }
+  const AVATAR_COLORS = [
+    { from: '#7C3AED', to: '#4F46E5' },
+    { from: '#0891B2', to: '#0E7490' },
+    { from: '#059669', to: '#047857' },
+    { from: '#D97706', to: '#B45309' },
+    { from: '#DB2777', to: '#BE185D' },
+  ]
+  const avatarColor = AVATAR_COLORS[userInitials.charCodeAt(0) % AVATAR_COLORS.length]
 
   const PERM_LABELS: Record<string, { label: string; color: string; bg: string }> = {
     pipeline: { label: 'Pipeline', color: '#7C3AED', bg: '#F5F3FF' },
@@ -289,77 +282,98 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     finance:  { label: 'Finance',  color: '#16A34A', bg: '#F0FDF4' },
   }
 
-  // ✅ Pipeline health stages — updated
   const pipelineHealthStages = [
-    { label: 'New',        stage: 'new',         color: 'bg-slate-400' },
-    { label: 'Follow Up',  stage: 'followup',    color: 'bg-amber-400' },
-    { label: 'Site Visit', stage: 'sitevisit',   color: 'bg-orange-400' },
-    { label: 'Quotation',  stage: 'quotation',   color: 'bg-blue-400' },
-    { label: 'Advance',    stage: 'advance',     color: 'bg-green-500' },
-    { label: 'Won',        stage: 'won',         color: 'bg-emerald-500' },
+    { label: 'New',        stage: 'new',       color: '#94A3B8' },
+    { label: 'Follow Up',  stage: 'followup',  color: '#F59E0B' },
+    { label: 'Site Visit', stage: 'sitevisit', color: '#F97316' },
+    { label: 'Quotation',  stage: 'quotation', color: '#3B82F6' },
+    { label: 'Won',        stage: 'won',       color: '#22C55E' },
   ]
+
+  // Badge color for nav items
+  const getBadgeStyle = (stage: string | null, active: boolean): React.CSSProperties => {
+    if (active) return { background: 'rgba(255,255,255,0.22)', color: '#fff' }
+    if (stage === 'followup') return { background: '#FEF3C7', color: '#B45309' }
+    if (stage === 'won' || stage === 'project_started') return { background: '#DCFCE7', color: '#15803D' }
+    if (stage === 'lost') return { background: '#FEE2E2', color: '#DC2626' }
+    return { background: '#F0F0EE', color: '#888' }
+  }
 
   return (
     <>
-      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm" onClick={onClose} />}
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 40, backdropFilter: 'blur(4px)' }}
+          className="lg:hidden"
+          onClick={onClose}
+        />
+      )}
 
-      <aside className={`
-        fixed top-0 left-0 h-full w-[228px] z-50 flex flex-col
-        bg-[#FEFCF8] border-r border-[#DDD5C4]
-        transition-transform duration-300
-        ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
-      `}>
+      <aside style={{
+        position: 'fixed', top: 0, left: 0, height: '100%', width: 236, zIndex: 50,
+        display: 'flex', flexDirection: 'column',
+        background: '#FFFFFF',
+        borderRight: '1px solid #EBEBEB',
+        boxShadow: '4px 0 24px rgba(0,0,0,0.06)',
+        transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
+        fontFamily: "'Inter', sans-serif",
+      }}
+        className="lg:translate-x-0"
+      >
 
         {/* ── LOGO ── */}
-        <div className="px-5 pt-5 pb-4 flex items-center justify-between flex-shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-sm font-black text-white shadow-md shadow-orange-200">G</div>
+        <div style={{ padding: '20px 16px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 12, background: 'linear-gradient(135deg,#F5C518,#E0A800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 900, color: '#1C1C1E', boxShadow: '0 4px 12px rgba(245,197,24,0.4)' }}>G</div>
             <div>
-              <p className="font-serif text-[15px] text-[#1C1712] tracking-wide leading-none">GK · CRM</p>
-              <p className="text-[8px] text-[#B8860B] uppercase tracking-[2.5px] font-bold mt-0.5">Premium Suite</p>
+              <p style={{ fontSize: 15, fontWeight: 800, color: '#1C1C1E', margin: 0, letterSpacing: -0.3 }}>GK · CRM</p>
+              <p style={{ fontSize: 9, fontWeight: 700, color: '#F5C518', textTransform: 'uppercase', letterSpacing: 2, margin: 0 }}>Premium Suite</p>
             </div>
           </div>
-          <button onClick={onClose} className="lg:hidden w-7 h-7 rounded-lg bg-[#F0EBE0] flex items-center justify-center text-[#7A6E60] hover:bg-[#E8E0D0] transition-colors">
+          <button onClick={onClose} className="lg:hidden"
+            style={{ width: 28, height: 28, borderRadius: 10, background: '#F5F5F3', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888' }}>
             <X size={13} />
           </button>
         </div>
 
-        {/* ── INDUSTRY ── */}
-        <div className="px-3 pb-3 flex-shrink-0">
-          <div className="flex items-center gap-2.5 bg-gradient-to-r from-[#F5F0E8] to-[#F0EBE0] border border-[#DDD5C4] rounded-2xl px-3 py-2.5 shadow-sm">
-            <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-base shadow-sm border border-[#E8E2D8] flex-shrink-0">
+        {/* ── INDUSTRY CHIP ── */}
+        <div style={{ padding: '0 12px 14px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#F9F9F7', border: '1px solid #EBEBEB', borderRadius: 16, padding: '10px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div style={{ width: 32, height: 32, background: '#fff', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, border: '1px solid #F0F0EE', flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
               {currentIndustry.icon}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[8px] text-[#B8A99A] uppercase tracking-widest font-bold">{currentIndustry.label}</p>
-              <p className="text-[11px] text-[#1C1712] font-semibold mt-0.5">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 9, color: '#BBB', textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 700, margin: 0 }}>{currentIndustry.label}</p>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#1C1C1E', margin: '2px 0 0' }}>
                 {role === 'admin' ? '👑 Admin Portal' : '👤 User Portal'}
               </p>
             </div>
-            <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-200 animate-pulse flex-shrink-0" />
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 6px rgba(34,197,94,0.5)', flexShrink: 0 }} />
           </div>
 
+          {/* Industry switcher */}
           {activeIndustries.length > 1 && (
-            <div className="relative mt-2" onClick={e => e.stopPropagation()}>
+            <div style={{ position: 'relative', marginTop: 8 }} onClick={e => e.stopPropagation()}>
               <button onClick={() => setIndustryDropdownOpen(prev => !prev)}
-                className="w-full flex items-center gap-2 bg-[#F5F0E8] border border-[#DDD5C4] rounded-xl px-3 py-2 text-[11px] font-semibold text-[#1C1712] hover:bg-[#EDE8DF] transition-colors">
-                <span className="text-sm">{currentIndustry.icon}</span>
-                <span className="flex-1 text-left truncate">{currentIndustry.label}</span>
-                <ChevronDown size={11} className={`text-[#7A6E60] transition-transform duration-200 ${industryDropdownOpen ? 'rotate-180' : ''}`} />
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, background: '#F5F5F3', border: '1px solid #EBEBEB', borderRadius: 12, padding: '8px 12px', fontSize: 11, fontWeight: 600, color: '#1C1C1E', cursor: 'pointer' }}>
+                <span style={{ fontSize: 13 }}>{currentIndustry.icon}</span>
+                <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{currentIndustry.label}</span>
+                <ChevronDown size={11} style={{ color: '#AAA', transform: industryDropdownOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
               </button>
               {industryDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#DDD5C4] rounded-xl shadow-xl z-50 overflow-hidden">
-                  {activeIndustries.map((slug) => {
-                    const ind = INDUSTRIES[slug]
-                    if (!ind) return null
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: '#fff', border: '1px solid #EBEBEB', borderRadius: 14, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', zIndex: 50, overflow: 'hidden' }}>
+                  {activeIndustries.map(slug => {
+                    const ind = INDUSTRIES[slug]; if (!ind) return null
                     const isCurrent = slug === currentIndustrySlug
                     return (
                       <Link key={slug} href={`/dashboard/industries/${slug}`}
                         onClick={() => { handleIndustrySwitch(slug); setIndustryDropdownOpen(false) }}
-                        className={`flex items-center gap-2.5 px-3 py-2.5 text-[11px] font-semibold transition-colors ${isCurrent ? 'bg-[#1C1712] text-white' : 'text-[#7A6E60] hover:bg-[#F5F0E8] hover:text-[#1C1712]'}`}>
-                        <span className="text-sm">{ind.icon}</span>
-                        <span className="flex-1">{ind.label}</span>
-                        {isCurrent && <span className="text-[8px] bg-white/20 px-2 py-0.5 rounded-full font-bold">ACTIVE</span>}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', fontSize: 11, fontWeight: 600, background: isCurrent ? '#1C1C1E' : 'transparent', color: isCurrent ? '#fff' : '#666', textDecoration: 'none', transition: 'background 0.15s' }}>
+                        <span style={{ fontSize: 14 }}>{ind.icon}</span>
+                        <span style={{ flex: 1 }}>{ind.label}</span>
+                        {isCurrent && <span style={{ fontSize: 8, background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 20, fontWeight: 800, letterSpacing: 1 }}>ACTIVE</span>}
                       </Link>
                     )
                   })}
@@ -369,50 +383,89 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           )}
         </div>
 
-        <div className="h-px bg-gradient-to-r from-transparent via-[#DDD5C4] to-transparent mx-3 flex-shrink-0" />
+        {/* Divider */}
+        <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,#EBEBEB,transparent)', margin: '0 12px', flexShrink: 0 }} />
 
         {/* ── NAV ── */}
-        <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
+        <nav style={{ flex: 1, overflowY: 'auto', padding: '10px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}
+          className="scroll-hide">
 
+          {/* Employee permission badges */}
           {role === 'employee' && empPermissions.length > 0 && (
-            <div className="mb-3 px-1">
-              <p className="text-[8px] font-black text-[#A89F94] uppercase tracking-[2px] mb-1.5">Your Access</p>
-              <div className="flex flex-wrap gap-1">
+            <div style={{ padding: '4px 6px 10px' }}>
+              <p style={{ fontSize: 8, fontWeight: 800, color: '#BBB', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 6 }}>Your Access</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {empPermissions.map(pId => {
-                  const p = PERM_LABELS[pId]
-                  if (!p) return null
-                  return <span key={pId} className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: p.bg, color: p.color }}>{p.label}</span>
+                  const p = PERM_LABELS[pId]; if (!p) return null
+                  return <span key={pId} style={{ fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: p.bg, color: p.color }}>{p.label}</span>
                 })}
               </div>
             </div>
           )}
 
+          {/* ── DASHBOARD PINNED LINK ── */}
+          {(() => {
+            const isDashActive = pathname === '/dashboard'
+            return (
+              <Link href="/dashboard"
+                onClick={() => onClose()}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', borderRadius: 14,
+                  background: isDashActive ? '#1C1C1E' : '#F5F5F3',
+                  color: isDashActive ? '#fff' : '#1C1C1E',
+                  fontWeight: 700, fontSize: 13, textDecoration: 'none',
+                  marginBottom: 8, border: isDashActive ? 'none' : '1px solid #EBEBEB',
+                  boxShadow: isDashActive ? '0 4px 14px rgba(0,0,0,0.14)' : '0 1px 4px rgba(0,0,0,0.04)',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { if (!isDashActive) { (e.currentTarget as HTMLElement).style.background = '#EBEBEB' } }}
+                onMouseLeave={e => { if (!isDashActive) { (e.currentTarget as HTMLElement).style.background = '#F5F5F3' } }}>
+                <span style={{ fontSize: 16 }}>📊</span>
+                <span style={{ flex: 1 }}>Dashboard</span>
+                {totalLeads > 0 && (
+                  <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: isDashActive ? 'rgba(255,255,255,0.2)' : '#EBEBEB', color: isDashActive ? '#fff' : '#888' }}>{totalLeads}</span>
+                )}
+              </Link>
+            )
+          })()}
+
           {navGroups.map((group) => {
             const isOpen_ = openSections[group.section] ?? true
             const hasActive = group.items.some(item => isActive(item.href, item.stage))
             return (
-              <div key={group.section} className="mb-1">
+              <div key={group.section} style={{ marginBottom: 2 }}>
+                {/* Section header */}
                 <button onClick={() => toggleSection(group.section)}
-                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all ${hasActive ? 'bg-[#EDE8DF]' : 'hover:bg-[#F5F0E8]'}`}>
-                  <span className="text-[13px]">{group.icon}</span>
-                  <span className="flex-1 text-[9px] font-black text-[#A89F94] uppercase tracking-[2px] text-left">{group.section}</span>
-                  <ChevronDown size={11} className={`text-[#C4BAB0] transition-transform duration-200 flex-shrink-0 ${isOpen_ ? 'rotate-0' : '-rotate-90'}`} />
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 12, border: 'none', background: hasActive ? '#F5F5F3' : 'transparent', cursor: 'pointer', transition: 'background 0.15s' }}>
+                  <span style={{ fontSize: 13 }}>{group.icon}</span>
+                  <span style={{ flex: 1, textAlign: 'left', fontSize: 9, fontWeight: 800, color: '#BBB', textTransform: 'uppercase', letterSpacing: 2 }}>{group.section}</span>
+                  <ChevronDown size={11} style={{ color: '#CCC', transform: isOpen_ ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
                 </button>
-                <div className={`overflow-hidden transition-all duration-200 ${isOpen_ ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                  <div className="space-y-0.5 pt-0.5 pl-1">
+
+                {/* Nav items */}
+                <div style={{ overflow: 'hidden', maxHeight: isOpen_ ? 600 : 0, opacity: isOpen_ ? 1 : 0, transition: 'max-height 0.22s ease, opacity 0.18s ease' }}>
+                  <div style={{ paddingTop: 2, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {group.items.map((item) => {
                       const active = isActive(item.href, item.stage)
                       const badge = getBadge(item.stage)
                       return (
                         <Link key={item.label} href={item.href}
                           onClick={() => handleNavClick(item.stage, item.href)}
-                          className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all text-[12px] ${
-                            active ? 'bg-[#1C1712] text-white font-semibold shadow-md shadow-black/10' : 'text-[#7A6E60] hover:text-[#1C1712] hover:bg-[#EDE8DF]'
-                          }`}>
-                          <span className="text-[13px] leading-none flex-shrink-0">{item.icon}</span>
-                          <span className="flex-1 truncate">{item.label}</span>
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', borderRadius: 12,
+                            background: active ? '#1C1C1E' : 'transparent',
+                            color: active ? '#fff' : '#555',
+                            fontWeight: active ? 700 : 500,
+                            fontSize: 12, textDecoration: 'none',
+                            transition: 'all 0.15s',
+                            boxShadow: active ? '0 2px 10px rgba(0,0,0,0.12)' : 'none',
+                          }}
+                          onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#F5F5F3' }}
+                          onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                          <span style={{ fontSize: 13, lineHeight: 1, flexShrink: 0 }}>{item.icon}</span>
+                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
                           {badge && (
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${badgeStyle(item.stage, active)}`}>
+                            <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 20, flexShrink: 0, ...getBadgeStyle(item.stage, active) }}>
                               {badge}
                             </span>
                           )}
@@ -426,36 +479,37 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
 
           {role === 'employee' && navGroups.length === 0 && (
-            <div className="text-center py-8 px-3">
-              <p className="text-2xl mb-2">🔒</p>
-              <p className="text-[11px] text-[#9A8F82] font-medium">No modules assigned</p>
-              <p className="text-[10px] text-[#B8B0A0] mt-1">Contact your admin</p>
+            <div style={{ textAlign: 'center', padding: '40px 16px' }}>
+              <p style={{ fontSize: 28, margin: '0 0 10px' }}>🔒</p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>No modules assigned</p>
+              <p style={{ fontSize: 11, color: '#BBB', margin: '4px 0 0' }}>Contact your admin</p>
             </div>
           )}
         </nav>
 
-        <div className="h-px bg-gradient-to-r from-transparent via-[#DDD5C4] to-transparent mx-3 flex-shrink-0" />
+        {/* Divider */}
+        <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,#EBEBEB,transparent)', margin: '0 12px', flexShrink: 0 }} />
 
         {/* ── PIPELINE HEALTH ── */}
         {role === 'admin' && (
-          <div className="px-4 py-3 flex-shrink-0">
-            <div className="flex items-center justify-between mb-2.5">
-              <p className="text-[8px] font-black text-[#A89F94] uppercase tracking-[2px]">Pipeline Health</p>
-              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${winRate > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-[#F0EBE0] text-[#9A8F82]'}`}>
+          <div style={{ padding: '14px 16px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <p style={{ fontSize: 9, fontWeight: 800, color: '#BBB', textTransform: 'uppercase', letterSpacing: 2, margin: 0 }}>Pipeline Health</p>
+              <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: winRate > 0 ? '#DCFCE7' : '#F5F5F3', color: winRate > 0 ? '#15803D' : '#AAA' }}>
                 {winRate}% win
               </span>
             </div>
-            <div className="space-y-1.5">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               {pipelineHealthStages.map(item => {
                 const count = stageCounts[item.stage] || 0
                 const pct = totalLeads > 0 ? (count / totalLeads) * 100 : 0
                 return (
-                  <div key={item.label} className="flex items-center gap-2">
-                    <p className="text-[9px] text-[#A89F94] w-14 flex-shrink-0 truncate">{item.label}</p>
-                    <div className="flex-1 h-1 bg-[#EDE8DF] rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-700 ${item.color}`} style={{ width: `${pct}%` }} />
+                  <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <p style={{ fontSize: 9, color: '#BBB', width: 52, flexShrink: 0, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</p>
+                    <div style={{ flex: 1, height: 5, background: '#F0F0EE', borderRadius: 10, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: item.color, borderRadius: 10, transition: 'width 0.7s ease' }} />
                     </div>
-                    <span className="text-[9px] text-[#A89F94] w-3 text-right flex-shrink-0">{count}</span>
+                    <span style={{ fontSize: 9, color: '#CCC', width: 14, textAlign: 'right', flexShrink: 0 }}>{count}</span>
                   </div>
                 )
               })}
@@ -463,30 +517,42 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </div>
         )}
 
-        <div className="h-px bg-gradient-to-r from-transparent via-[#DDD5C4] to-transparent mx-3 flex-shrink-0" />
+        {/* Divider */}
+        <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,#EBEBEB,transparent)', margin: '0 12px', flexShrink: 0 }} />
 
-        {/* ── FOOTER ── */}
-        <div className="px-3 py-3 flex-shrink-0">
-          <div className="flex items-center gap-2.5 bg-[#F5F0E8] border border-[#DDD5C4] rounded-xl px-3 py-2.5">
-            <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${getGradient(userInitials)} flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-sm`}>
+        {/* ── USER FOOTER ── */}
+        <div style={{ padding: '12px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#F9F9F7', border: '1px solid #EBEBEB', borderRadius: 16, padding: '10px 12px' }}>
+            {/* Avatar */}
+            <div style={{ width: 34, height: 34, borderRadius: 12, background: `linear-gradient(135deg,${avatarColor.from},${avatarColor.to})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0, boxShadow: `0 4px 10px ${avatarColor.from}40` }}>
               {userInitials}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="text-[11px] font-semibold text-[#1C1712] truncate">{userName.split(' ')[0]}</p>
-                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide flex-shrink-0 ${role === 'admin' ? 'bg-[#B8860B]/15 text-[#B8860B]' : 'bg-blue-100 text-blue-700'}`}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#1C1C1E', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName.split(' ')[0]}</p>
+                <span style={{ fontSize: 8, fontWeight: 800, padding: '2px 6px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0, background: role === 'admin' ? '#FEF9C3' : '#EFF6FF', color: role === 'admin' ? '#B45309' : '#2563EB' }}>
                   {role === 'admin' ? 'Admin' : 'Staff'}
                 </span>
               </div>
-              <p className="text-[9px] text-[#9A8F82] truncate">{userCompany}</p>
+              <p style={{ fontSize: 10, color: '#BBB', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userCompany}</p>
             </div>
             <button onClick={handleLogout}
-              className="w-7 h-7 rounded-lg bg-white border border-[#DDD5C4] flex items-center justify-center text-[#9A8F82] hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all flex-shrink-0">
+              style={{ width: 28, height: 28, borderRadius: 10, border: '1px solid #EBEBEB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#BBB', flexShrink: 0, transition: 'all 0.15s' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#FEF2F2'; (e.currentTarget as HTMLElement).style.color = '#EF4444'; (e.currentTarget as HTMLElement).style.borderColor = '#FECACA' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; (e.currentTarget as HTMLElement).style.color = '#BBB'; (e.currentTarget as HTMLElement).style.borderColor = '#EBEBEB' }}>
               <LogOut size={12} />
             </button>
           </div>
         </div>
+
       </aside>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        .scroll-hide { scrollbar-width: none; }
+        .scroll-hide::-webkit-scrollbar { display: none; }
+        @media (min-width: 1024px) { .lg\\:translate-x-0 { transform: translateX(0) !important; } .lg\\:hidden { display: none !important; } }
+      `}</style>
     </>
   )
 }
