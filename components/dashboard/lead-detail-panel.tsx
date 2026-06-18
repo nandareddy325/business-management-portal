@@ -87,14 +87,23 @@ const GRADIENTS = [
 ]
 const ini = (n: string) => n?.split(' ').map(x => x[0]).join('').slice(0, 2).toUpperCase() || '?'
 
-// Follow Up leads are tagged in notes as [RNR] or [Call Back] — show the specific badge instead of generic "Follow Up"
-const stripTag = (n?: string) => (n || '').replace(/^\[(RNR|Call Back)\]\s*/, '')
+// Follow Up / Site Visit / Quotation leads are tagged in notes (e.g. [RNR], [Call Back], [Site Visit Scheduled]) — show the specific badge
+const stripTag = (n?: string) => (n || '').replace(/^\[(RNR|Call Back|Site Visit Scheduled|Site Visit Completed|Quotation Before Visit|Quotation After Visit)\]\s*/, '')
 const getDisplayStage = (l: { pipeline_stage: string; notes?: string }) => {
   const base = STAGE_CONFIG[l.pipeline_stage] || STAGE_CONFIG.new
-  if (l.pipeline_stage !== 'followup') return base
   const n = (l.notes || '').trim()
-  if (n.startsWith('[RNR]')) return { ...base, label: 'RNR', icon: '📵' }
-  if (n.startsWith('[Call Back]')) return { ...base, label: 'Call Back', icon: '🔄' }
+  if (l.pipeline_stage === 'followup') {
+    if (n.startsWith('[RNR]')) return { ...base, label: 'RNR', icon: '📵' }
+    if (n.startsWith('[Call Back]')) return { ...base, label: 'Call Back', icon: '🔄' }
+  }
+  if (l.pipeline_stage === 'sitevisit') {
+    if (n.startsWith('[Site Visit Scheduled]')) return { ...base, label: 'Visit Scheduled', icon: '📅' }
+    if (n.startsWith('[Site Visit Completed]')) return { ...base, label: 'Visit Completed', icon: '✅' }
+  }
+  if (l.pipeline_stage === 'quotation') {
+    if (n.startsWith('[Quotation Before Visit]')) return { ...base, label: 'Before Visit', icon: '📋' }
+    if (n.startsWith('[Quotation After Visit]')) return { ...base, label: 'After Visit', icon: '✅' }
+  }
   return base
 }
 
@@ -215,14 +224,16 @@ function AddNoteModal({ leadId, onClose, onSaved }: { leadId: string; onClose: (
 }
 
 // ─── Follow Up Sub-type Modal (RNR / Call Back + date) ─────
-function FollowupModal({ onClose, onSave }: {
+function FollowupModal({ initialNote, onClose, onSave }: {
+  initialNote?: string
   onClose: () => void
-  onSave: (outcome: 'rnr' | 'callback', dateTime: string) => Promise<void>
+  onSave: (outcome: 'rnr' | 'callback', dateTime: string, note?: string) => Promise<void>
 }) {
   const [outcome, setOutcome] = useState<'rnr' | 'callback' | ''>('')
   const todayISO = new Date().toISOString().split('T')[0]
   const [date, setDate] = useState(todayISO)
   const [time, setTime] = useState('10:00')
+  const [note, setNote] = useState(initialNote || '')
   const [saving, setSaving] = useState(false)
 
   const quickDates = [
@@ -240,14 +251,14 @@ function FollowupModal({ onClose, onSave }: {
   const handleSave = async () => {
     if (!outcome || !date) return
     setSaving(true)
-    try { await onSave(outcome as 'rnr' | 'callback', `${date}T${time}:00`) }
+    try { await onSave(outcome as 'rnr' | 'callback', `${date}T${time}:00`, note) }
     finally { setSaving(false) }
   }
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-2xl overflow-hidden bg-white border border-[#E8E2D8] shadow-2xl">
+      <div className="relative w-full max-w-sm rounded-2xl overflow-hidden bg-white border border-[#E8E2D8] shadow-2xl" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="px-5 py-4 border-b border-[#F0EBE0] flex items-center justify-between" style={{ background: '#FAFAF8' }}>
           <p className="font-bold text-[#1C1712]">🔄 Follow Up</p>
           <button onClick={onClose} className="w-7 h-7 rounded-full bg-[#F5F0E8] flex items-center justify-center text-[#9A8F82] hover:text-[#1C1712]">✕</button>
@@ -297,6 +308,226 @@ function FollowupModal({ onClose, onSave }: {
             </div>
           )}
 
+          {/* Note / Feedback */}
+          <div>
+            <p className="text-[10px] font-bold text-[#7A6E60] uppercase tracking-wide mb-2">📝 Note / Feedback</p>
+            <textarea value={note} onChange={e => setNote(e.target.value)} rows={3}
+              placeholder="Customer feedback about this call..."
+              className="w-full rounded-xl px-3 py-2.5 text-sm text-[#1C1712] placeholder:text-[#C4BAB0] outline-none resize-none border border-[#E8E2D8] focus:border-[#B8860B] bg-[#F7F5F1]" />
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-[#7A6E60] border border-[#E8E2D8] hover:bg-[#F5F0E8]">Cancel</button>
+            <button onClick={handleSave} disabled={!outcome || !date || saving}
+              className="flex-1 py-2.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
+              style={{ background: 'linear-gradient(135deg, #1C1712, #2d2822)' }}>
+              {saving ? '⏳ Saving...' : '💾 Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Site Visit Sub-type Modal (Schedule / Completed + date) ──
+function SiteVisitModal({ initialNote, onClose, onSave }: {
+  initialNote?: string
+  onClose: () => void
+  onSave: (outcome: 'scheduled' | 'completed', dateTime: string, note?: string) => Promise<void>
+}) {
+  const [outcome, setOutcome] = useState<'scheduled' | 'completed' | ''>('')
+  const todayISO = new Date().toISOString().split('T')[0]
+  const [date, setDate] = useState(todayISO)
+  const [time, setTime] = useState('10:00')
+  const [note, setNote] = useState(initialNote || '')
+  const [saving, setSaving] = useState(false)
+
+  const quickDates = [
+    { label: 'Today',     value: todayISO },
+    { label: 'Tomorrow',  value: new Date(Date.now() + 86400000).toISOString().split('T')[0] },
+    { label: 'In 3 Days', value: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
+    { label: 'Next Week', value: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0] },
+  ]
+
+  const options = [
+    { id: 'scheduled', label: '📅 Site Visit Schedule',  desc: 'Plan a future visit', color: '#EA580C' },
+    { id: 'completed', label: '✅ Site Visit Completed', desc: 'Visit already done',  color: '#16A34A' },
+  ]
+
+  const handleSave = async () => {
+    if (!outcome || !date) return
+    setSaving(true)
+    try { await onSave(outcome as 'scheduled' | 'completed', `${date}T${time}:00`, note) }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-sm rounded-2xl overflow-hidden bg-white border border-[#E8E2D8] shadow-2xl" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="px-5 py-4 border-b border-[#F0EBE0] flex items-center justify-between" style={{ background: '#FAFAF8' }}>
+          <p className="font-bold text-[#1C1712]">🏠 Site Visit</p>
+          <button onClick={onClose} className="w-7 h-7 rounded-full bg-[#F5F0E8] flex items-center justify-center text-[#9A8F82] hover:text-[#1C1712]">✕</button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <p className="text-[10px] font-bold text-[#7A6E60] uppercase tracking-wide mb-2">Type *</p>
+            <div className="grid grid-cols-1 gap-2">
+              {options.map(o => (
+                <button key={o.id} onClick={() => setOutcome(o.id as any)}
+                  className="p-3 rounded-xl text-left transition-all"
+                  style={{
+                    background: outcome === o.id ? `${o.color}15` : '#F7F5F1',
+                    border: `2px solid ${outcome === o.id ? o.color : '#E8E2D8'}`,
+                  }}>
+                  <p className="text-xs font-black" style={{ color: outcome === o.id ? o.color : '#1C1712' }}>{o.label}</p>
+                  <p className="text-[9px] text-[#9A8F82] mt-0.5">{o.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {outcome && (
+            <div>
+              <p className="text-[10px] font-bold text-[#7A6E60] uppercase tracking-wide mb-2">
+                {outcome === 'scheduled' ? '📅 Visit Date' : '📅 Completed On'} *
+              </p>
+              <div className="flex gap-2 flex-wrap mb-2">
+                {quickDates.map(qd => (
+                  <button key={qd.label} onClick={() => setDate(qd.value)}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all"
+                    style={{
+                      background: date === qd.value ? '#1C1712' : '#F5F0E8',
+                      color: date === qd.value ? 'white' : '#7A6E60',
+                      border: '1px solid #E8E2D8',
+                    }}>
+                    {qd.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                  className="flex-1 rounded-xl px-3 py-2 text-sm text-[#1C1712] outline-none border border-[#E8E2D8] focus:border-[#B8860B] bg-[#F7F5F1]" />
+                <input type="time" value={time} onChange={e => setTime(e.target.value)}
+                  className="w-28 rounded-xl px-3 py-2 text-sm text-[#1C1712] outline-none border border-[#E8E2D8] focus:border-[#B8860B] bg-[#F7F5F1]" />
+              </div>
+            </div>
+          )}
+
+          {/* Note / Feedback */}
+          <div>
+            <p className="text-[10px] font-bold text-[#7A6E60] uppercase tracking-wide mb-2">📝 Note / Feedback</p>
+            <textarea value={note} onChange={e => setNote(e.target.value)} rows={3}
+              placeholder="Customer feedback about the site visit..."
+              className="w-full rounded-xl px-3 py-2.5 text-sm text-[#1C1712] placeholder:text-[#C4BAB0] outline-none resize-none border border-[#E8E2D8] focus:border-[#B8860B] bg-[#F7F5F1]" />
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-[#7A6E60] border border-[#E8E2D8] hover:bg-[#F5F0E8]">Cancel</button>
+            <button onClick={handleSave} disabled={!outcome || !date || saving}
+              className="flex-1 py-2.5 rounded-xl text-sm font-black text-white disabled:opacity-40"
+              style={{ background: 'linear-gradient(135deg, #1C1712, #2d2822)' }}>
+              {saving ? '⏳ Saving...' : '💾 Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Quotation Sub-type Modal (Before / After Site Visit + date) ──
+function QuotationStageModal({ initialNote, onClose, onSave }: {
+  initialNote?: string
+  onClose: () => void
+  onSave: (outcome: 'before' | 'after', dateTime: string, note?: string) => Promise<void>
+}) {
+  const [outcome, setOutcome] = useState<'before' | 'after' | ''>('')
+  const todayISO = new Date().toISOString().split('T')[0]
+  const [date, setDate] = useState(todayISO)
+  const [time, setTime] = useState('10:00')
+  const [note, setNote] = useState(initialNote || '')
+  const [saving, setSaving] = useState(false)
+
+  const quickDates = [
+    { label: 'Today',     value: todayISO },
+    { label: 'Tomorrow',  value: new Date(Date.now() + 86400000).toISOString().split('T')[0] },
+    { label: 'In 3 Days', value: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0] },
+    { label: 'Next Week', value: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0] },
+  ]
+
+  const options = [
+    { id: 'before', label: '📋 Before Site Visit', desc: 'Quotation sent before the visit', color: '#2563EB' },
+    { id: 'after',  label: '✅ After Site Visit',   desc: 'Quotation sent after the visit',  color: '#16A34A' },
+  ]
+
+  const handleSave = async () => {
+    if (!outcome || !date) return
+    setSaving(true)
+    try { await onSave(outcome as 'before' | 'after', `${date}T${time}:00`, note) }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-sm rounded-2xl overflow-hidden bg-white border border-[#E8E2D8] shadow-2xl" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="px-5 py-4 border-b border-[#F0EBE0] flex items-center justify-between" style={{ background: '#FAFAF8' }}>
+          <p className="font-bold text-[#1C1712]">💰 Quotation</p>
+          <button onClick={onClose} className="w-7 h-7 rounded-full bg-[#F5F0E8] flex items-center justify-center text-[#9A8F82] hover:text-[#1C1712]">✕</button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <p className="text-[10px] font-bold text-[#7A6E60] uppercase tracking-wide mb-2">Type *</p>
+            <div className="grid grid-cols-1 gap-2">
+              {options.map(o => (
+                <button key={o.id} onClick={() => setOutcome(o.id as any)}
+                  className="p-3 rounded-xl text-left transition-all"
+                  style={{
+                    background: outcome === o.id ? `${o.color}15` : '#F7F5F1',
+                    border: `2px solid ${outcome === o.id ? o.color : '#E8E2D8'}`,
+                  }}>
+                  <p className="text-xs font-black" style={{ color: outcome === o.id ? o.color : '#1C1712' }}>{o.label}</p>
+                  <p className="text-[9px] text-[#9A8F82] mt-0.5">{o.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {outcome && (
+            <div>
+              <p className="text-[10px] font-bold text-[#7A6E60] uppercase tracking-wide mb-2">📅 Quotation Date *</p>
+              <div className="flex gap-2 flex-wrap mb-2">
+                {quickDates.map(qd => (
+                  <button key={qd.label} onClick={() => setDate(qd.value)}
+                    className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all"
+                    style={{
+                      background: date === qd.value ? '#1C1712' : '#F5F0E8',
+                      color: date === qd.value ? 'white' : '#7A6E60',
+                      border: '1px solid #E8E2D8',
+                    }}>
+                    {qd.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input type="date" value={date} onChange={e => setDate(e.target.value)}
+                  className="flex-1 rounded-xl px-3 py-2 text-sm text-[#1C1712] outline-none border border-[#E8E2D8] focus:border-[#B8860B] bg-[#F7F5F1]" />
+                <input type="time" value={time} onChange={e => setTime(e.target.value)}
+                  className="w-28 rounded-xl px-3 py-2 text-sm text-[#1C1712] outline-none border border-[#E8E2D8] focus:border-[#B8860B] bg-[#F7F5F1]" />
+              </div>
+            </div>
+          )}
+
+          {/* Note / Feedback */}
+          <div>
+            <p className="text-[10px] font-bold text-[#7A6E60] uppercase tracking-wide mb-2">📝 Note / Feedback</p>
+            <textarea value={note} onChange={e => setNote(e.target.value)} rows={3}
+              placeholder="Customer feedback about the quotation..."
+              className="w-full rounded-xl px-3 py-2.5 text-sm text-[#1C1712] placeholder:text-[#C4BAB0] outline-none resize-none border border-[#E8E2D8] focus:border-[#B8860B] bg-[#F7F5F1]" />
+          </div>
+
           <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-[#7A6E60] border border-[#E8E2D8] hover:bg-[#F5F0E8]">Cancel</button>
             <button onClick={handleSave} disabled={!outcome || !date || saving}
@@ -322,6 +553,8 @@ export function LeadDetailPanel({ leadId, onClose, onStageUpdate }: {
   const [loading, setLoading] = useState(true)
   const [showAddNote, setShowAddNote] = useState(false)
   const [showFollowupModal, setShowFollowupModal] = useState(false)
+  const [showSiteVisitModal, setShowSiteVisitModal] = useState(false)
+  const [showQuotationModal, setShowQuotationModal] = useState(false)
   const [editQuotation, setEditQuotation] = useState(false)
   const [quotationAmount, setQuotationAmount] = useState('')
   const [savingQuotation, setSavingQuotation] = useState(false)
@@ -406,6 +639,8 @@ export function LeadDetailPanel({ leadId, onClose, onStageUpdate }: {
   const handleStageChange = async (stage: string) => {
     if (!lead) return
     if (stage === 'followup') { setShowFollowupModal(true); return }
+    if (stage === 'sitevisit') { setShowSiteVisitModal(true); return }
+    if (stage === 'quotation') { setShowQuotationModal(true); return }
 
     const prev = lead.pipeline_stage
     setLead(l => l ? { ...l, pipeline_stage: stage } : l)
@@ -427,11 +662,12 @@ export function LeadDetailPanel({ leadId, onClose, onStageUpdate }: {
   }
 
   // RNR / Call Back save — tags notes so the list can show the specific sub-type
-  const handleFollowupSave = async (outcome: 'rnr' | 'callback', dateTime: string) => {
+  const handleFollowupSave = async (outcome: 'rnr' | 'callback', dateTime: string, note?: string) => {
     if (!lead) return
     const prev = lead.pipeline_stage
     const tag = outcome === 'rnr' ? '[RNR] ' : '[Call Back] '
-    const newNotes = `${tag}${stripTag(lead.notes)}`.trim()
+    const bodyText = (note?.trim() || stripTag(lead.notes)).trim()
+    const newNotes = `${tag}${bodyText}`.trim()
 
     setLead(l => l ? { ...l, pipeline_stage: 'followup', notes: newNotes, followup_date: dateTime } : l)
     try {
@@ -439,7 +675,7 @@ export function LeadDetailPanel({ leadId, onClose, onStageUpdate }: {
       await supabase.from('lead_activities').insert({
         lead_id: leadId, type: 'stage_change',
         title: outcome === 'rnr' ? 'Marked RNR' : 'Call Back Scheduled',
-        description: `Moved from ${STAGE_CONFIG[prev]?.label || prev} → ${outcome === 'rnr' ? 'RNR' : 'Call Back'} — ${fmtDateTime(dateTime)}`,
+        description: `Moved from ${STAGE_CONFIG[prev]?.label || prev} → ${outcome === 'rnr' ? 'RNR' : 'Call Back'} — ${fmtDateTime(dateTime)}${bodyText ? ` · ${bodyText}` : ''}`,
         stage_from: prev, stage_to: 'followup',
         scheduled_date: dateTime,
         created_at: new Date().toISOString(),
@@ -448,6 +684,59 @@ export function LeadDetailPanel({ leadId, onClose, onStageUpdate }: {
 
     onStageUpdate?.(leadId, 'followup', newNotes)
     setShowFollowupModal(false)
+    loadData()
+  }
+
+  // Site Visit Schedule / Completed save — tags notes so the list can show the specific sub-type
+  const handleSiteVisitSave = async (outcome: 'scheduled' | 'completed', dateTime: string, note?: string) => {
+    if (!lead) return
+    const prev = lead.pipeline_stage
+    const tag = outcome === 'scheduled' ? '[Site Visit Scheduled] ' : '[Site Visit Completed] '
+    const bodyText = (note?.trim() || stripTag(lead.notes)).trim()
+    const newNotes = `${tag}${bodyText}`.trim()
+
+    setLead(l => l ? { ...l, pipeline_stage: 'sitevisit', notes: newNotes, sitevisit_date: dateTime } : l)
+    try {
+      await supabase.from('leads').update({ pipeline_stage: 'sitevisit', notes: newNotes, sitevisit_date: dateTime }).eq('id', leadId)
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'sitevisit',
+        title: outcome === 'scheduled' ? 'Site Visit Scheduled' : 'Site Visit Completed',
+        description: `Moved from ${STAGE_CONFIG[prev]?.label || prev} → ${outcome === 'scheduled' ? 'Site Visit Scheduled' : 'Site Visit Completed'} — ${fmtDateTime(dateTime)}${bodyText ? ` · ${bodyText}` : ''}`,
+        stage_from: prev, stage_to: 'sitevisit',
+        scheduled_date: dateTime,
+        created_at: new Date().toISOString(),
+      })
+    } catch (e) { console.error(e) }
+
+    onStageUpdate?.(leadId, 'sitevisit', newNotes)
+    setShowSiteVisitModal(false)
+    loadData()
+  }
+
+  // Quotation Before/After Site Visit save — tags notes so the list can show the specific sub-type
+  // (no quotation_date column on leads — the chosen date is logged on the activity record instead)
+  const handleQuotationSave = async (outcome: 'before' | 'after', dateTime: string, note?: string) => {
+    if (!lead) return
+    const prev = lead.pipeline_stage
+    const tag = outcome === 'before' ? '[Quotation Before Visit] ' : '[Quotation After Visit] '
+    const bodyText = (note?.trim() || stripTag(lead.notes)).trim()
+    const newNotes = `${tag}${bodyText}`.trim()
+
+    setLead(l => l ? { ...l, pipeline_stage: 'quotation', notes: newNotes } : l)
+    try {
+      await supabase.from('leads').update({ pipeline_stage: 'quotation', notes: newNotes }).eq('id', leadId)
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'quotation',
+        title: outcome === 'before' ? 'Quotation Sent — Before Site Visit' : 'Quotation Sent — After Site Visit',
+        description: `Moved from ${STAGE_CONFIG[prev]?.label || prev} → ${outcome === 'before' ? 'Before Site Visit' : 'After Site Visit'} — ${fmtDateTime(dateTime)}${bodyText ? ` · ${bodyText}` : ''}`,
+        stage_from: prev, stage_to: 'quotation',
+        scheduled_date: dateTime,
+        created_at: new Date().toISOString(),
+      })
+    } catch (e) { console.error(e) }
+
+    onStageUpdate?.(leadId, 'quotation', newNotes)
+    setShowQuotationModal(false)
     loadData()
   }
 
@@ -580,7 +869,9 @@ export function LeadDetailPanel({ leadId, onClose, onStageUpdate }: {
                 )}
                 {lead.sitevisit_date && (
                   <div className="bg-white rounded-xl p-3 border-l-4 border-[#EA580C] border border-[#FED7AA]">
-                    <p className="text-[9px] font-bold text-[#EA580C] uppercase tracking-wider">🏠 Site Visit Scheduled</p>
+                    <p className="text-[9px] font-bold text-[#EA580C] uppercase tracking-wider">
+                      {stg.label === 'Visit Scheduled' || stg.label === 'Visit Completed' ? `${stg.icon} Site ${stg.label}` : '🏠 Site Visit Scheduled'}
+                    </p>
                     <p className="text-sm font-bold text-[#1C1712] mt-0.5">{fmtDateTime(lead.sitevisit_date)}</p>
                   </div>
                 )}
@@ -629,7 +920,11 @@ export function LeadDetailPanel({ leadId, onClose, onStageUpdate }: {
                 </div>
               ) : (
                 <div className="px-4 py-3">
-                  <p className="text-xs text-[#9A8F82]">{lead.pipeline_stage === 'quotation' ? '✅ Quotation already sent' : 'No quotation sent yet'}</p>
+                  <p className="text-xs text-[#9A8F82]">
+                    {lead.pipeline_stage === 'quotation'
+                      ? (stg.label === 'Before Visit' || stg.label === 'After Visit' ? `✅ Quotation sent — ${stg.label}` : '✅ Quotation already sent')
+                      : 'No quotation sent yet'}
+                  </p>
                 </div>
               )}
             </div>
@@ -706,8 +1001,25 @@ export function LeadDetailPanel({ leadId, onClose, onStageUpdate }: {
 
       {showFollowupModal && (
         <FollowupModal
+          initialNote={stripTag(lead.notes)}
           onClose={() => setShowFollowupModal(false)}
           onSave={handleFollowupSave}
+        />
+      )}
+
+      {showSiteVisitModal && (
+        <SiteVisitModal
+          initialNote={stripTag(lead.notes)}
+          onClose={() => setShowSiteVisitModal(false)}
+          onSave={handleSiteVisitSave}
+        />
+      )}
+
+      {showQuotationModal && (
+        <QuotationStageModal
+          initialNote={stripTag(lead.notes)}
+          onClose={() => setShowQuotationModal(false)}
+          onSave={handleQuotationSave}
         />
       )}
     </>
