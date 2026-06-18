@@ -4,6 +4,7 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'GK CRM — Business Management Portal',
   description: 'One unified platform for CRM, HR, Attendance, Projects, and Billing',
+  manifest: '/manifest.json',
 }
 
 export default function RootLayout({

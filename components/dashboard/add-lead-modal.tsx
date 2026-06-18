@@ -156,14 +156,14 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
           .maybeSingle()
 
         if (existing) {
-          setErrors([`⚠ Phone ${singleLead.phone} already exists — "${existing.lead_name}" గా registered ఉంది.`])
+          setErrors([`⚠ Phone ${singleLead.phone} already exists — registered as "${existing.lead_name}".`])
           setLoading(false); return
         }
 
         const row = toRow(singleLead, companyId, industry)
         const { error } = await supabase.from('leads').insert(row)
         if (error) {
-          setErrors([error.code === '23505' ? '⚠ ఈ phone number already registered ఉంది' : `Save failed: ${error.message}`])
+          setErrors([error.code === '23505' ? '⚠ This phone number is already registered' : `Save failed: ${error.message}`])
           setLoading(false); return
         }
 
@@ -176,7 +176,7 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
         if (uniqueInBatch.size !== phonesInBatch.length) {
           const seen = new Set<string>()
           const dups = phonesInBatch.filter(p => { if (seen.has(p)) return true; seen.add(p); return false })
-          setErrors([`⚠ Batch లో duplicate phones: ${[...new Set(dups)].join(', ')}`])
+          setErrors([`⚠ Duplicate phones in this batch: ${[...new Set(dups)].join(', ')}`])
           setLoading(false); return
         }
 
@@ -193,7 +193,7 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
         const rows = validLeads.map(l => toRow(l, companyId, industry))
         const { error } = await supabase.from('leads').insert(rows)
         if (error) {
-          setErrors([error.code === '23505' ? '⚠ One or more phone numbers already registered ఉన్నాయి' : `Save failed: ${error.message}`])
+          setErrors([error.code === '23505' ? '⚠ One or more phone numbers are already registered' : `Save failed: ${error.message}`])
           setLoading(false); return
         }
       }
@@ -237,9 +237,9 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
           const ws = wb.Sheets[wb.SheetNames[0]]
           const csv = XLSX.utils.sheet_to_csv(ws)
           const leads = parseCSV(csv)
-          if (!leads.length) { setUploadError('File లో valid data లేదు.'); return }
+          if (!leads.length) { setUploadError('No valid data found in the file.'); return }
           setBulkLeads(leads); setUploadedFile({ name: file.name, count: leads.length })
-        }).catch(() => setUploadError('xlsx package install చేయండి: npm i xlsx'))
+        }).catch(() => setUploadError('Please install the xlsx package: npm i xlsx'))
       }
       reader.readAsArrayBuffer(file); return
     }
@@ -247,7 +247,7 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
     const reader = new FileReader()
     reader.onload = (e) => {
       const leads = parseCSV(e.target?.result as string)
-      if (!leads.length) { setUploadError('File లో valid data లేదు.'); return }
+      if (!leads.length) { setUploadError('No valid data found in the file.'); return }
       setBulkLeads(leads); setUploadedFile({ name: file.name, count: leads.length })
     }
     reader.readAsText(file)
@@ -276,28 +276,28 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
   const activeLead = bulkLeads.filter(l => l.name.trim()).length
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative bg-[#FDFAF4] rounded-2xl border border-[#E2D9C8] w-full shadow-2xl flex flex-col"
         style={{ maxWidth: mode === 'bulk' ? '960px' : '520px', maxHeight: '90vh' }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-[#E2D9C8] flex-shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[#E2D9C8] flex-shrink-0">
           <div>
-            <h2 className="font-serif text-xl text-[#1C1712]">Add Leads</h2>
-            <p className="text-xs text-[#7A6E60] mt-0.5">Data directly Supabase లో save అవుతుంది</p>
+            <h2 className="font-serif text-lg sm:text-xl text-[#1C1712]">Add Leads</h2>
+            <p className="text-xs text-[#7A6E60] mt-0.5">Data is saved directly to Supabase</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg border border-[#E2D9C8] flex items-center justify-center text-[#7A6E60] hover:bg-[#F0EBE0]">
+          <button onClick={onClose} className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg border border-[#E2D9C8] flex items-center justify-center text-[#7A6E60] hover:bg-[#F0EBE0] flex-shrink-0">
             <X size={15} />
           </button>
         </div>
 
         {/* Mode toggle */}
-        <div className="px-5 pt-4 flex-shrink-0">
+        <div className="px-4 sm:px-5 pt-4 flex-shrink-0">
           <div className="flex gap-2 p-1 bg-[#F5F0E8] rounded-xl w-fit">
             {(['single', 'bulk'] as const).map(m => (
               <button key={m} onClick={() => { setMode(m); setErrors([]) }}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${mode === m ? 'bg-[#1C1712] text-white' : 'text-[#7A6E60] hover:text-[#1C1712]'}`}>
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition-all ${mode === m ? 'bg-[#1C1712] text-white' : 'text-[#7A6E60] hover:text-[#1C1712]'}`}>
                 {m === 'single' ? <User size={14} /> : <Users size={14} />}
                 {m === 'single' ? 'Single Lead' : 'Bulk Leads'}
               </button>
@@ -306,14 +306,14 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
 
           {/* ── SINGLE ── */}
           {mode === 'single' && (
             <div className="flex flex-col gap-4">
 
               {/* Name + Phone with +91 */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={lbl}>Full Name *</label>
                   <input type="text" placeholder="Rajesh Kumar"
@@ -323,7 +323,7 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
                 </div>
                 <div>
                   <label className={lbl}>Phone *</label>
-                  {/* ✅ +91 prefix box */}
+                  {/* +91 prefix box */}
                   <div className="flex rounded-lg overflow-hidden border border-[#E2D9C8] focus-within:border-[#B8860B] transition-colors">
                     <div className="flex items-center px-3 text-sm font-bold text-[#7A6E60] bg-[#EDE8DC] border-r border-[#E2D9C8] flex-shrink-0 select-none">
                       +91
@@ -334,20 +334,20 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
                         ...singleLead,
                         phone: '+91' + e.target.value.replace(/\D/g, '').slice(0, 10)
                       })}
-                      className="flex-1 bg-[#F5F0E8] px-3 py-2 text-sm text-[#1C1712] placeholder:text-[#B8B0A0] outline-none" />
+                      className="flex-1 bg-[#F5F0E8] px-3 py-2 text-sm text-[#1C1712] placeholder:text-[#B8B0A0] outline-none min-w-0" />
                   </div>
                 </div>
               </div>
 
               {/* Source + Budget */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={lbl}>Lead Source *</label>
                   <div className="relative">
                     <select value={singleLead.source}
                       onChange={e => setSingleLead({ ...singleLead, source: e.target.value })}
                       className={sel}>
-                      <option value="">Source select చేయండి</option>
+                      <option value="">Select source</option>
                       {sources.map(s => <option key={s}>{s}</option>)}
                     </select>
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7A6E60] pointer-events-none" />
@@ -363,14 +363,14 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
               </div>
 
               {/* Property Type + City */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className={lbl}>Property Type</label>
                   <div className="relative">
                     <select value={singleLead.propertyType}
                       onChange={e => setSingleLead({ ...singleLead, propertyType: e.target.value })}
                       className={sel}>
-                      <option value="">Type select చేయండి</option>
+                      <option value="">Select type</option>
                       {propertyTypes.map(t => <option key={t}>{t}</option>)}
                     </select>
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7A6E60] pointer-events-none" />
@@ -382,15 +382,15 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
                     <select value={singleLead.city}
                       onChange={e => setSingleLead({ ...singleLead, city: e.target.value, manualCity: '' })}
                       className={sel}>
-                      <option value="">City select చేయండి</option>
+                      <option value="">Select city</option>
                       <optgroup label="Telangana (TS)">{tsCities.map(c => <option key={c}>{c}</option>)}</optgroup>
                       <optgroup label="Andhra Pradesh (AP)">{apCities.map(c => <option key={c}>{c}</option>)}</optgroup>
-                      <option value="__manual__">+ Manual గా type చేయండి</option>
+                      <option value="__manual__">+ Enter manually</option>
                     </select>
                     <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7A6E60] pointer-events-none" />
                   </div>
                   {isManualCity && (
-                    <input type="text" placeholder="City పేరు type చేయండి..."
+                    <input type="text" placeholder="Type city name..."
                       value={singleLead.manualCity}
                       onChange={e => setSingleLead({ ...singleLead, manualCity: e.target.value })}
                       className={`${inp} mt-2`} autoFocus />
@@ -433,7 +433,7 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
               <div className="flex gap-1 mb-4 p-1 bg-[#F5F0E8] rounded-xl w-fit">
                 {(['manual', 'upload'] as const).map(t => (
                   <button key={t} onClick={() => setBulkTab(t)}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${bulkTab === t ? 'bg-[#1C1712] text-white' : 'text-[#7A6E60] hover:text-[#1C1712]'}`}>
+                    className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-lg text-xs font-semibold transition-all ${bulkTab === t ? 'bg-[#1C1712] text-white' : 'text-[#7A6E60] hover:text-[#1C1712]'}`}>
                     {t === 'manual' ? <Plus size={12} /> : <Upload size={12} />}
                     {t === 'manual' ? 'Manual Entry' : 'Upload CSV / Excel'}
                   </button>
@@ -447,11 +447,11 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
                     onDragLeave={() => setDragOver(false)}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
-                    className={`border-2 border-dashed rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all ${dragOver ? 'border-[#B8860B] bg-amber-50' : 'border-[#E2D9C8] hover:border-[#B8860B]'}`}>
+                    className={`border-2 border-dashed rounded-2xl p-6 sm:p-10 flex flex-col items-center justify-center cursor-pointer transition-all ${dragOver ? 'border-[#B8860B] bg-amber-50' : 'border-[#E2D9C8] hover:border-[#B8860B]'}`}>
                     <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileChange} />
                     <FileSpreadsheet size={36} className="text-[#B8860B] mb-3" />
-                    <p className="text-sm font-semibold text-[#1C1712]">CSV లేదా Excel file drag చేయండి</p>
-                    <p className="text-xs text-[#7A6E60] mt-1">లేదా click చేసి file select చేయండి</p>
+                    <p className="text-sm font-semibold text-[#1C1712] text-center">Drag a CSV or Excel file here</p>
+                    <p className="text-xs text-[#7A6E60] mt-1 text-center">or click to select a file</p>
                     <p className="text-[10px] text-[#B8B0A0] mt-3">Supports: .csv, .xlsx, .xls</p>
                   </div>
                   {uploadError && (
@@ -471,12 +471,12 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
                         className="text-[10px] text-red-500 hover:underline">Remove</button>
                     </div>
                   )}
-                  <div className="mt-4 flex items-center justify-between bg-[#F5F0E8] rounded-xl p-3">
+                  <div className="mt-4 flex items-center justify-between gap-2 bg-[#F5F0E8] rounded-xl p-3">
                     <div>
-                      <p className="text-xs font-semibold text-[#1C1712]">Sample file కావాలా?</p>
-                      <p className="text-[10px] text-[#7A6E60]">Correct format తో sample CSV</p>
+                      <p className="text-xs font-semibold text-[#1C1712]">Need a sample file?</p>
+                      <p className="text-[10px] text-[#7A6E60]">Sample CSV with the correct format</p>
                     </div>
-                    <button onClick={downloadSample} className="text-xs font-semibold text-[#B8860B] hover:underline flex items-center gap-1">
+                    <button onClick={downloadSample} className="text-xs font-semibold text-[#B8860B] hover:underline flex items-center gap-1 flex-shrink-0">
                       <Upload size={11} className="rotate-180" /> Download Sample
                     </button>
                   </div>
@@ -502,7 +502,7 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
                     </div>
                   )}
                   {bulkTab === 'upload' && uploadedFile && (
-                    <p className="text-xs text-[#7A6E60] mb-2 font-semibold">Preview — edit చేయవచ్చు</p>
+                    <p className="text-xs text-[#7A6E60] mb-2 font-semibold">Preview — you can edit</p>
                   )}
                   <div className="overflow-x-auto">
                     <table className="w-full" style={{ minWidth: '860px' }}>
@@ -523,7 +523,7 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
                                 onChange={e => updateBulkLead(i, 'name', e.target.value)}
                                 className={bInp} />
                             </td>
-                            {/* ✅ Bulk +91 prefix */}
+                            {/* Bulk +91 prefix */}
                             <td className="py-2 pr-2">
                               <div className="flex rounded-lg overflow-hidden border border-[#E2D9C8] focus-within:border-[#B8860B] transition-colors">
                                 <span className="flex items-center px-2 text-[10px] font-bold text-[#7A6E60] bg-[#EDE8DC] border-r border-[#E2D9C8] select-none flex-shrink-0">
@@ -600,7 +600,7 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-5 border-t border-[#E2D9C8] flex-shrink-0">
+        <div className="flex gap-3 p-4 sm:p-5 border-t border-[#E2D9C8] flex-shrink-0">
           <button onClick={onClose}
             className="flex-1 border border-[#E2D9C8] text-[#1C1712] py-2.5 rounded-xl text-sm font-medium hover:bg-[#F0EBE0] transition-colors">
             Cancel
