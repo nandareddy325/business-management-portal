@@ -42,25 +42,30 @@ export default function LoginPage() {
     }
 
     // 3. ✅ Employee redirect — dashboard industries కి పంపు
-    if (profile?.role === 'employee') {
-      if (!profile.company_id) {
-        window.location.href = '/employee'
-        return
-      }
+    // if (profile?.role === 'employee') {
+    //   if (!profile.company_id) {
+    //     window.location.href = '/employee'
+    //     return
+    //   }
 
-      // Company active industries fetch చేయి
-      const { data: empIndustries } = await supabase
-        .from('company_industries')
-        .select('industries(slug)')
-        .eq('company_id', profile.company_id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: true })
-        .limit(1)
+    //   // Company active industries fetch చేయి
+    //   const { data: empIndustries } = await supabase
+    //     .from('company_industries')
+    //     .select('industries(slug)')
+    //     .eq('company_id', profile.company_id)
+    //     .eq('is_active', true)
+    //     .order('created_at', { ascending: true })
+    //     .limit(1)
 
-      const slug = (empIndustries?.[0] as any)?.industries?.slug || 'interior-design'
-      window.location.href = `/dashboard/industries/${slug}`
-      return
-    }
+    //   const slug = (empIndustries?.[0] as any)?.industries?.slug || 'interior-design'
+    //   window.location.href = `/dashboard/industries/${slug}`
+    //   return
+    // }
+    // 3. Employee redirect
+if (profile?.role === 'employee') {
+  window.location.href = '/employee'
+  return
+}
 
     // 4. Super admin redirect
     if (profile?.role === 'super_admin') {
