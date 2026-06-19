@@ -54,21 +54,16 @@ function MiniCalendar({ selectedDate, onSelect, accentColor }: {
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: '#FEFCF8', border: '1px solid #E8E2D8' }}>
-      {/* Month nav */}
       <div className="flex items-center justify-between px-4 py-3" style={{ background: accentColor, borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
         <button onClick={prevMonth} className="w-7 h-7 rounded-lg flex items-center justify-center text-white hover:bg-white/20 transition-colors text-sm font-bold">‹</button>
         <p className="text-sm font-black text-white">{monthNames[viewMonth]} {viewYear}</p>
         <button onClick={nextMonth} className="w-7 h-7 rounded-lg flex items-center justify-center text-white hover:bg-white/20 transition-colors text-sm font-bold">›</button>
       </div>
-
-      {/* Day headers */}
       <div className="grid grid-cols-7 px-3 pt-2">
         {dayNames.map((d, i) => (
           <div key={i} className="text-center text-[9px] font-black text-[#9A8F82] py-1">{d}</div>
         ))}
       </div>
-
-      {/* Days grid */}
       <div className="grid grid-cols-7 px-3 pb-3 gap-y-0.5">
         {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
         {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -105,7 +100,6 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  // Date scheduling
   const todayISO = new Date().toISOString().split('T')[0]
   const [scheduledDate, setScheduledDate] = useState(todayISO)
   const [scheduledTime, setScheduledTime] = useState('10:00')
@@ -124,12 +118,11 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
   const endCall = () => { clearInterval(timer.current); setPhase('post') }
   useEffect(() => () => clearInterval(timer.current), [])
 
-  // Outcome config
   const outcomes = [
-    { id: 'interested', label: '✨ Interested',    color: '#0891B2', accent: '#ECFEFF', desc: 'Showing interest',  needsDate: true,  dateLabel: 'Follow-up Date' },
-    { id: 'followup',   label: '🔄 Follow Up',     color: '#D97706', accent: '#FFFBEB', desc: 'Call back needed',  needsDate: true,  dateLabel: 'Call Back Date' },
-    { id: 'sitevisit',  label: '🏠 Site Visit',    color: '#EA580C', accent: '#FFF7ED', desc: 'Wants to visit',    needsDate: true,  dateLabel: 'Site Visit Date' },
-    { id: 'notinterested', label: '❌ Not Interested', color: '#DC2626', accent: '#FEF2F2', desc: 'Mark as lost', needsDate: false, dateLabel: '' },
+    { id: 'interested',    label: '✨ Interested',      color: '#0891B2', accent: '#ECFEFF', desc: 'Showing interest', needsDate: true,  dateLabel: 'Follow-up Date' },
+    { id: 'followup',      label: '🔄 Follow Up',       color: '#D97706', accent: '#FFFBEB', desc: 'Call back needed', needsDate: true,  dateLabel: 'Call Back Date' },
+    { id: 'sitevisit',     label: '🏠 Site Visit',      color: '#EA580C', accent: '#FFF7ED', desc: 'Wants to visit',   needsDate: true,  dateLabel: 'Site Visit Date' },
+    { id: 'notinterested', label: '❌ Not Interested',  color: '#DC2626', accent: '#FEF2F2', desc: 'Mark as lost',     needsDate: false, dateLabel: '' },
   ]
 
   const selectedOutcome = outcomes.find(o => o.id === outcome)
@@ -154,21 +147,17 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
     if (!outcome) return
     if (needsDate && !scheduledDate) return
     setSaving(true)
-
     try {
       const updateData: any = {
         pipeline_stage: stageMap[outcome] || 'called',
         notes: note,
         status: outcome === 'notinterested' ? 'Lost' : 'Active',
       }
-
-      // Save scheduled date to followup_date or sitevisit_date
       if (needsDate && scheduledDate) {
         const dateTime = scheduledTime ? `${scheduledDate}T${scheduledTime}:00` : scheduledDate
         if (outcome === 'sitevisit') updateData.sitevisit_date = dateTime
         else updateData.followup_date = dateTime
       }
-
       await supabase.from('leads').update(updateData).eq('id', lead.id)
       onUpdatePipeline(lead.id, stageMap[outcome] || 'called')
       setSaved(true)
@@ -188,8 +177,6 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 backdrop-blur-md" style={{ background: 'rgba(0,0,0,0.85)' }} onClick={onClose} />
       <div className="relative w-full max-w-sm rounded-3xl overflow-hidden" style={{ background: '#FEFCF8', border: '1px solid #E2D9C8', boxShadow: '0 24px 60px rgba(28,23,18,0.25)', maxHeight: '92vh', overflowY: 'auto' }}>
-
-        {/* Header */}
         <div className="relative p-5 text-center" style={{ background: 'linear-gradient(135deg, #1C1712 0%, #2d2218 100%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 30% 70%, #B8860B, transparent 60%)' }} />
           <button onClick={onClose} className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center text-white/40 hover:text-white" style={{ background: 'rgba(255,255,255,0.08)' }}>✕</button>
@@ -210,7 +197,6 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
           )}
         </div>
 
-        {/* Details chips */}
         <div className="p-3 grid grid-cols-3 gap-2 border-b border-[#F0EBE0]">
           {[{ l: 'Budget', v: lead.budget }, { l: 'Source', v: lead.source }, { l: 'Added', v: lead.date }].map(x => (
             <div key={x.l} className="rounded-xl p-2 text-center" style={{ background: '#F7F5F1', border: '1px solid #EDE8E0' }}>
@@ -227,7 +213,6 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
           </div>
         )}
 
-        {/* Actions */}
         <div className="p-4 space-y-3">
           {phase === 'pre' && (
             <>
@@ -254,7 +239,6 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
 
           {phase === 'post' && (
             <>
-              {/* Outcome buttons */}
               <div>
                 <p className="text-[10px] font-black text-[#9A8F82] uppercase tracking-wider mb-2">Call Outcome *</p>
                 <div className="grid grid-cols-2 gap-2">
@@ -276,7 +260,6 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
                 </div>
               </div>
 
-              {/* ── DATE SCHEDULER — shows when outcome needs date ── */}
               {needsDate && outcome && (
                 <div className="rounded-2xl overflow-hidden" style={{ border: `2px solid ${selectedOutcome?.color}30`, background: selectedOutcome?.accent }}>
                   <div className="px-4 py-2.5 flex items-center gap-2" style={{ borderBottom: `1px solid ${selectedOutcome?.color}20` }}>
@@ -289,8 +272,6 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
                       </span>
                     )}
                   </div>
-
-                  {/* Quick date buttons */}
                   <div className="px-3 py-2 flex gap-2 flex-wrap">
                     {quickDates.map(qd => (
                       <button key={qd.label} onClick={() => { setScheduledDate(qd.value); setShowCalendar(false) }}
@@ -313,8 +294,6 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
                       📅 Pick Date
                     </button>
                   </div>
-
-                  {/* Calendar */}
                   {showCalendar && (
                     <div className="px-3 pb-3">
                       <MiniCalendar
@@ -324,8 +303,6 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
                       />
                     </div>
                   )}
-
-                  {/* Time picker */}
                   <div className="px-3 pb-3 flex items-center gap-2">
                     <span className="text-[10px] font-bold" style={{ color: selectedOutcome?.color }}>⏰ Time:</span>
                     <input type="time" value={scheduledTime} onChange={e => setScheduledTime(e.target.value)}
@@ -335,12 +312,10 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
                 </div>
               )}
 
-              {/* Notes */}
               <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Notes about this call..."
                 rows={2} className="w-full rounded-xl px-3 py-2.5 text-sm text-[#1C1712] placeholder:text-[#C4BAB0] outline-none resize-none border-2 border-[#E8E2D8] focus:border-[#B8860B] transition-colors"
                 style={{ background: '#F7F5F1' }} />
 
-              {/* Save button */}
               <button onClick={handleSave} disabled={!outcome || saving || saved || (needsDate && !scheduledDate)}
                 className="w-full py-3.5 rounded-2xl text-sm font-black text-white disabled:opacity-40 transition-all hover:scale-[1.02]"
                 style={{ background: saved ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #1C1712, #2d2822)', boxShadow: '0 8px 24px rgba(28,23,18,0.2)' }}>
@@ -348,7 +323,6 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
                   ? `💾 Save — ${outcome === 'sitevisit' ? '🏠' : '🔄'} ${formatDisplayDate(scheduledDate)} ${scheduledTime}`
                   : '💾 Save & Update Stage'}
               </button>
-
               {!outcome && <p className="text-center text-[10px] text-[#9A8F82]">⚠ Select an outcome first</p>}
               {outcome && needsDate && !scheduledDate && <p className="text-center text-[10px] text-red-500">⚠ Select a date</p>}
             </>
@@ -376,6 +350,12 @@ export default function InteriorDesignDashboard() {
   const [moveModal, setMoveModal] = useState<Lead | null>(null)
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
+
+  // ── Date Filter State ──
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const [showDatePicker, setShowDatePicker] = useState(false)
 
   useEffect(() => { setStageFilter(urlStage || 'all'); if (urlStage) setActiveTab('list') }, [urlStage])
 
@@ -411,16 +391,43 @@ export default function InteriorDesignDashboard() {
     return () => window.removeEventListener('sidebar-stage-change', handler as EventListener)
   }, [])
 
+  // ── Date Filter Logic ──
+  const getDateFilteredLeads = (leads: Lead[]) => {
+    const now = new Date()
+    const todayISO = now.toISOString().split('T')[0]
+    const weekStart = new Date(now)
+    weekStart.setDate(now.getDate() - now.getDay())
+    const weekStartISO = weekStart.toISOString().split('T')[0]
+    const monthStartISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+
+    return leads.filter(l => {
+      if (dateFilter === 'all') return true
+      const rawDate = l.date
+      if (!rawDate || rawDate === 'Today') {
+        if (dateFilter === 'custom' && fromDate) return todayISO >= fromDate && (!toDate || todayISO <= toDate)
+        return true
+      }
+      const parsed = new Date(rawDate)
+      if (isNaN(parsed.getTime())) return true
+      const ds = parsed.toISOString().split('T')[0]
+      if (dateFilter === 'today')  return ds === todayISO
+      if (dateFilter === 'week')   return ds >= weekStartISO
+      if (dateFilter === 'month')  return ds >= monthStartISO
+      if (dateFilter === 'custom') return (!fromDate || ds >= fromDate) && (!toDate || ds <= toDate)
+      return true
+    })
+  }
+
   const todayStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-  const todayLeads = leads.filter(l => l.date === 'Today' || l.date === todayStr)
-  const wonLeads = leads.filter(l => l.pipeline === 'won' || l.pipeline === 'project_started')
-  const activeLeads = leads.filter(l => !['won', 'lost', 'project_started'].includes(l.pipeline))
-  const followupsDue = leads.filter(l => l.pipeline === 'followup')
-  const siteVisits = leads.filter(l => l.pipeline === 'sitevisit')
+  const todayLeads     = leads.filter(l => l.date === 'Today' || l.date === todayStr)
+  const wonLeads       = leads.filter(l => l.pipeline === 'won' || l.pipeline === 'project_started')
+  const activeLeads    = leads.filter(l => !['won', 'lost', 'project_started'].includes(l.pipeline))
+  const followupsDue   = leads.filter(l => l.pipeline === 'followup')
+  const siteVisits     = leads.filter(l => l.pipeline === 'sitevisit')
   const quotationsPending = leads.filter(l => l.pipeline === 'quotation')
   const winRate = leads.length > 0 ? Math.round((wonLeads.length / leads.length) * 100) : 0
 
-  const filteredLeads = leads.filter(l => {
+  const filteredLeads = getDateFilteredLeads(leads).filter(l => {
     const ms = l.name.toLowerCase().includes(search.toLowerCase()) || l.phone.includes(search)
     const mf = stageFilter === 'all' ? true : l.pipeline === stageFilter
     return ms && mf
@@ -444,13 +451,13 @@ export default function InteriorDesignDashboard() {
       const inserted = await insertLeadsBulk(fresh.map(l => ({
         name: l.name, phone: l.phone, email: l.email || '',
         source: l.source || '', interest: l.interest || '',
-        budget: l.budget || '', status: l.status || 'new',
+        budget: l.budget || '', status: 'Active',
         pipeline_stage: 'new', industry: 'interior-design',
       })))
       if (inserted.length > 0) setLeads(prev => [...inserted.map((l: any) => ({
         id: l.id, name: l.lead_name || l.name || '', phone: l.phone || '',
         email: l.email || '', requirement: l.interest || '—',
-        budget: l.budget || '—', status: l.status || 'New',
+        budget: l.budget || '—', status: 'Active',
         pipeline: l.pipeline_stage || 'new', source: l.source || '—', date: 'Today',
       })), ...prev])
     } catch (err) { console.error(err) }
@@ -459,6 +466,11 @@ export default function InteriorDesignDashboard() {
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+
+  const clearAllFilters = () => {
+    setDateFilter('all'); setFromDate(''); setToDate('')
+    setShowDatePicker(false); setStageFilter('all')
+  }
 
   return (
     <>
@@ -516,9 +528,9 @@ export default function InteriorDesignDashboard() {
         {/* ── KPI ROW 2 ── */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Today's Leads",  value: todayLeads.length,  color: '#2563EB' },
+            { label: "Today's Leads",   value: todayLeads.length,  color: '#2563EB' },
             { label: 'Active Pipeline', value: activeLeads.length, color: '#D97706' },
-            { label: 'Total Leads',    value: leads.length,       color: '#7C3AED' },
+            { label: 'Total Leads',     value: leads.length,       color: '#7C3AED' },
           ].map((s, i) => (
             <div key={i} className="glass rounded-xl px-4 py-3 flex items-center justify-between">
               <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
@@ -565,43 +577,120 @@ export default function InteriorDesignDashboard() {
         {/* ── LIST VIEW ── */}
         {activeTab === 'list' && (
           <div className="glass rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#F0EBE0] flex flex-col gap-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <button onClick={() => setStageFilter('all')}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                  style={{ background: stageFilter === 'all' ? '#1C1712' : '#F5F0E8', color: stageFilter === 'all' ? 'white' : '#7A6E60', border: '1px solid #E8E2D8' }}>
-                  All {leads.length}
-                </button>
-                {PIPELINE_STAGES.map(s => {
-                  const c = leads.filter(l => l.pipeline === s.key).length
-                  if (!c) return null
-                  return (
-                    <button key={s.key} onClick={() => setStageFilter(s.key)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                      style={{
-                        background: stageFilter === s.key ? `${s.accent}20` : '#F5F0E8',
-                        color: stageFilter === s.key ? s.color : '#7A6E60',
-                        border: `1px solid ${stageFilter === s.key ? s.accent + '50' : '#E8E2D8'}`,
-                      }}>
-                      {s.icon} {c}
-                    </button>
-                  )
-                })}
+
+            {/* ── SINGLE FILTER ROW — Search + Stage + Date + Add ── */}
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#F0EBE0] overflow-x-auto scroll-x">
+
+              {/* Search */}
+              <div className="flex items-center gap-2 bg-[#F7F5F1] border border-[#E8E2D8] rounded-xl px-3 py-1.5 flex-shrink-0 w-44">
+                <span className="text-[#9A8F82] text-xs">🔍</span>
+                <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
+                  className="flex-1 bg-transparent text-xs text-[#1C1712] placeholder:text-[#C4BAB0] outline-none w-full" />
+                {search && <button onClick={() => setSearch('')} className="text-[#9A8F82] hover:text-red-500 text-xs flex-shrink-0">✕</button>}
               </div>
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 max-w-xs">
-                  <input type="text" placeholder="Search leads..." value={search} onChange={e => setSearch(e.target.value)}
-                    className="w-full rounded-xl pl-8 pr-8 py-2 text-xs text-[#1C1712] placeholder:text-[#C4BAB0] outline-none bg-[#F7F5F1] border border-[#E8E2D8] focus:border-[#B8860B] transition-colors" />
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9A8F82] text-xs">🔍</span>
-                  {search && <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9A8F82] hover:text-red-500 text-xs">✕</button>}
-                </div>
-                <button onClick={() => setLeadModalOpen(true)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold"
-                  style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309' }}>
-                  + Add
+
+              <div className="w-px h-4 bg-[#E8E2D8] flex-shrink-0" />
+
+              {/* Stage label */}
+              <span className="text-[9px] font-bold uppercase tracking-[1.5px] text-[#B8B0A0] flex-shrink-0">Stage</span>
+
+              {/* Stage pills */}
+              <button onClick={() => setStageFilter('all')}
+                className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex-shrink-0"
+                style={{
+                  background: stageFilter === 'all' ? '#1C1712' : 'var(--color-background-secondary, #F5F0E8)',
+                  color: stageFilter === 'all' ? 'white' : '#7A6E60',
+                  border: '0.5px solid #E8E2D8',
+                }}>
+                All {leads.length}
+              </button>
+              {PIPELINE_STAGES.map(s => {
+                const c = leads.filter(l => l.pipeline === s.key).length
+                if (!c) return null
+                return (
+                  <button key={s.key} onClick={() => setStageFilter(s.key)}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex-shrink-0"
+                    style={{
+                      background: stageFilter === s.key ? `${s.accent}20` : 'var(--color-background-secondary, #F5F0E8)',
+                      color: stageFilter === s.key ? s.color : '#7A6E60',
+                      border: `0.5px solid ${stageFilter === s.key ? s.accent + '60' : '#E8E2D8'}`,
+                    }}>
+                    {s.icon} {c}
+                  </button>
+                )
+              })}
+
+              <div className="w-px h-4 bg-[#E8E2D8] flex-shrink-0" />
+
+              {/* Date label */}
+              <span className="text-[9px] font-bold uppercase tracking-[1.5px] text-[#B8B0A0] flex-shrink-0">Date</span>
+
+              {/* Date quick buttons */}
+              {[
+                { label: 'All',   value: 'all'   },
+                { label: 'Today', value: 'today' },
+                { label: 'Week',  value: 'week'  },
+                { label: 'Month', value: 'month' },
+              ].map(f => (
+                <button key={f.value}
+                  onClick={() => { setDateFilter(f.value as any); setShowDatePicker(false) }}
+                  className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex-shrink-0"
+                  style={{
+                    background: dateFilter === f.value && dateFilter !== 'custom' ? '#1C1712' : 'var(--color-background-secondary, #F5F0E8)',
+                    color: dateFilter === f.value && dateFilter !== 'custom' ? 'white' : '#7A6E60',
+                    border: '0.5px solid #E8E2D8',
+                  }}>
+                  {f.label}
                 </button>
-              </div>
+              ))}
+
+              {/* Date range toggle */}
+              <button
+                onClick={() => { setShowDatePicker(p => !p); if (dateFilter !== 'custom') setDateFilter('custom') }}
+                className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex-shrink-0 flex items-center gap-1"
+                style={{
+                  background: dateFilter === 'custom' ? '#B8860B' : 'var(--color-background-secondary, #F5F0E8)',
+                  color:      dateFilter === 'custom' ? 'white'   : '#7A6E60',
+                  border: `0.5px solid ${dateFilter === 'custom' ? '#B8860B' : '#E8E2D8'}`,
+                }}>
+                📅 {dateFilter === 'custom' && fromDate ? `${fromDate}${toDate ? '→' + toDate : ''}` : 'Range'}
+              </button>
+
+              {/* Clear all */}
+              {(dateFilter !== 'all' || stageFilter !== 'all' || search) && (
+                <button onClick={() => { clearAllFilters(); setSearch('') }}
+                  className="text-[11px] font-medium text-red-400 hover:text-red-600 flex-shrink-0">
+                  Clear all
+                </button>
+              )}
+
+              {/* Add button — pushed to right */}
+              <button onClick={() => setLeadModalOpen(true)}
+                className="ml-auto px-3 py-1.5 rounded-xl text-xs font-bold flex-shrink-0"
+                style={{ background: '#FFFBEB', border: '0.5px solid #FDE68A', color: '#B45309' }}>
+                + Add
+              </button>
             </div>
+
+            {/* Date Range Picker */}
+            {showDatePicker && (
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b flex-wrap"
+                style={{ background: '#FFFBEB', borderColor: '#FDE68A' }}>
+                <span className="text-[11px] font-medium text-amber-700">From</span>
+                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
+                  className="rounded-lg px-3 py-1.5 text-xs text-[#1C1712] outline-none"
+                  style={{ border: '0.5px solid #FDE68A', background: 'white' }} />
+                <span className="text-[11px] font-medium text-amber-700">To</span>
+                <input type="date" value={toDate} min={fromDate} onChange={e => setToDate(e.target.value)}
+                  className="rounded-lg px-3 py-1.5 text-xs text-[#1C1712] outline-none"
+                  style={{ border: '0.5px solid #FDE68A', background: 'white' }} />
+                <button onClick={() => setShowDatePicker(false)}
+                  className="px-4 py-1.5 rounded-lg text-xs font-medium text-white"
+                  style={{ background: '#1C1712' }}>
+                  Apply
+                </button>
+              </div>
+            )}
 
             {stageFilter !== 'all' && (
               <div className="px-5 py-2 flex items-center gap-2" style={{ background: `${getStg(stageFilter).accent}10`, borderBottom: `1px solid ${getStg(stageFilter).accent}20` }}>
@@ -622,7 +711,7 @@ export default function InteriorDesignDashboard() {
               <div className="text-center py-16">
                 <p className="text-4xl mb-3">{leads.length === 0 ? '🎯' : '🔍'}</p>
                 <p className="text-sm font-bold text-[#1C1712]">{leads.length === 0 ? 'No leads yet' : 'No results'}</p>
-                <p className="text-xs text-[#9A8F82] mt-1">{leads.length === 0 ? 'Add your first lead' : 'Try clearing filter'}</p>
+                <p className="text-xs text-[#9A8F82] mt-1">{leads.length === 0 ? 'Add your first lead' : 'Try clearing filters'}</p>
                 {leads.length === 0 && (
                   <button onClick={() => setLeadModalOpen(true)} className="mt-4 px-5 py-2.5 rounded-xl text-sm font-bold text-white" style={{ background: 'linear-gradient(135deg, #B8860B, #D97706)' }}>
                     + Add First Lead
@@ -695,7 +784,7 @@ export default function InteriorDesignDashboard() {
                             onClick={() => setSelectedLeadId(lead.id)}
                             onMouseEnter={() => setHoveredRow(lead.id)}
                             onMouseLeave={() => setHoveredRow(null)}
-                            className="transition-all"
+                            className="transition-all cursor-pointer"
                             style={{ borderBottom: '1px solid #F7F5F1', background: isHov ? '#FDFAF8' : 'white' }}>
                             <td className="pl-5 pr-2 py-3.5"><span className="text-[10px] font-bold text-[#C4BAB0]">{i + 1}</span></td>
                             <td className="pl-2 pr-4 py-3.5">
@@ -722,11 +811,11 @@ export default function InteriorDesignDashboard() {
                             <td className="px-4 py-3.5"><p className="text-[10px] whitespace-nowrap text-[#B8B0A0]">{lead.date}</p></td>
                             <td className="pr-5 pl-2 py-3.5">
                               <div className={`flex gap-1.5 items-center transition-all duration-200 ${isHov ? 'opacity-100' : 'opacity-0'}`}>
-                                <button onClick={() => setMoveModal(lead)}
+                                <button onClick={(e) => { e.stopPropagation(); setMoveModal(lead) }}
                                   className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-[#F5F0E8] text-[#1C1712] border border-[#E8E2D8] hover:scale-105 transition-all">
                                   Move
                                 </button>
-                                <button onClick={() => setCallLead(lead)}
+                                <button onClick={(e) => { e.stopPropagation(); setCallLead(lead) }}
                                   className="w-8 h-8 rounded-xl flex items-center justify-center text-white hover:scale-110 transition-all"
                                   style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 12px rgba(16,185,129,0.4)' }}>
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -748,6 +837,7 @@ export default function InteriorDesignDashboard() {
               <div className="px-5 py-3 flex items-center justify-between border-t border-[#F0EBE0]" style={{ background: '#FAFAF8' }}>
                 <p className="text-[10px] text-[#9A8F82]">
                   <span className="font-bold text-[#1C1712]">{filteredLeads.length}</span> of <span className="font-bold text-[#1C1712]">{leads.length}</span> leads
+                  {dateFilter !== 'all' && <span className="ml-1 text-amber-600 font-bold">· date filtered</span>}
                 </p>
               </div>
             )}
@@ -884,6 +974,7 @@ export default function InteriorDesignDashboard() {
         )}
 
       </main>
+
       {selectedLeadId && (
         <LeadDetailPanel
           leadId={selectedLeadId}
