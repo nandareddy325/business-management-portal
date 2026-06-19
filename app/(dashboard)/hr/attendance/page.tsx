@@ -41,19 +41,25 @@ export default async function AttendancePage({
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   })
 
-  const [{ data: employees }, { data: attendance }] = await Promise.all([
-    supabase
-      .from('employees')
-      .select('id, full_name, designation, department')
-      .eq('company_id', profile.company_id)
-      .eq('is_active', true)
-      .order('full_name'),
-    supabase
-      .from('attendance')
-      .select('*')
-      .eq('company_id', profile.company_id)
-      .eq('attendance_date', today),
-  ])
+  // Step 1: Fetch all active employees for this company
+  const { data: employees } = await supabase
+    .from('employees')
+    .select('id, full_name, designation, department')
+    .eq('company_id', profile.company_id)
+    .eq('is_active', true)
+    .order('full_name')
+
+  // Step 2: Fetch attendance by employee_id list — NOT by company_id
+  // This ensures employee self-marked attendance (which may not have company_id) is also included
+  const employeeIds = (employees ?? []).map((e: any) => e.id)
+
+  const { data: attendance } = employeeIds.length > 0
+    ? await supabase
+        .from('attendance')
+        .select('*')
+        .in('employee_id', employeeIds)
+        .eq('attendance_date', today)
+    : { data: [] }
 
   const attendanceMap = Object.fromEntries(
     (attendance ?? []).map((a: any) => [a.employee_id, a])
@@ -65,7 +71,6 @@ export default async function AttendancePage({
   const absentCount   = attendance?.filter((a: any) => a.status === 'absent').length ?? 0
   const leaveCount    = attendance?.filter((a: any) => ['half_day', 'leave'].includes(a.status)).length ?? 0
   const unmarkedCount = totalCount - markedCount
-  const attendancePct = totalCount > 0 ? Math.round((markedCount / totalCount) * 100) : 0
   const presentPct    = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0
 
   return (
@@ -92,12 +97,12 @@ export default async function AttendancePage({
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Total Staff', value: totalCount,   color: '#7C3AED', icon: '👥', bg: 'bg-white' },
-          { label: 'Present',     value: presentCount, color: '#16A34A', icon: '✅', bg: 'bg-white' },
-          { label: 'Absent',      value: absentCount,  color: '#DC2626', icon: '❌', bg: 'bg-white' },
-          { label: 'Leave / Half',value: leaveCount,   color: '#D97706', icon: '🕐', bg: 'bg-white' },
+          { label: 'Total Staff', value: totalCount,   color: '#7C3AED', icon: '👥' },
+          { label: 'Present',     value: presentCount, color: '#16A34A', icon: '✅' },
+          { label: 'Absent',      value: absentCount,  color: '#DC2626', icon: '❌' },
+          { label: 'Leave / Half',value: leaveCount,   color: '#D97706', icon: '🕐' },
         ].map((s, i) => (
-          <div key={i} className={`${s.bg} border border-[#E8E2D8] rounded-2xl p-4 shadow-sm`}>
+          <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[9px] font-bold text-[#9A8F82] uppercase tracking-wider">{s.label}</p>
               <span className="text-base">{s.icon}</span>
@@ -128,7 +133,6 @@ export default async function AttendancePage({
             </div>
           </div>
 
-          {/* Stacked progress bar */}
           <div className="h-3 bg-[#F0EBE0] rounded-full overflow-hidden flex">
             <div className="h-full transition-all duration-700 rounded-l-full"
               style={{ width: `${totalCount > 0 ? (presentCount / totalCount) * 100 : 0}%`, background: '#16A34A' }} />
@@ -165,7 +169,6 @@ export default async function AttendancePage({
       {/* ── Table ── */}
       <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
 
-        {/* Table header */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -178,7 +181,6 @@ export default async function AttendancePage({
             <tbody>
               {(employees ?? []).map((emp: any, i: number) => {
                 const rec = attendanceMap[emp.id]
-                const cfg = rec ? STATUS_CONFIG[rec.status] : null
                 const g = GRADIENTS[i % GRADIENTS.length]
                 return (
                   <tr key={emp.id}
@@ -274,7 +276,6 @@ export default async function AttendancePage({
           })}
         </div>
 
-        {/* Footer */}
         {employees?.length > 0 && (
           <div className="px-5 py-3 border-t border-[#F0EBE0] flex items-center justify-between"
             style={{ background: '#FAFAF8' }}>

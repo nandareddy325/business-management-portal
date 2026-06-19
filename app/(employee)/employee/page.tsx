@@ -78,8 +78,10 @@ export default async function EmployeePortalPage() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
-  // CRM Portal: only show if employee has at least one access module (pipeline/projects/hr/finance)
-  const hasCRMAccess = Array.isArray(employee.permissions) && employee.permissions.length > 0
+  // CRM Portal: only show if employee has at least one recognised access module explicitly assigned
+  const VALID_MODULES = ['pipeline', 'projects', 'hr', 'finance']
+  const hasCRMAccess = Array.isArray(employee.permissions) &&
+    employee.permissions.some((p: string) => VALID_MODULES.includes(p))
 
   return (
   <div className="min-h-screen bg-[#F7F5F1]">
