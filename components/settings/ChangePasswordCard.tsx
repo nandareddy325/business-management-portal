@@ -6,10 +6,8 @@ import { useState } from 'react'
 import { KeyRound, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react'
 
 export default function ChangePasswordCard() {
-  const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [showCurrent, setShowCurrent] = useState(false)
   const [showNew, setShowNew] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -28,20 +26,16 @@ export default function ChangePasswordCard() {
   const handleSubmit = async () => {
     setMessage(null)
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    if (!newPassword || !confirmPassword) {
       setMessage({ type: 'error', text: 'Please fill all fields' })
       return
     }
     if (newPassword !== confirmPassword) {
-      setMessage({ type: 'error', text: 'New passwords do not match' })
+      setMessage({ type: 'error', text: 'Passwords do not match' })
       return
     }
     if (newPassword.length < 6) {
       setMessage({ type: 'error', text: 'Password must be at least 6 characters' })
-      return
-    }
-    if (newPassword === currentPassword) {
-      setMessage({ type: 'error', text: 'New password must be different from current' })
       return
     }
 
@@ -50,7 +44,7 @@ export default function ChangePasswordCard() {
       const res = await fetch('/api/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({ newPassword }),
       })
       const data = await res.json()
 
@@ -58,7 +52,6 @@ export default function ChangePasswordCard() {
         setMessage({ type: 'error', text: data.error || 'Failed to change password' })
       } else {
         setMessage({ type: 'success', text: 'Password changed successfully! 🎉' })
-        setCurrentPassword('')
         setNewPassword('')
         setConfirmPassword('')
       }
@@ -111,21 +104,12 @@ export default function ChangePasswordCard() {
         </div>
         <div>
           <h2 className="text-sm font-semibold text-[#1C1712]">Change Password</h2>
-          <p className="text-xs text-[#9A8F82]">Update your password without leaving the app</p>
+          <p className="text-xs text-[#9A8F82]">Set a new password for your account</p>
         </div>
       </div>
 
       {/* Form */}
       <div className="p-5 space-y-4">
-        <InputField
-          label="Current Password"
-          value={currentPassword}
-          onChange={setCurrentPassword}
-          show={showCurrent}
-          onToggle={() => setShowCurrent(p => !p)}
-          placeholder="Enter current password"
-        />
-
         <InputField
           label="New Password"
           value={newPassword}

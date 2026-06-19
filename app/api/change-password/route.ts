@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
-    const { currentPassword, newPassword } = await request.json()
+    const { newPassword } = await request.json()
 
     if (!newPassword || newPassword.length < 6) {
       return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
@@ -18,17 +18,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Re-authenticate with current password first
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: user.email!,
-      password: currentPassword,
-    })
-
-    if (signInError) {
-      return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 })
-    }
-
-    // Now update to new password
+    // Directly update password — session already verified above
     const { error: updateError } = await supabase.auth.updateUser({
       password: newPassword,
     })

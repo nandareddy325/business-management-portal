@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Bell, Menu } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { createBrowserClient } from '@supabase/ssr'
 
 interface Notification {
   id: string
@@ -19,6 +19,11 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick, title = 'Dashboard', subtitle = 'Overview' }: HeaderProps) {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [userInitials, setUserInitials] = useState('GK')
@@ -66,7 +71,6 @@ export function Header({ onMenuClick, title = 'Dashboard', subtitle = 'Overview'
     getUser()
   }, [])
 
-  // ── Realtime notifications — fixed chain ──
   useEffect(() => {
     const channel = supabase
       .channel(`leads-notifications-${Date.now()}`)
@@ -115,14 +119,16 @@ export function Header({ onMenuClick, title = 'Dashboard', subtitle = 'Overview'
   const notifTypeStyle: Record<string, string> = { lead: 'bg-blue-50', payment: 'bg-emerald-50', system: 'bg-[#F5F0E8]' }
   const notifTypeIcon: Record<string, string> = { lead: '🎯', payment: '💰', system: '⚙️' }
 
+  // ✅ Employee ki /settings/users path
   const menuItems = userRole === 'admin'
     ? [
         { icon: '⚙️', label: 'Settings',      href: '/dashboard/settings' },
-        { icon: '👤', label: 'My Profile',    href: '/dashboard/settings' },
-        { icon: '🏢', label: 'Company Setup', href: '/dashboard/settings' },
+        { icon: '👤', label: 'My Profile',     href: '/settings/users' },
+        { icon: '🏢', label: 'Company Setup',  href: '/dashboard/settings' },
       ]
     : [
-        { icon: '👤', label: 'My Profile', href: '/dashboard/settings' },
+        { icon: '👤', label: 'My Account',     href: '/settings/users' },
+        { icon: '🔑', label: 'Change Password', href: '/settings/users' },
       ]
 
   return (
@@ -164,7 +170,6 @@ export function Header({ onMenuClick, title = 'Dashboard', subtitle = 'Overview'
           <div className="absolute right-0 top-12 w-[calc(100vw-1.5rem)] max-w-80 rounded-2xl overflow-hidden z-50"
             style={{ background: '#FEFCF8', border: '1px solid #E2D9C8', boxShadow: '0 24px 60px rgba(28,23,18,0.18)' }}>
 
-            {/* Header bar */}
             <div className="flex items-center justify-between px-4 py-3.5"
               style={{ borderBottom: '1px solid #F0EBE0', background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
               <div className="flex items-center gap-2">
@@ -246,7 +251,6 @@ export function Header({ onMenuClick, title = 'Dashboard', subtitle = 'Overview'
           <div className="absolute right-0 top-12 w-[calc(100vw-1.5rem)] max-w-64 rounded-2xl overflow-hidden z-50"
             style={{ border: '1px solid #E2D9C8', boxShadow: '0 24px 60px rgba(28,23,18,0.22)' }}>
 
-            {/* VIP card header */}
             <div className="relative px-4 py-4"
               style={{ background: 'linear-gradient(135deg, #1C1712 0%, #2d2218 100%)' }}>
               <div className="absolute inset-0 opacity-25 pointer-events-none"

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { X, ChevronDown, LogOut } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { createBrowserClient } from '@supabase/ssr'
 
 interface SidebarProps { isOpen: boolean; onClose: () => void }
 
@@ -24,6 +24,7 @@ const SECTION_PERMISSION: Record<string, string> = {
   'FINANCE':     'finance',
   'SYSTEM':      'pipeline',
   'WORK':        'pipeline',
+  'ACCOUNT':     'pipeline',
 }
 
 function buildNavGroups(industrySlug: string) {
@@ -107,6 +108,13 @@ function buildNavGroups(industrySlug: string) {
         { label: 'Payments', icon: '💳', href: '/billing/payments', stage: null },
       ],
     },
+    {
+      // ✅ Employee ki Change Password section
+      section: 'ACCOUNT', icon: '🔑',
+      items: [
+        { label: 'My Account', icon: '👤', href: '/settings/users', stage: null },
+      ],
+    },
   ]
 
   return { adminNavGroups, employeeNavGroups, IND }
@@ -115,6 +123,11 @@ function buildNavGroups(industrySlug: string) {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
 
   const industryFromUrl = Object.keys(INDUSTRIES).find(slug =>
     pathname.includes(`/dashboard/industries/${slug}`)
@@ -148,10 +161,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [empPermissions, setEmpPermissions] = useState<string[]>(['pipeline'])
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     'PIPELINE': true, 'MY PIPELINE': true, 'PROJECTS': false,
-    'HR & ADMIN': false, 'FINANCE': false, 'SYSTEM': false,
+    'HR & ADMIN': false, 'FINANCE': false, 'SYSTEM': false, 'ACCOUNT': true,
   })
 
-  // ── Lock background scroll while the mobile drawer is open ──
   useEffect(() => {
     if (isOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
       document.body.style.overflow = 'hidden'
@@ -241,6 +253,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navGroups = useMemo(() => {
     if (role === 'admin') return adminNavGroups
     return employeeNavGroups.filter(group => {
+      // ACCOUNT section — always show to employees
+      if (group.section === 'ACCOUNT') return true
       const requiredPerm = SECTION_PERMISSION[group.section]
       if (!requiredPerm) return false
       return empPermissions.includes(requiredPerm)
@@ -291,7 +305,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     finance:  { label: 'Finance',  color: '#16A34A', bg: '#F0FDF4' },
   }
 
-  // Badge color for nav items
   const getBadgeStyle = (stage: string | null, active: boolean): React.CSSProperties => {
     if (active) return { background: 'rgba(255,255,255,0.22)', color: '#fff' }
     if (stage === 'followup') return { background: '#FEF3C7', color: '#B45309' }
@@ -302,7 +315,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 40, backdropFilter: 'blur(4px)' }}
@@ -355,7 +367,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 6px rgba(34,197,94,0.5)', flexShrink: 0 }} />
           </div>
 
-          {/* Industry switcher */}
           {activeIndustries.length > 1 && (
             <div style={{ position: 'relative', marginTop: 8 }} onClick={e => e.stopPropagation()}>
               <button onClick={() => setIndustryDropdownOpen(prev => !prev)}
@@ -385,14 +396,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           )}
         </div>
 
-        {/* Divider */}
         <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,#EBEBEB,transparent)', margin: '0 12px', flexShrink: 0 }} />
 
         {/* ── NAV ── */}
         <nav style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '10px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}
           className="scroll-hide">
 
-          {/* Employee permission badges */}
           {role === 'employee' && empPermissions.length > 0 && (
             <div style={{ padding: '4px 6px 10px' }}>
               <p style={{ fontSize: 8, fontWeight: 800, color: '#BBB', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 6 }}>Your Access</p>
@@ -405,12 +414,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
           )}
 
-          {/* ── DASHBOARD PINNED LINK ── */}
+          {/* Dashboard pinned */}
           {(() => {
             const isDashActive = pathname === '/dashboard'
             return (
-              <Link href="/dashboard"
-                onClick={() => onClose()}
+              <Link href="/dashboard" onClick={() => onClose()}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 9, padding: '12px 12px', borderRadius: 14,
                   background: isDashActive ? '#1C1C1E' : '#F5F5F3',
@@ -436,7 +444,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             const hasActive = group.items.some(item => isActive(item.href, item.stage))
             return (
               <div key={group.section} style={{ marginBottom: 2 }}>
-                {/* Section header */}
                 <button onClick={() => toggleSection(group.section)}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 10px', borderRadius: 12, border: 'none', background: hasActive ? '#F5F5F3' : 'transparent', cursor: 'pointer', transition: 'background 0.15s' }}>
                   <span style={{ fontSize: 13 }}>{group.icon}</span>
@@ -444,7 +451,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <ChevronDown size={11} style={{ color: '#CCC', transform: isOpen_ ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
                 </button>
 
-                {/* Nav items */}
                 <div style={{ overflow: 'hidden', maxHeight: isOpen_ ? 600 : 0, opacity: isOpen_ ? 1 : 0, transition: 'max-height 0.22s ease, opacity 0.18s ease' }}>
                   <div style={{ paddingTop: 2, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {group.items.map((item) => {
@@ -489,13 +495,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           )}
         </nav>
 
-        {/* Divider */}
         <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,#EBEBEB,transparent)', margin: '0 12px', flexShrink: 0 }} />
 
         {/* ── USER FOOTER ── */}
         <div style={{ padding: '12px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#F9F9F7', border: '1px solid #EBEBEB', borderRadius: 16, padding: '10px 12px' }}>
-            {/* Avatar */}
             <div style={{ width: 34, height: 34, borderRadius: 12, background: `linear-gradient(135deg,${avatarColor.from},${avatarColor.to})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0, boxShadow: `0 4px 10px ${avatarColor.from}40` }}>
               {userInitials}
             </div>
