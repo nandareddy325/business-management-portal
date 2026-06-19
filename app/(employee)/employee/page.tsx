@@ -22,7 +22,6 @@ export default async function EmployeePortalPage() {
   if (empByUserId) {
     employee = empByUserId
   } else {
-    // Fallback: email తో try చేయి
     const { data: empByEmail } = await supabase
       .from('employees')
       .select('*')
@@ -31,8 +30,6 @@ export default async function EmployeePortalPage() {
 
     if (empByEmail) {
       employee = empByEmail
-
-      // ✅ user_id update చేయి future కోసం
       await supabase
         .from('employees')
         .update({ user_id: user.id })
@@ -40,7 +37,6 @@ export default async function EmployeePortalPage() {
     }
   }
 
-  // Employee record లేకపోతే — profile check చేయి
   if (!employee) {
     const { data: profile } = await supabase
       .from('profiles')
@@ -48,7 +44,6 @@ export default async function EmployeePortalPage() {
       .eq('id', user.id)
       .maybeSingle()
 
-    // Employee role ఉంది కానీ employees table లో లేదు
     if (profile?.role === 'employee') {
       return (
         <div className="min-h-screen bg-[#F7F5F1] flex items-center justify-center px-4">
@@ -63,7 +58,6 @@ export default async function EmployeePortalPage() {
         </div>
       )
     }
-
     redirect('/login')
   }
 
@@ -83,6 +77,9 @@ export default async function EmployeePortalPage() {
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+
+  // CRM Portal: only show if employee has at least one access module (pipeline/projects/hr/finance)
+  const hasCRMAccess = Array.isArray(employee.permissions) && employee.permissions.length > 0
 
   return (
   <div className="min-h-screen bg-[#F7F5F1]">
@@ -154,8 +151,8 @@ export default async function EmployeePortalPage() {
           </p>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { type: 'CL', total: (leaveBalance as any).cl_total, used: (leaveBalance as any).cl_used, num: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', label: 'text-blue-700' },
-              { type: 'SL', total: (leaveBalance as any).sl_total, used: (leaveBalance as any).sl_used, num: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200', label: 'text-amber-700' },
+              { type: 'CL', total: (leaveBalance as any).cl_total, used: (leaveBalance as any).cl_used, num: 'text-blue-600',    bg: 'bg-blue-50',    border: 'border-blue-200',    label: 'text-blue-700' },
+              { type: 'SL', total: (leaveBalance as any).sl_total, used: (leaveBalance as any).sl_used, num: 'text-amber-600',   bg: 'bg-amber-50',   border: 'border-amber-200',   label: 'text-amber-700' },
               { type: 'EL', total: (leaveBalance as any).el_total, used: (leaveBalance as any).el_used, num: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', label: 'text-emerald-700' },
             ].map(l => (
               <div key={l.type} className={`${l.bg} border ${l.border} rounded-xl p-3.5 text-center`}>
@@ -176,10 +173,10 @@ export default async function EmployeePortalPage() {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { label: 'My attendance', sub: 'View history',    icon: Clock,          href: '/employee/attendance', ic: 'bg-blue-50 text-blue-600' },
-          { label: 'Apply leave',   sub: 'Request time off', icon: Calendar,       href: '/employee/leave',      ic: 'bg-amber-50 text-amber-600' },
-          { label: 'Work report',   sub: 'Submit today',    icon: FileText,        href: '/employee/reports',    ic: 'bg-emerald-50 text-emerald-600' },
-          { label: 'My profile',    sub: 'View details',    icon: User,            href: '/employee/profile',    ic: 'bg-purple-50 text-purple-600' },
+          { label: 'My attendance', sub: 'View history',    icon: Clock,     href: '/employee/attendance', ic: 'bg-blue-50 text-blue-600' },
+          { label: 'Apply leave',   sub: 'Request time off', icon: Calendar, href: '/employee/leave',      ic: 'bg-amber-50 text-amber-600' },
+          { label: 'Work report',   sub: 'Submit today',    icon: FileText,  href: '/employee/reports',    ic: 'bg-emerald-50 text-emerald-600' },
+          { label: 'My profile',    sub: 'View details',    icon: User,      href: '/employee/profile',    ic: 'bg-purple-50 text-purple-600' },
         ].map(a => {
           const Icon = a.icon
           return (
@@ -197,18 +194,20 @@ export default async function EmployeePortalPage() {
         })}
       </div>
 
-      {/* CRM Portal */}
-      <Link href="/dashboard"
-        className="bg-[#1C1712] rounded-2xl p-4 flex items-center gap-3.5 hover:bg-[#2d2822] transition-colors">
-        <div className="w-10 h-10 rounded-xl bg-[#B8860B]/15 flex items-center justify-center flex-shrink-0">
-          <LayoutDashboard className="w-5 h-5 text-[#B8860B]" />
-        </div>
-        <div className="flex-1">
-          <p className="text-[14px] font-medium text-white">CRM Portal</p>
-          <p className="text-[11px] text-white/35 mt-0.5">Go to business dashboard</p>
-        </div>
-        <ArrowRight className="w-4 h-4 text-[#B8860B]/60" />
-      </Link>
+      {/* CRM Portal — only show if at least one access module (pipeline/projects/hr/finance) is assigned */}
+      {hasCRMAccess && (
+        <Link href="/dashboard"
+          className="bg-[#1C1712] rounded-2xl p-4 flex items-center gap-3.5 hover:bg-[#2d2822] transition-colors">
+          <div className="w-10 h-10 rounded-xl bg-[#B8860B]/15 flex items-center justify-center flex-shrink-0">
+            <LayoutDashboard className="w-5 h-5 text-[#B8860B]" />
+          </div>
+          <div className="flex-1">
+            <p className="text-[14px] font-medium text-white">CRM Portal</p>
+            <p className="text-[11px] text-white/35 mt-0.5">Go to business dashboard</p>
+          </div>
+          <ArrowRight className="w-4 h-4 text-[#B8860B]/60" />
+        </Link>
+      )}
 
       {/* Logout */}
       <form action="/api/auth/signout" method="POST">
@@ -220,6 +219,5 @@ export default async function EmployeePortalPage() {
 
     </div>
   </div>
-
   )
 }

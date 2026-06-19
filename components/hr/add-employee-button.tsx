@@ -4,38 +4,10 @@ import { useRouter } from 'next/navigation'
 import { Plus, X, Copy, Check } from 'lucide-react'
 
 const ROLE_MODULES = [
-  {
-    id: 'pipeline',
-    label: 'Pipeline',
-    icon: '🎯',
-    desc: 'Leads, Follow-ups, Site Visits, Quotations',
-    color: '#7C3AED',
-    bg: '#F5F3FF',
-  },
-  {
-    id: 'projects',
-    label: 'Projects',
-    icon: '🏗️',
-    desc: 'Project management, Clients, Materials',
-    color: '#EA580C',
-    bg: '#FFF7ED',
-  },
-  {
-    id: 'hr',
-    label: 'HR & Admin',
-    icon: '👥',
-    desc: 'Attendance, Leave management, Employees',
-    color: '#0284C7',
-    bg: '#EFF6FF',
-  },
-  {
-    id: 'finance',
-    label: 'Finance',
-    icon: '💳',
-    desc: 'Billing, Invoices, Payments',
-    color: '#16A34A',
-    bg: '#F0FDF4',
-  },
+  { id: 'pipeline', label: 'Pipeline',   icon: '🎯', desc: 'Leads, Follow-ups, Site Visits, Quotations',  color: '#7C3AED', bg: '#F5F3FF' },
+  { id: 'projects', label: 'Projects',   icon: '🏗️', desc: 'Project management, Clients, Materials',       color: '#EA580C', bg: '#FFF7ED' },
+  { id: 'hr',       label: 'HR & Admin', icon: '👥', desc: 'Attendance, Leave management, Employees',      color: '#0284C7', bg: '#EFF6FF' },
+  { id: 'finance',  label: 'Finance',    icon: '💳', desc: 'Billing, Invoices, Payments',                  color: '#16A34A', bg: '#F0FDF4' },
 ]
 
 export function AddEmployeeButton({ companyId }: { companyId: string }) {
@@ -45,7 +17,7 @@ export function AddEmployeeButton({ companyId }: { companyId: string }) {
   const [error, setError] = useState('')
   const [created, setCreated] = useState<{ email: string; password: string; empCode: string } | null>(null)
   const [copied, setCopied] = useState(false)
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(['pipeline'])
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
   const [form, setForm] = useState({
     full_name: '', email: '', phone: '', designation: '',
     department: '', join_date: '', salary: '',
@@ -65,7 +37,7 @@ export function AddEmployeeButton({ companyId }: { companyId: string }) {
   const handleSubmit = async () => {
     if (!form.full_name.trim()) { setError('Full name required'); return }
     if (!form.email.trim()) { setError('Email required'); return }
-    if (selectedPermissions.length === 0) { setError('Minimum 1 access module select చేయాలి'); return }
+    // ✅ No permission validation — modules are optional
     setLoading(true)
     try {
       const res = await fetch('/api/hr/create-employee', {
@@ -77,7 +49,7 @@ export function AddEmployeeButton({ companyId }: { companyId: string }) {
       if (!res.ok) throw new Error(data.error || 'Failed to create employee')
       setCreated(data.employee)
       setForm({ full_name: '', email: '', phone: '', designation: '', department: '', join_date: '', salary: '' })
-      setSelectedPermissions(['pipeline'])
+      setSelectedPermissions([])
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -143,21 +115,23 @@ export function AddEmployeeButton({ companyId }: { companyId: string }) {
                     <span className="text-xs text-[#7A6E60] font-medium">Login URL</span>
                     <span className="text-xs text-[#B8860B] font-medium">/login</span>
                   </div>
-                  <div className="pt-2 border-t border-[#E2D9C8]">
-                    <span className="text-xs text-[#7A6E60] font-medium block mb-2">Access Modules</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedPermissions.map(pId => {
-                        const mod = ROLE_MODULES.find(m => m.id === pId)
-                        if (!mod) return null
-                        return (
-                          <span key={pId} className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                            style={{ background: mod.bg, color: mod.color }}>
-                            {mod.icon} {mod.label}
-                          </span>
-                        )
-                      })}
+                  {selectedPermissions.length > 0 && (
+                    <div className="pt-2 border-t border-[#E2D9C8]">
+                      <span className="text-xs text-[#7A6E60] font-medium block mb-2">Access Modules</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedPermissions.map(pId => {
+                          const mod = ROLE_MODULES.find(m => m.id === pId)
+                          if (!mod) return null
+                          return (
+                            <span key={pId} className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                              style={{ background: mod.bg, color: mod.color }}>
+                              {mod.icon} {mod.label}
+                            </span>
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <button onClick={handleCopy}
@@ -173,7 +147,6 @@ export function AddEmployeeButton({ companyId }: { companyId: string }) {
               /* ── Form ── */
               <div className="space-y-4">
 
-                {/* Basic Info */}
                 <div>
                   <label className="text-xs text-[#7A6E60] mb-1 block font-medium">Full Name *</label>
                   <input name="full_name" value={form.full_name} onChange={handleChange}
@@ -222,12 +195,15 @@ export function AddEmployeeButton({ companyId }: { companyId: string }) {
                     className="w-full bg-white border border-[#DDD5C4] rounded-xl px-3 py-2.5 text-sm text-[#1C1712] outline-none focus:border-[#B8860B]" />
                 </div>
 
-                {/* ── Role/Access Permissions ── */}
+                {/* ── Portal Access Modules (Optional) ── */}
                 <div>
-                  <label className="text-xs text-[#7A6E60] mb-2 block font-bold uppercase tracking-wider">
-                    Portal Access Modules *
+                  <label className="text-xs text-[#7A6E60] mb-1 block font-bold uppercase tracking-wider">
+                    Portal Access Modules
+                    <span className="ml-2 text-[10px] font-normal normal-case text-[#9A8F82]">(Optional)</span>
                   </label>
-                  <p className="text-[10px] text-[#9A8F82] mb-3">Employee కి ఏ sections visible అవ్వాలో select చేయండి</p>
+                  <p className="text-[10px] text-[#9A8F82] mb-3">
+                    CRM sections కి access ఇవ్వాలంటే select చేయండి — లేకపోయినా employee create అవుతుంది
+                  </p>
                   <div className="grid grid-cols-2 gap-2">
                     {ROLE_MODULES.map(mod => {
                       const selected = selectedPermissions.includes(mod.id)
@@ -240,7 +216,6 @@ export function AddEmployeeButton({ companyId }: { companyId: string }) {
                             borderColor: selected ? mod.color : '#E2D9C8',
                             boxShadow: selected ? `0 2px 12px ${mod.color}20` : 'none',
                           }}>
-                          {/* Checkmark */}
                           <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center transition-all"
                             style={{
                               background: selected ? mod.color : 'transparent',
@@ -253,18 +228,13 @@ export function AddEmployeeButton({ companyId }: { companyId: string }) {
                             )}
                           </div>
                           <span className="text-xl block mb-1.5">{mod.icon}</span>
-                          <p className="text-xs font-bold mb-0.5" style={{ color: selected ? mod.color : '#1C1712' }}>
-                            {mod.label}
-                          </p>
-                          <p className="text-[9px] leading-relaxed" style={{ color: selected ? mod.color : '#9A8F82', opacity: selected ? 0.8 : 1 }}>
-                            {mod.desc}
-                          </p>
+                          <p className="text-xs font-bold mb-0.5" style={{ color: selected ? mod.color : '#1C1712' }}>{mod.label}</p>
+                          <p className="text-[9px] leading-relaxed" style={{ color: selected ? mod.color : '#9A8F82', opacity: selected ? 0.8 : 1 }}>{mod.desc}</p>
                         </button>
                       )
                     })}
                   </div>
 
-                  {/* Selected summary */}
                   {selectedPermissions.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5 px-2 py-1.5 bg-[#F5F0E8] rounded-xl">
                       <span className="text-[10px] text-[#7A6E60] font-medium">Access:</span>
@@ -281,7 +251,7 @@ export function AddEmployeeButton({ companyId }: { companyId: string }) {
                   )}
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-xl px-3 py-2.5 text-xs text-blue-700">
+                <div className="bg-[#FFFBEB] border border-amber-200 rounded-xl px-3 py-2.5 text-xs text-amber-700">
                   💡 Login credentials auto-generate అవుతాయి — copy చేసి employee కి share చేయండి
                 </div>
 
@@ -289,7 +259,9 @@ export function AddEmployeeButton({ companyId }: { companyId: string }) {
 
                 <div className="flex gap-3 pt-1">
                   <button onClick={handleClose}
-                    className="flex-1 border border-[#DDD5C4] text-[#7A6E60] py-2.5 rounded-xl text-sm font-medium hover:bg-[#F5F0E8]">Cancel</button>
+                    className="flex-1 border border-[#DDD5C4] text-[#7A6E60] py-2.5 rounded-xl text-sm font-medium hover:bg-[#F5F0E8]">
+                    Cancel
+                  </button>
                   <button onClick={handleSubmit} disabled={loading}
                     className="flex-1 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-gray-900 py-2.5 rounded-xl text-sm font-semibold">
                     {loading ? 'Creating...' : 'Create Employee'}
