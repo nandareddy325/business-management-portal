@@ -113,9 +113,7 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
   const startCall = () => {
     setPhase('calling')
     timer.current = setInterval(() => setSeconds(d => d + 1), 1000)
-    const a = document.createElement('a')
-    a.href = `tel:${lead.phone}`
-    a.click()
+    window.location.href = `tel:${lead.phone}`
   }
   const endCall = () => { clearInterval(timer.current); setPhase('post') }
   useEffect(() => () => clearInterval(timer.current), [])
@@ -429,9 +427,6 @@ export default function InteriorDesignDashboard() {
   const quotationsPending = leads.filter(l => l.pipeline === 'quotation')
   const winRate = leads.length > 0 ? Math.round((wonLeads.length / leads.length) * 100) : 0
 
-  // ── Today's Calls — followup + called stage leads ──
-  const todayCalls = leads.filter(l => l.pipeline === 'followup' || l.pipeline === 'called')
-
   const filteredLeads = getDateFilteredLeads(leads).filter(l => {
     const ms = l.name.toLowerCase().includes(search.toLowerCase()) || l.phone.includes(search)
     const mf = stageFilter === 'all' ? true : l.pipeline === stageFilter
@@ -530,17 +525,14 @@ export default function InteriorDesignDashboard() {
           ))}
         </div>
 
-        {/* ── KPI ROW 2 — with Today's Calls ── */}
-        <div className="grid grid-cols-4 gap-3">
+        {/* ── KPI ROW 2 ── */}
+        <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Today's Leads", value: todayLeads.length,  color: '#2563EB', onClick: undefined },
-            { label: "Today's Calls", value: todayCalls.length,  color: '#10B981', onClick: () => { setStageFilter('followup'); setActiveTab('list') } },
-            { label: 'Active Pipeline', value: activeLeads.length, color: '#D97706', onClick: undefined },
-            { label: 'Total Leads',   value: leads.length,       color: '#7C3AED', onClick: undefined },
+            { label: "Today's Leads",   value: todayLeads.length,  color: '#2563EB' },
+            { label: 'Active Pipeline', value: activeLeads.length, color: '#D97706' },
+            { label: 'Total Leads',     value: leads.length,       color: '#7C3AED' },
           ].map((s, i) => (
-            <div key={i}
-              onClick={s.onClick}
-              className={`glass rounded-xl px-4 py-3 flex items-center justify-between ${s.onClick ? 'cursor-pointer hover:border-[#D5CFC3] transition-colors' : ''}`}>
+            <div key={i} className="glass rounded-xl px-4 py-3 flex items-center justify-between">
               <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
               <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
             </div>
@@ -586,7 +578,7 @@ export default function InteriorDesignDashboard() {
         {activeTab === 'list' && (
           <div className="glass rounded-2xl overflow-hidden">
 
-            {/* ── SINGLE FILTER ROW ── */}
+            {/* ── SINGLE FILTER ROW — Search + Stage + Date + Add ── */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-[#F0EBE0] overflow-x-auto scroll-x">
 
               {/* Search */}
@@ -627,23 +619,6 @@ export default function InteriorDesignDashboard() {
                   </button>
                 )
               })}
-
-              <div className="w-px h-4 bg-[#E8E2D8] flex-shrink-0" />
-
-              {/* Calls quick filter */}
-              <button
-                onClick={() => {
-                  setStageFilter(prev => prev === 'followup' ? 'all' : 'followup')
-                  setActiveTab('list')
-                }}
-                className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex-shrink-0 flex items-center gap-1"
-                style={{
-                  background: stageFilter === 'followup' ? '#10B981' : 'var(--color-background-secondary, #F5F0E8)',
-                  color: stageFilter === 'followup' ? 'white' : '#7A6E60',
-                  border: `0.5px solid ${stageFilter === 'followup' ? '#10B981' : '#E8E2D8'}`,
-                }}>
-                📞 Calls {todayCalls.length}
-              </button>
 
               <div className="w-px h-4 bg-[#E8E2D8] flex-shrink-0" />
 
@@ -689,7 +664,7 @@ export default function InteriorDesignDashboard() {
                 </button>
               )}
 
-              {/* Add button */}
+              {/* Add button — pushed to right */}
               <button onClick={() => setLeadModalOpen(true)}
                 className="ml-auto px-3 py-1.5 rounded-xl text-xs font-bold flex-shrink-0"
                 style={{ background: '#FFFBEB', border: '0.5px solid #FDE68A', color: '#B45309' }}>
@@ -794,7 +769,7 @@ export default function InteriorDesignDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr style={{ background: '#FAFAF8', borderBottom: '1px solid #F0EBE0' }}>
-                        {['#', 'Lead', 'Phone', 'Requirement', 'Budget', 'Stage', 'Date'].map((h, i) => (
+                        {['#', 'Lead', 'Phone', 'Requirement', 'Budget', 'Stage', 'Date', ''].map((h, i) => (
                           <th key={i} className="text-left text-[9px] font-black uppercase tracking-[2px] px-4 py-3 whitespace-nowrap first:pl-5 last:pr-5 text-[#9A8F82]">{h}</th>
                         ))}
                       </tr>
@@ -833,7 +808,22 @@ export default function InteriorDesignDashboard() {
                                 {stg.icon} {stg.label}
                               </span>
                             </td>
-                            <td className="px-4 py-3.5 pr-5"><p className="text-[10px] whitespace-nowrap text-[#B8B0A0]">{lead.date}</p></td>
+                            <td className="px-4 py-3.5"><p className="text-[10px] whitespace-nowrap text-[#B8B0A0]">{lead.date}</p></td>
+                            <td className="pr-5 pl-2 py-3.5">
+                              <div className={`flex gap-1.5 items-center transition-all duration-200 ${isHov ? 'opacity-100' : 'opacity-0'}`}>
+                                <button onClick={(e) => { e.stopPropagation(); setMoveModal(lead) }}
+                                  className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-[#F5F0E8] text-[#1C1712] border border-[#E8E2D8] hover:scale-105 transition-all">
+                                  Move
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); setCallLead(lead) }}
+                                  className="w-8 h-8 rounded-xl flex items-center justify-center text-white hover:scale-110 transition-all"
+                                  style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 12px rgba(16,185,129,0.4)' }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         )
                       })}
