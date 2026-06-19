@@ -41,31 +41,11 @@ export default function LoginPage() {
       return
     }
 
-    // 3. ✅ Employee redirect — dashboard industries కి పంపు
-    // if (profile?.role === 'employee') {
-    //   if (!profile.company_id) {
-    //     window.location.href = '/employee'
-    //     return
-    //   }
-
-    //   // Company active industries fetch చేయి
-    //   const { data: empIndustries } = await supabase
-    //     .from('company_industries')
-    //     .select('industries(slug)')
-    //     .eq('company_id', profile.company_id)
-    //     .eq('is_active', true)
-    //     .order('created_at', { ascending: true })
-    //     .limit(1)
-
-    //   const slug = (empIndustries?.[0] as any)?.industries?.slug || 'interior-design'
-    //   window.location.href = `/dashboard/industries/${slug}`
-    //   return
-    // }
     // 3. Employee redirect
-if (profile?.role === 'employee') {
-  window.location.href = '/employee'
-  return
-}
+    if (profile?.role === 'employee') {
+      window.location.href = '/employee'
+      return
+    }
 
     // 4. Super admin redirect
     if (profile?.role === 'super_admin') {
@@ -82,14 +62,7 @@ if (profile?.role === 'employee') {
     // 6. Get company's active industries
     const { data: companyIndustries, error: ciErr } = await supabase
       .from('company_industries')
-      .select(`
-        plan,
-        is_active,
-        industries (
-          slug,
-          name
-        )
-      `)
+      .select(`plan, is_active, industries(slug, name)`)
       .eq('company_id', profile.company_id)
       .eq('is_active', true)
       .order('created_at', { ascending: true })
@@ -100,18 +73,13 @@ if (profile?.role === 'employee') {
       return
     }
 
-    // 7. Redirect based on industries
+    // 7. ✅ Always redirect to /dashboard — overall summary page
     if (!companyIndustries || companyIndustries.length === 0) {
       window.location.href = '/onboarding'
       return
     }
 
-    if (companyIndustries.length === 1) {
-      const slug = (companyIndustries[0] as any).industries?.slug
-      window.location.href = `/dashboard/industries/${slug}`
-      return
-    }
-
+    // Single ya multiple — always /dashboard ki
     window.location.href = '/dashboard'
   }
 

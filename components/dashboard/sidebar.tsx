@@ -343,7 +343,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div style={{ width: 34, height: 34, borderRadius: 12, background: 'linear-gradient(135deg,#F5C518,#E0A800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 900, color: '#1C1C1E', boxShadow: '0 4px 12px rgba(245,197,24,0.4)' }}>G</div>
             <div>
               <p style={{ fontSize: 15, fontWeight: 800, color: '#1C1C1E', margin: 0, letterSpacing: -0.3 }}>GK · CRM</p>
-              <p style={{ fontSize: 9, fontWeight: 700, color: '#F5C518', textTransform: 'uppercase', letterSpacing: 2, margin: 0 }}>Premium Suite</p>
+              <p style={{ fontSize: 9, fontWeight: 400, color: '#F5C518', textTransform: 'uppercase', letterSpacing: 2, margin: 0 }}>Premium Suite</p>
             </div>
           </div>
           <button onClick={onClose} className="lg:hidden" aria-label="Close menu"
@@ -359,7 +359,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               {currentIndustry.icon}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 9, color: '#BBB', textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 700, margin: 0 }}>{currentIndustry.label}</p>
+              <p style={{ fontSize: 9, color: '#22C55E', textTransform: 'uppercase', letterSpacing: 1.5, fontWeight: 700, margin: 0 }}>{currentIndustry.label}</p>
               <p style={{ fontSize: 11, fontWeight: 700, color: '#1C1C1E', margin: '2px 0 0' }}>
                 {role === 'admin' ? '👑 Admin Portal' : '👤 User Portal'}
               </p>
@@ -418,7 +418,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           {(() => {
             const isDashActive = pathname === '/dashboard'
             return (
-              <Link href="/dashboard" onClick={() => onClose()}
+              <Link href="/dashboard" onClick={() => { onClose(); window.location.href = '/dashboard' }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 9, padding: '12px 12px', borderRadius: 14,
                   background: isDashActive ? '#1C1C1E' : '#F5F5F3',
