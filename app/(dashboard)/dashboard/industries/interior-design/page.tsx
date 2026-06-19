@@ -111,10 +111,12 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
   const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 
   const startCall = () => {
-    setPhase('calling')
-    timer.current = setInterval(() => setSeconds(d => d + 1), 1000)
-    window.location.href = `tel:${lead.phone}`
-  }
+  setPhase('calling')
+  timer.current = setInterval(() => setSeconds(d => d + 1), 1000)
+  const a = document.createElement('a')
+  a.href = `tel:${lead.phone}`
+  a.click()
+}
   const endCall = () => { clearInterval(timer.current); setPhase('post') }
   useEffect(() => () => clearInterval(timer.current), [])
 
