@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, User, Mail, Phone, Building, Briefcase, Calendar, Wallet } from 'lucide-react'
+import ChangePasswordCard from '@/components/settings/ChangePasswordCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,8 +73,8 @@ export default async function EmployeeProfilePage() {
             <p className="text-[10px] tracking-[2px] text-[#7A6E60] font-medium uppercase">Personal information</p>
           </div>
           {[
-            { label: 'Full name', value: employee.full_name,  Icon: User },
-            { label: 'Email',     value: employee.email,       Icon: Mail },
+            { label: 'Full name', value: employee.full_name,   Icon: User },
+            { label: 'Email',     value: employee.email,        Icon: Mail },
             { label: 'Phone',     value: employee.phone ?? '—', Icon: Phone },
           ].map(item => (
             <div key={item.label} className="flex items-center justify-between px-4 py-3 border-b border-[#F0EBE0] last:border-0">
@@ -124,6 +125,9 @@ export default async function EmployeeProfilePage() {
             </div>
           </div>
         )}
+
+        {/* ✅ Change Password Card */}
+        <ChangePasswordCard />
 
         {/* Back Button */}
         <Link href="/employee"
