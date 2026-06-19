@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Building2, CreditCard, Users } from 'lucide-react'
+import ChangePasswordCard from '@/components/settings/ChangePasswordCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -186,6 +187,9 @@ export default async function SettingsPage() {
           </button>
         </div>
       </div>
+
+      {/* Change Password */}
+      <ChangePasswordCard />
 
     </div>
   )
