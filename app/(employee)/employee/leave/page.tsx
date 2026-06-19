@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { ApplyLeaveButton } from '@/components/employee/apply-leave-button'
 
 export const dynamic = 'force-dynamic'
@@ -28,6 +28,10 @@ export default async function EmployeeLeavePage() {
     supabase.from('leave_balances').select('*').eq('employee_id', employee.id).eq('year', new Date().getFullYear()).single(),
     supabase.from('leave_applications').select('*').eq('employee_id', employee.id).order('created_at', { ascending: false }),
   ])
+
+  const pendingCount  = (applications ?? []).filter((a: any) => a.status === 'pending').length
+  const approvedCount = (applications ?? []).filter((a: any) => a.status === 'approved').length
+  const rejectedCount = (applications ?? []).filter((a: any) => a.status === 'rejected').length
 
   return (
     <div className="min-h-screen bg-[#F7F5F1]">
@@ -93,6 +97,22 @@ export default async function EmployeeLeavePage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Summary stats */}
+        {(applications ?? []).length > 0 && (
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'Pending',  value: pendingCount,  num: 'text-amber-700',   bg: 'bg-amber-50 border-amber-200' },
+              { label: 'Approved', value: approvedCount, num: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200' },
+              { label: 'Rejected', value: rejectedCount, num: 'text-red-700',     bg: 'bg-red-50 border-red-200' },
+            ].map(s => (
+              <div key={s.label} className={`${s.bg} border rounded-xl p-3 text-center`}>
+                <p className={`text-[20px] font-medium leading-none mb-1 ${s.num}`}>{s.value}</p>
+                <p className="text-[10px] text-[#7A6E60]">{s.label}</p>
+              </div>
+            ))}
           </div>
         )}
 
