@@ -786,8 +786,17 @@ export function LeadDetailPanel({ leadId, onClose, onStageUpdate }: {
           {/* ── Header ── */}
           <div className="flex-shrink-0 p-5" style={{ background: 'linear-gradient(135deg, #1C1712, #2d2218)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
             <div className="flex items-start justify-between mb-4">
-              <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center text-white/40 hover:text-white"
-                style={{ background: 'rgba(255,255,255,0.08)' }}>←</button>
+              <button onClick={onClose}
+  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all hover:bg-white/10"
+  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)' }}>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 12H5M12 5l-7 7 7 7"/>
+  </svg>
+  Back
+</button>
+
+
+
               <div className="flex items-center gap-2">
                 <a href={`tel:${lead.phone}`}
                   className="px-3 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-1.5"
