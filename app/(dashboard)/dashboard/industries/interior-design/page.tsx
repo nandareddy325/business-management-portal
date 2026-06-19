@@ -811,7 +811,7 @@ export default function InteriorDesignDashboard() {
                               </span>
                             </td>
                             <td className="px-4 py-3.5"><p className="text-[10px] whitespace-nowrap text-[#B8B0A0]">{lead.date}</p></td>
-                            <td className="pr-5 pl-2 py-3.5">
+                            {/* <td className="pr-5 pl-2 py-3.5">
                               <div className={`flex gap-1.5 items-center transition-all duration-200 ${isHov ? 'opacity-100' : 'opacity-0'}`}>
                                 <button onClick={(e) => { e.stopPropagation(); setMoveModal(lead) }}
                                   className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-[#F5F0E8] text-[#1C1712] border border-[#E8E2D8] hover:scale-105 transition-all">
@@ -825,7 +825,7 @@ export default function InteriorDesignDashboard() {
                                   </svg>
                                 </button>
                               </div>
-                            </td>
+                            </td> */}
                           </tr>
                         )
                       })}
