@@ -27,10 +27,21 @@ const GRADIENTS = [
 type Lead = {
   id: string; name: string; phone: string; email: string
   requirement: string; budget: string; source: string; status: string; pipeline: string; date: string
+  notes?: string
 }
 
 const ini = (n: string) => n.split(' ').map(x => x[0]).join('').slice(0, 2).toUpperCase()
 const getStg = (key: string) => PIPELINE_STAGES.find(s => s.key === key) || PIPELINE_STAGES[0]
+
+// Follow Up leads are tagged in notes as [RNR] or [Call Back] — show the specific badge instead of generic "Follow Up"
+const getLeadBadge = (lead: { pipeline: string; notes?: string }) => {
+  const base = getStg(lead.pipeline)
+  if (lead.pipeline !== 'followup') return base
+  const n = (lead.notes || '').trim()
+  if (n.startsWith('[RNR]')) return { ...base, label: 'RNR', icon: '📵' }
+  if (n.startsWith('[Call Back]')) return { ...base, label: 'Call Back', icon: '🔄' }
+  return base
+}
 
 // ── Mini Calendar ──────────────────────────────────────────
 function MiniCalendar({ selectedDate, onSelect, accentColor }: {
@@ -54,16 +65,21 @@ function MiniCalendar({ selectedDate, onSelect, accentColor }: {
 
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: '#FEFCF8', border: '1px solid #E8E2D8' }}>
+      {/* Month nav */}
       <div className="flex items-center justify-between px-4 py-3" style={{ background: accentColor, borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
         <button onClick={prevMonth} className="w-7 h-7 rounded-lg flex items-center justify-center text-white hover:bg-white/20 transition-colors text-sm font-bold">‹</button>
         <p className="text-sm font-black text-white">{monthNames[viewMonth]} {viewYear}</p>
         <button onClick={nextMonth} className="w-7 h-7 rounded-lg flex items-center justify-center text-white hover:bg-white/20 transition-colors text-sm font-bold">›</button>
       </div>
+
+      {/* Day headers */}
       <div className="grid grid-cols-7 px-3 pt-2">
         {dayNames.map((d, i) => (
           <div key={i} className="text-center text-[9px] font-black text-[#9A8F82] py-1">{d}</div>
         ))}
       </div>
+
+      {/* Days grid */}
       <div className="grid grid-cols-7 px-3 pb-3 gap-y-0.5">
         {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
         {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -90,8 +106,8 @@ function MiniCalendar({ selectedDate, onSelect, accentColor }: {
 }
 
 // ── Call Popup ─────────────────────────────────────────────
-function CallPopup({ lead, onClose, onUpdatePipeline }: {
-  lead: Lead; onClose: () => void; onUpdatePipeline: (id: string, stage: string) => void
+function CallPopup({ lead, onClose, onUpdatePipeline, onMarkCalled }: {
+  lead: Lead; onClose: () => void; onUpdatePipeline: (id: string, stage: string, notes?: string) => void; onMarkCalled?: (id: string) => void
 }) {
   const [phase, setPhase] = useState<'pre' | 'calling' | 'post'>('pre')
   const [seconds, setSeconds] = useState(0)
@@ -100,31 +116,33 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  // Date scheduling
   const todayISO = new Date().toISOString().split('T')[0]
   const [scheduledDate, setScheduledDate] = useState(todayISO)
   const [scheduledTime, setScheduledTime] = useState('10:00')
   const [showCalendar, setShowCalendar] = useState(false)
 
   const timer = useRef<any>(null)
-  const stg = getStg(lead.pipeline)
+  const stg = getLeadBadge(lead)
   const g = GRADIENTS[lead.name.charCodeAt(0) % GRADIENTS.length]
   const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 
   const startCall = () => {
     setPhase('calling')
+    onMarkCalled?.(lead.id)
     timer.current = setInterval(() => setSeconds(d => d + 1), 1000)
-    const a = document.createElement('a')
-    a.href = `tel:${lead.phone}`
-    a.click()
+    window.location.href = `tel:${lead.phone}`
   }
   const endCall = () => { clearInterval(timer.current); setPhase('post') }
   useEffect(() => () => clearInterval(timer.current), [])
 
+  // Outcome config
   const outcomes = [
-    { id: 'interested',    label: '✨ Interested',      color: '#0891B2', accent: '#ECFEFF', desc: 'Showing interest', needsDate: true,  dateLabel: 'Follow-up Date' },
-    { id: 'followup',      label: '🔄 Follow Up',       color: '#D97706', accent: '#FFFBEB', desc: 'Call back needed', needsDate: true,  dateLabel: 'Call Back Date' },
-    { id: 'sitevisit',     label: '🏠 Site Visit',      color: '#EA580C', accent: '#FFF7ED', desc: 'Wants to visit',   needsDate: true,  dateLabel: 'Site Visit Date' },
-    { id: 'notinterested', label: '❌ Not Interested',  color: '#DC2626', accent: '#FEF2F2', desc: 'Mark as lost',     needsDate: false, dateLabel: '' },
+    { id: 'interested', label: '✨ Interested',    color: '#0891B2', accent: '#ECFEFF', desc: 'Showing interest',  needsDate: true,  dateLabel: 'Follow-up Date' },
+    { id: 'rnr',        label: '📵 RNR',           color: '#94A3B8', accent: '#F8FAFC', desc: 'Not responding',    needsDate: true,  dateLabel: 'Retry Date' },
+    { id: 'callback',   label: '🔄 Call Back',     color: '#D97706', accent: '#FFFBEB', desc: 'Callback needed',   needsDate: true,  dateLabel: 'Call Back Date' },
+    { id: 'sitevisit',  label: '🏠 Site Visit',    color: '#EA580C', accent: '#FFF7ED', desc: 'Wants to visit',    needsDate: true,  dateLabel: 'Site Visit Date' },
+    { id: 'notinterested', label: '❌ Not Interested', color: '#DC2626', accent: '#FEF2F2', desc: 'Mark as lost', needsDate: false, dateLabel: '' },
   ]
 
   const selectedOutcome = outcomes.find(o => o.id === outcome)
@@ -142,26 +160,33 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
   }
 
   const stageMap: Record<string, string> = {
-    interested: 'interested', followup: 'followup', sitevisit: 'sitevisit', notinterested: 'lost',
+    interested: 'interested', rnr: 'followup', callback: 'followup', sitevisit: 'sitevisit', notinterested: 'lost',
   }
+
+  // Tag notes so the team can tell RNR vs Call Back apart even though both share the "Follow Up" bucket
+  const outcomeTag: Record<string, string> = { rnr: '[RNR] ', callback: '[Call Back] ' }
 
   const handleSave = async () => {
     if (!outcome) return
     if (needsDate && !scheduledDate) return
     setSaving(true)
+
     try {
       const updateData: any = {
         pipeline_stage: stageMap[outcome] || 'called',
-        notes: note,
+        notes: `${outcomeTag[outcome] || ''}${note}`,
         status: outcome === 'notinterested' ? 'Lost' : 'Active',
       }
+
+      // Save scheduled date to followup_date or sitevisit_date
       if (needsDate && scheduledDate) {
         const dateTime = scheduledTime ? `${scheduledDate}T${scheduledTime}:00` : scheduledDate
         if (outcome === 'sitevisit') updateData.sitevisit_date = dateTime
         else updateData.followup_date = dateTime
       }
+
       await supabase.from('leads').update(updateData).eq('id', lead.id)
-      onUpdatePipeline(lead.id, stageMap[outcome] || 'called')
+      onUpdatePipeline(lead.id, stageMap[outcome] || 'called', updateData.notes)
       setSaved(true)
       setTimeout(onClose, 1400)
     } catch (e) { console.error(e) }
@@ -179,6 +204,8 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 backdrop-blur-md" style={{ background: 'rgba(0,0,0,0.85)' }} onClick={onClose} />
       <div className="relative w-full max-w-sm rounded-3xl overflow-hidden" style={{ background: '#FEFCF8', border: '1px solid #E2D9C8', boxShadow: '0 24px 60px rgba(28,23,18,0.25)', maxHeight: '92vh', overflowY: 'auto' }}>
+
+        {/* Header */}
         <div className="relative p-5 text-center" style={{ background: 'linear-gradient(135deg, #1C1712 0%, #2d2218 100%)', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
           <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 30% 70%, #B8860B, transparent 60%)' }} />
           <button onClick={onClose} className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center text-white/40 hover:text-white" style={{ background: 'rgba(255,255,255,0.08)' }}>✕</button>
@@ -199,6 +226,7 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
           )}
         </div>
 
+        {/* Details chips */}
         <div className="p-3 grid grid-cols-3 gap-2 border-b border-[#F0EBE0]">
           {[{ l: 'Budget', v: lead.budget }, { l: 'Source', v: lead.source }, { l: 'Added', v: lead.date }].map(x => (
             <div key={x.l} className="rounded-xl p-2 text-center" style={{ background: '#F7F5F1', border: '1px solid #EDE8E0' }}>
@@ -215,6 +243,7 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
           </div>
         )}
 
+        {/* Actions */}
         <div className="p-4 space-y-3">
           {phase === 'pre' && (
             <>
@@ -222,7 +251,7 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
                 style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 8px 24px rgba(16,185,129,0.35)' }}>
                 📞 Call Now — {lead.phone}
               </button>
-              <button onClick={() => { setPhase('post') }} className="w-full py-2.5 rounded-xl text-xs font-bold text-[#7A6E60] border border-[#E8E2D8] hover:bg-[#F5F0E8] transition-colors">
+              <button onClick={() => { setPhase('post'); onMarkCalled?.(lead.id) }} className="w-full py-2.5 rounded-xl text-xs font-bold text-[#7A6E60] border border-[#E8E2D8] hover:bg-[#F5F0E8] transition-colors">
                 📝 Log Call Outcome (already called)
               </button>
               <button onClick={() => navigator.clipboard.writeText(lead.phone)} className="w-full py-2 rounded-xl text-xs font-bold text-[#7A6E60] hover:text-[#1C1712] transition-colors border border-[#E8E2D8] hover:bg-[#F5F0E8]">
@@ -241,12 +270,13 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
 
           {phase === 'post' && (
             <>
+              {/* Outcome buttons */}
               <div>
                 <p className="text-[10px] font-black text-[#9A8F82] uppercase tracking-wider mb-2">Call Outcome *</p>
                 <div className="grid grid-cols-2 gap-2">
                   {outcomes.map(o => (
                     <button key={o.id} onClick={() => handleOutcomeSelect(o.id)}
-                      className="p-3 rounded-xl text-left transition-all hover:scale-[1.02]"
+                      className={`p-3 rounded-xl text-left transition-all hover:scale-[1.02] ${o.id === 'notinterested' ? 'col-span-2' : ''}`}
                       style={{
                         background: outcome === o.id ? `${o.color}15` : '#F7F5F1',
                         border: `2px solid ${outcome === o.id ? o.color : '#E8E2D8'}`,
@@ -262,10 +292,11 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
                 </div>
               </div>
 
+              {/* ── DATE SCHEDULER — shows when outcome needs date ── */}
               {needsDate && outcome && (
                 <div className="rounded-2xl overflow-hidden" style={{ border: `2px solid ${selectedOutcome?.color}30`, background: selectedOutcome?.accent }}>
                   <div className="px-4 py-2.5 flex items-center gap-2" style={{ borderBottom: `1px solid ${selectedOutcome?.color}20` }}>
-                    <span className="text-base">{outcome === 'sitevisit' ? '🏠' : outcome === 'followup' ? '🔄' : '✨'}</span>
+                    <span className="text-base">{outcome === 'sitevisit' ? '🏠' : outcome === 'rnr' ? '📵' : outcome === 'callback' ? '🔄' : '✨'}</span>
                     <p className="text-xs font-black" style={{ color: selectedOutcome?.color }}>{selectedOutcome?.dateLabel}</p>
                     {scheduledDate && (
                       <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
@@ -274,6 +305,8 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
                       </span>
                     )}
                   </div>
+
+                  {/* Quick date buttons */}
                   <div className="px-3 py-2 flex gap-2 flex-wrap">
                     {quickDates.map(qd => (
                       <button key={qd.label} onClick={() => { setScheduledDate(qd.value); setShowCalendar(false) }}
@@ -296,6 +329,8 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
                       📅 Pick Date
                     </button>
                   </div>
+
+                  {/* Calendar */}
                   {showCalendar && (
                     <div className="px-3 pb-3">
                       <MiniCalendar
@@ -305,6 +340,8 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
                       />
                     </div>
                   )}
+
+                  {/* Time picker */}
                   <div className="px-3 pb-3 flex items-center gap-2">
                     <span className="text-[10px] font-bold" style={{ color: selectedOutcome?.color }}>⏰ Time:</span>
                     <input type="time" value={scheduledTime} onChange={e => setScheduledTime(e.target.value)}
@@ -314,17 +351,20 @@ function CallPopup({ lead, onClose, onUpdatePipeline }: {
                 </div>
               )}
 
+              {/* Notes */}
               <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Notes about this call..."
                 rows={2} className="w-full rounded-xl px-3 py-2.5 text-sm text-[#1C1712] placeholder:text-[#C4BAB0] outline-none resize-none border-2 border-[#E8E2D8] focus:border-[#B8860B] transition-colors"
                 style={{ background: '#F7F5F1' }} />
 
+              {/* Save button */}
               <button onClick={handleSave} disabled={!outcome || saving || saved || (needsDate && !scheduledDate)}
                 className="w-full py-3.5 rounded-2xl text-sm font-black text-white disabled:opacity-40 transition-all hover:scale-[1.02]"
                 style={{ background: saved ? 'linear-gradient(135deg, #10B981, #059669)' : 'linear-gradient(135deg, #1C1712, #2d2822)', boxShadow: '0 8px 24px rgba(28,23,18,0.2)' }}>
                 {saved ? '✅ Saved!' : saving ? '⏳ Saving...' : needsDate && scheduledDate
-                  ? `💾 Save — ${outcome === 'sitevisit' ? '🏠' : '🔄'} ${formatDisplayDate(scheduledDate)} ${scheduledTime}`
+                  ? `💾 Save — ${outcome === 'sitevisit' ? '🏠' : outcome === 'rnr' ? '📵' : '🔄'} ${formatDisplayDate(scheduledDate)} ${scheduledTime}`
                   : '💾 Save & Update Stage'}
               </button>
+
               {!outcome && <p className="text-center text-[10px] text-[#9A8F82]">⚠ Select an outcome first</p>}
               {outcome && needsDate && !scheduledDate && <p className="text-center text-[10px] text-red-500">⚠ Select a date</p>}
             </>
@@ -352,12 +392,10 @@ export default function InteriorDesignDashboard() {
   const [moveModal, setMoveModal] = useState<Lead | null>(null)
   const [hoveredRow, setHoveredRow] = useState<string | null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
-
-  // ── Date Filter State ──
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all')
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
-  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [pipelineOpen, setPipelineOpen] = useState(false)
+  const [callsOpen, setCallsOpen] = useState(false)
+  const [freshDueOpen, setFreshDueOpen] = useState(true)
+  const [followupDueOpen, setFollowupDueOpen] = useState(true)
 
   useEffect(() => { setStageFilter(urlStage || 'all'); if (urlStage) setActiveTab('list') }, [urlStage])
 
@@ -375,6 +413,7 @@ export default function InteriorDesignDashboard() {
             email: l.email || '', requirement: l.interest || l.notes || '—',
             budget: l.budget || '—', status: l.status || 'New',
             pipeline: l.pipeline_stage || 'new', source: l.source || '—', date: l.date || 'Today',
+            notes: l.notes || '',
           })))
         }
       } catch (err) { console.error(err) }
@@ -393,55 +432,46 @@ export default function InteriorDesignDashboard() {
     return () => window.removeEventListener('sidebar-stage-change', handler as EventListener)
   }, [])
 
-  // ── Date Filter Logic ──
-  const getDateFilteredLeads = (leads: Lead[]) => {
-    const now = new Date()
-    const todayISO = now.toISOString().split('T')[0]
-    const weekStart = new Date(now)
-    weekStart.setDate(now.getDate() - now.getDay())
-    const weekStartISO = weekStart.toISOString().split('T')[0]
-    const monthStartISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-
-    return leads.filter(l => {
-      if (dateFilter === 'all') return true
-      const rawDate = l.date
-      if (!rawDate || rawDate === 'Today') {
-        if (dateFilter === 'custom' && fromDate) return todayISO >= fromDate && (!toDate || todayISO <= toDate)
-        return true
-      }
-      const parsed = new Date(rawDate)
-      if (isNaN(parsed.getTime())) return true
-      const ds = parsed.toISOString().split('T')[0]
-      if (dateFilter === 'today')  return ds === todayISO
-      if (dateFilter === 'week')   return ds >= weekStartISO
-      if (dateFilter === 'month')  return ds >= monthStartISO
-      if (dateFilter === 'custom') return (!fromDate || ds >= fromDate) && (!toDate || ds <= toDate)
-      return true
-    })
-  }
-
   const todayStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-  const todayLeads     = leads.filter(l => l.date === 'Today' || l.date === todayStr)
-  const wonLeads       = leads.filter(l => l.pipeline === 'won' || l.pipeline === 'project_started')
-  const activeLeads    = leads.filter(l => !['won', 'lost', 'project_started'].includes(l.pipeline))
-  const followupsDue   = leads.filter(l => l.pipeline === 'followup')
-  const siteVisits     = leads.filter(l => l.pipeline === 'sitevisit')
+  const todayLeads = leads.filter(l => l.date === 'Today' || l.date === todayStr)
+  const wonLeads = leads.filter(l => l.pipeline === 'won' || l.pipeline === 'project_started')
+  const activeLeads = leads.filter(l => !['won', 'lost', 'project_started'].includes(l.pipeline))
+  const followupsDue = leads.filter(l => l.pipeline === 'followup')
+  const siteVisits = leads.filter(l => l.pipeline === 'sitevisit')
   const quotationsPending = leads.filter(l => l.pipeline === 'quotation')
   const winRate = leads.length > 0 ? Math.round((wonLeads.length / leads.length) * 100) : 0
 
-  // ── Today's Calls — followup + called stage leads ──
-  const todayCalls = leads.filter(l => l.pipeline === 'followup' || l.pipeline === 'called')
+  // ── Today's Calls breakdown ──
+  const todayFresh     = leads.filter(l => (l.date === 'Today' || l.date === todayStr) && l.pipeline === 'new')
+  const todayFollowup  = leads.filter(l => l.pipeline === 'followup')
+  const todayCallsTotal = todayFresh.length + todayFollowup.length
+  const callBreakdown = {
+    followup:    leads.filter(l => l.pipeline === 'followup' && !(l.notes || '').startsWith('[RNR]')).length,
+    rnr:         leads.filter(l => l.pipeline === 'followup' && (l.notes || '').startsWith('[RNR]')).length,
+    notInt:      leads.filter(l => l.pipeline === 'lost').length,
+    sitevisit:   leads.filter(l => l.pipeline === 'sitevisit').length,
+    quotation:   leads.filter(l => l.pipeline === 'quotation').length,
+  }
 
-  const filteredLeads = getDateFilteredLeads(leads).filter(l => {
+  const filteredLeads = leads.filter(l => {
     const ms = l.name.toLowerCase().includes(search.toLowerCase()) || l.phone.includes(search)
     const mf = stageFilter === 'all' ? true : l.pipeline === stageFilter
     return ms && mf
   })
 
-  const updatePipeline = async (leadId: string, stage: string) => {
-    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, pipeline: stage } : l))
+  const updatePipeline = async (leadId: string, stage: string, notes?: string) => {
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, pipeline: stage, ...(notes !== undefined ? { notes } : {}) } : l))
     await supabase.from('leads').update({ pipeline_stage: stage }).eq('id', leadId)
     setMoveModal(null); setCallLead(null)
+  }
+
+  // Mark a lead as "Called" the moment a call is made — only bumps fresh leads
+  // (won't downgrade a lead that has already progressed further in the pipeline)
+  const markAsCalled = async (leadId: string) => {
+    setLeads(prev => prev.map(l => l.id === leadId && l.pipeline === 'new' ? { ...l, pipeline: 'called' } : l))
+    try {
+      await supabase.from('leads').update({ pipeline_stage: 'called' }).eq('id', leadId).eq('pipeline_stage', 'new')
+    } catch (e) { console.error(e) }
   }
 
   const handleLeadsAdded = async (newLeads: any[]) => {
@@ -456,13 +486,13 @@ export default function InteriorDesignDashboard() {
       const inserted = await insertLeadsBulk(fresh.map(l => ({
         name: l.name, phone: l.phone, email: l.email || '',
         source: l.source || '', interest: l.interest || '',
-        budget: l.budget || '', status: 'Active',
+        budget: l.budget || '', status: l.status || 'new',
         pipeline_stage: 'new', industry: 'interior-design',
       })))
       if (inserted.length > 0) setLeads(prev => [...inserted.map((l: any) => ({
         id: l.id, name: l.lead_name || l.name || '', phone: l.phone || '',
         email: l.email || '', requirement: l.interest || '—',
-        budget: l.budget || '—', status: 'Active',
+        budget: l.budget || '—', status: l.status || 'New',
         pipeline: l.pipeline_stage || 'new', source: l.source || '—', date: 'Today',
       })), ...prev])
     } catch (err) { console.error(err) }
@@ -471,11 +501,6 @@ export default function InteriorDesignDashboard() {
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
-
-  const clearAllFilters = () => {
-    setDateFilter('all'); setFromDate(''); setToDate('')
-    setShowDatePicker(false); setStageFilter('all')
-  }
 
   return (
     <>
@@ -490,10 +515,10 @@ export default function InteriorDesignDashboard() {
       <main className="dash-bg flex-1 p-4 md:p-6 space-y-5">
 
         {/* ── HEADER ── */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>Interior Design</p>
-            <h1 className="text-xl md:text-3xl font-bold text-[#1C1712] leading-tight">{greeting}, {userName} 👋</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-[#1C1712]">{greeting}, {userName} 👋</h1>
             <p className="text-sm mt-1 text-[#9A8F82]">{leads.length} leads total · {activeLeads.length} active · {winRate}% conversion</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -530,192 +555,383 @@ export default function InteriorDesignDashboard() {
           ))}
         </div>
 
-        {/* ── KPI ROW 2 — with Today's Calls ── */}
-        <div className="grid grid-cols-4 gap-3">
+        {/* ── KPI ROW 2 ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            { label: "Today's Leads", value: todayLeads.length,  color: '#2563EB', onClick: undefined },
-            { label: "Today's Calls", value: todayCalls.length,  color: '#10B981', onClick: () => { setStageFilter('followup'); setActiveTab('list') } },
-            { label: 'Active Pipeline', value: activeLeads.length, color: '#D97706', onClick: undefined },
-            { label: 'Total Leads',   value: leads.length,       color: '#7C3AED', onClick: undefined },
+            { label: "Today's Leads",  value: todayLeads.length,  color: '#2563EB' },
+            { label: 'Active Pipeline', value: activeLeads.length, color: '#D97706' },
+            { label: 'Total Leads',    value: leads.length,       color: '#7C3AED' },
           ].map((s, i) => (
-            <div key={i}
-              onClick={s.onClick}
-              className={`glass rounded-xl px-4 py-3 flex items-center justify-between ${s.onClick ? 'cursor-pointer hover:border-[#D5CFC3] transition-colors' : ''}`}>
+            <div key={i} className="glass rounded-xl px-4 py-3 flex items-center justify-between">
               <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
-              <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-2xl font-black" style={{ color: s.color }}>{s.value}</p>
             </div>
           ))}
         </div>
 
-        {/* ── PIPELINE STRIP ── */}
-        <div className="glass rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-bold text-[#9A8F82] uppercase tracking-widest">Pipeline</p>
-            <p className="text-[10px] text-[#B8B0A0]">{leads.length} leads</p>
-          </div>
-          <div className="relative">
-            <div className="flex gap-2 scroll-x overflow-x-auto pb-1">
-              {PIPELINE_STAGES.map(stage => {
-                const count = leads.filter(l => l.pipeline === stage.key).length
-                const pct = leads.length > 0 ? (count / leads.length) * 100 : 0
-                const active = stageFilter === stage.key
-                return (
-                  <button key={stage.key}
-                    onClick={() => { setStageFilter(s => s === stage.key ? 'all' : stage.key); setActiveTab('list') }}
-                    className="flex-1 min-w-[72px] p-2.5 rounded-xl text-center transition-all relative overflow-hidden"
-                    style={{
-                      background: active ? `${stage.accent}20` : '#FAFAF8',
-                      border: `1px solid ${active ? stage.accent + '60' : '#E8E2D8'}`,
-                      boxShadow: active ? `0 0 16px ${stage.accent}20` : 'none',
-                    }}>
-                    <p className="text-base mb-1">{stage.icon}</p>
-                    <p className="text-lg font-black text-[#1C1712]">{count}</p>
-                    <p className="text-[7px] font-bold uppercase leading-tight mt-0.5" style={{ color: active ? stage.color : '#9A8F82' }}>{stage.label}</p>
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F0EBE0]">
-                      <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: stage.accent }} />
-                    </div>
-                  </button>
-                )
-              })}
+        {/* ── TODAY'S CALLS (Collapsible) ── */}
+        <div className="glass rounded-2xl overflow-hidden">
+          {/* Header */}
+          <button onClick={() => setCallsOpen(o => !o)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#FDFAF8] transition-colors">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">📞</span>
+              <p className="text-xs font-bold text-[#9A8F82] uppercase tracking-widest">Today's Calls</p>
             </div>
-            <div className="pointer-events-none absolute right-0 top-0 bottom-1 w-10 sm:hidden" style={{ background: 'linear-gradient(90deg, transparent, #FFFFFF)' }} />
+            <div className="flex items-center gap-3">
+              {/* Today summary pills */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0' }}>
+                  🆕 Fresh {todayFresh.length}
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
+                  🔄 Follow {todayFollowup.length}
+                </span>
+                <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full text-white"
+                  style={{ background: '#1C1712' }}>
+                  {todayCallsTotal}
+                </span>
+              </div>
+              <span className="text-[#B8B0A0] text-sm transition-transform duration-200"
+                style={{ display: 'inline-block', transform: callsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                ▾
+              </span>
+            </div>
+          </button>
+
+          {/* Dropdown content */}
+          <div style={{ maxHeight: callsOpen ? 400 : 0, overflow: 'hidden', transition: 'max-height 0.25s ease' }}>
+            <div className="px-4 pb-4">
+
+              {/* Today summary row */}
+              <div className="flex gap-2 mb-3 pt-1">
+                <div className="flex-1 rounded-xl p-3 text-center"
+                  style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                  <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider mb-1">🆕 Fresh</p>
+                  <p className="text-2xl font-black text-emerald-700">{todayFresh.length}</p>
+                  <p className="text-[9px] text-emerald-600 mt-0.5">New leads today</p>
+                </div>
+                <div className="flex-1 rounded-xl p-3 text-center"
+                  style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                  <p className="text-[9px] font-bold text-amber-600 uppercase tracking-wider mb-1">🔄 Follow</p>
+                  <p className="text-2xl font-black text-amber-700">{todayFollowup.length}</p>
+                  <p className="text-[9px] text-amber-600 mt-0.5">Follow-ups due</p>
+                </div>
+                <div className="flex-1 rounded-xl p-3 text-center"
+                  style={{ background: '#1C1712', border: '1px solid #2d2218' }}>
+                  <p className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: '#B8860B' }}>📞 Calls</p>
+                  <p className="text-2xl font-black text-white">{todayCallsTotal}</p>
+                  <p className="text-[9px] mt-0.5" style={{ color: '#7A6E60' }}>Total today</p>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex-1 h-px bg-[#F0EBE0]" />
+                <p className="text-[9px] font-bold text-[#B8B0A0] uppercase tracking-wider">Call Outcomes</p>
+                <div className="flex-1 h-px bg-[#F0EBE0]" />
+              </div>
+
+              {/* Outcome breakdown */}
+              <div className="flex flex-col gap-1.5">
+                {[
+                  { icon: '🔄', label: 'Follow Up',    value: callBreakdown.followup,  color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', onClick: () => { setStageFilter('followup'); setActiveTab('list') } },
+                  { icon: '📵', label: 'RNR',           value: callBreakdown.rnr,       color: '#94A3B8', bg: '#F8FAFC', border: '#E2E8F0', onClick: () => { setStageFilter('followup'); setActiveTab('list') } },
+                  { icon: '❌', label: 'Not Interested',value: callBreakdown.notInt,    color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', onClick: () => { setStageFilter('lost');     setActiveTab('list') } },
+                  { icon: '🏠', label: 'Site Visit',    value: callBreakdown.sitevisit, color: '#EA580C', bg: '#FFF7ED', border: '#FED7AA', onClick: () => { setStageFilter('sitevisit'); setActiveTab('list') } },
+                  { icon: '💰', label: 'Quotation',     value: callBreakdown.quotation, color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', onClick: () => { setStageFilter('quotation'); setActiveTab('list') } },
+                ].map((item, i) => (
+                  <button key={i} onClick={item.onClick}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all hover:scale-[1.01]"
+                    style={{ background: item.bg, border: `1px solid ${item.border}` }}>
+                    <span className="text-base w-6 text-center flex-shrink-0">{item.icon}</span>
+                    <p className="flex-1 text-xs font-semibold" style={{ color: item.color }}>{item.label}</p>
+                    <div className="flex items-center gap-2">
+                      {/* Mini bar */}
+                      <div className="w-16 h-1.5 rounded-full bg-white/60 overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${todayCallsTotal > 0 ? (item.value / todayCallsTotal) * 100 : 0}%`, background: item.color }} />
+                      </div>
+                      <p className="text-sm font-black w-6 text-right" style={{ color: item.color }}>{item.value}</p>
+                    </div>
+                    <span className="text-[10px]" style={{ color: item.color }}>→</span>
+                  </button>
+                ))}
+
+                {/* Total row */}
+                <div className="flex items-center justify-between px-3 py-2 mt-1 rounded-xl"
+                  style={{ background: '#F5F0E8', border: '1px solid #E2D9C8' }}>
+                  <p className="text-xs font-bold text-[#7A6E60]">Total Outcomes</p>
+                  <p className="text-sm font-black text-[#1C1712]">
+                    {callBreakdown.followup + callBreakdown.rnr + callBreakdown.notInt + callBreakdown.sitevisit + callBreakdown.quotation}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── FRESH LEADS DUE ── */}
+        <div className="glass rounded-2xl overflow-hidden">
+          <button onClick={() => setFreshDueOpen(o => !o)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#FDFAF8] transition-colors">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🆕</span>
+              <p className="text-xs font-bold text-[#9A8F82] uppercase tracking-widest">Fresh Leads Due</p>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full text-white"
+                style={{ background: leads.filter(l => l.pipeline === 'new').length > 0 ? '#16A34A' : '#D5CFC3' }}>
+                {leads.filter(l => l.pipeline === 'new').length}
+              </span>
+            </div>
+            <span className="text-[#B8B0A0] text-sm transition-transform duration-200"
+              style={{ display: 'inline-block', transform: freshDueOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+          </button>
+
+          <div style={{ maxHeight: freshDueOpen ? 600 : 0, overflow: 'hidden', transition: 'max-height 0.3s ease' }}>
+            <div className="px-3 pb-3 flex flex-col gap-1.5">
+              {leads.filter(l => l.pipeline === 'new').length === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-2xl mb-1">✅</p>
+                  <p className="text-xs font-bold text-[#9A8F82]">No fresh leads pending!</p>
+                </div>
+              ) : (
+                leads.filter(l => l.pipeline === 'new').slice(0, 20).map((lead, i) => {
+                  const g = GRADIENTS[i % GRADIENTS.length]
+                  return (
+                    <div key={lead.id}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all"
+                      style={{ background: '#F7F5F1', border: '1px solid #EDE8E0' }}>
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
+                        style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})` }}>
+                        {ini(lead.name)}
+                      </div>
+                      <div className="flex-1 min-w-0" onClick={() => setSelectedLeadId(lead.id)} style={{ cursor: 'pointer' }}>
+                        <p className="text-sm font-bold text-[#1C1712] truncate">{lead.name}</p>
+                        <p className="text-[10px] font-mono text-[#7A6E60]">{lead.phone}</p>
+                      </div>
+                      {lead.budget !== '—' && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-lg hidden sm:block"
+                          style={{ background: '#FFFBEB', color: '#B45309', border: '1px solid #FDE68A' }}>
+                          {lead.budget}
+                        </span>
+                      )}
+                      <span className="text-[9px] text-[#B8B0A0] flex-shrink-0 hidden sm:block">{lead.date}</span>
+                      <button onClick={() => setCallLead(lead)}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-white flex-shrink-0 hover:scale-110 transition-all"
+                        style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 3px 10px rgba(16,185,129,0.4)' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  )
+                })
+              )}
+              {leads.filter(l => l.pipeline === 'new').length > 20 && (
+                <button onClick={() => { setStageFilter('new'); setActiveTab('list') }}
+                  className="text-xs font-bold text-center py-2 rounded-xl transition-colors"
+                  style={{ background: '#F5F0E8', color: '#B8860B', border: '1px solid #E2D9C8' }}>
+                  View all {leads.filter(l => l.pipeline === 'new').length} fresh leads →
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── FOLLOWUP DUE ── */}
+        <div className="glass rounded-2xl overflow-hidden">
+          <button onClick={() => setFollowupDueOpen(o => !o)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#FDFAF8] transition-colors">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🔄</span>
+              <p className="text-xs font-bold text-[#9A8F82] uppercase tracking-widest">Follow-up Due</p>
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-full text-white"
+                style={{ background: leads.filter(l => l.pipeline === 'followup').length > 0 ? '#D97706' : '#D5CFC3' }}>
+                {leads.filter(l => l.pipeline === 'followup').length}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                style={{ background: '#F8FAFC', color: '#94A3B8', border: '1px solid #E2E8F0' }}>
+                📵 RNR {leads.filter(l => l.pipeline === 'followup' && (l.notes || '').startsWith('[RNR]')).length}
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                style={{ background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
+                🔄 CB {leads.filter(l => l.pipeline === 'followup' && (l.notes || '').startsWith('[Call Back]')).length}
+              </span>
+              <span className="text-[#B8B0A0] text-sm transition-transform duration-200"
+                style={{ display: 'inline-block', transform: followupDueOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+            </div>
+          </button>
+
+          <div style={{ maxHeight: followupDueOpen ? 600 : 0, overflow: 'hidden', transition: 'max-height 0.3s ease' }}>
+            <div className="px-3 pb-3 flex flex-col gap-1.5">
+              {leads.filter(l => l.pipeline === 'followup').length === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-2xl mb-1">✅</p>
+                  <p className="text-xs font-bold text-[#9A8F82]">No follow-ups pending!</p>
+                </div>
+              ) : (
+                leads.filter(l => l.pipeline === 'followup').slice(0, 20).map((lead, i) => {
+                  const g = GRADIENTS[i % GRADIENTS.length]
+                  const isRNR = (lead.notes || '').startsWith('[RNR]')
+                  const isCB  = (lead.notes || '').startsWith('[Call Back]')
+                  const badge = isRNR
+                    ? { label: '📵 RNR',       color: '#94A3B8', bg: '#F8FAFC', border: '#E2E8F0' }
+                    : isCB
+                    ? { label: '🔄 Call Back', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' }
+                    : { label: '🔄 Follow Up', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' }
+                  return (
+                    <div key={lead.id}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all"
+                      style={{ background: badge.bg, border: `1px solid ${badge.border}` }}>
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
+                        style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})` }}>
+                        {ini(lead.name)}
+                      </div>
+                      <div className="flex-1 min-w-0" onClick={() => setSelectedLeadId(lead.id)} style={{ cursor: 'pointer' }}>
+                        <p className="text-sm font-bold text-[#1C1712] truncate">{lead.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-[10px] font-mono text-[#7A6E60]">{lead.phone}</p>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md"
+                            style={{ background: 'white', color: badge.color, border: `1px solid ${badge.border}` }}>
+                            {badge.label}
+                          </span>
+                        </div>
+                      </div>
+                      {lead.budget !== '—' && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-lg hidden sm:block"
+                          style={{ background: 'white', color: '#B45309', border: '1px solid #FDE68A' }}>
+                          {lead.budget}
+                        </span>
+                      )}
+                      <button onClick={() => setCallLead(lead)}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center text-white flex-shrink-0 hover:scale-110 transition-all"
+                        style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 3px 10px rgba(16,185,129,0.4)' }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  )
+                })
+              )}
+              {leads.filter(l => l.pipeline === 'followup').length > 20 && (
+                <button onClick={() => { setStageFilter('followup'); setActiveTab('list') }}
+                  className="text-xs font-bold text-center py-2 rounded-xl transition-colors"
+                  style={{ background: '#FFFBEB', color: '#B8860B', border: '1px solid #FDE68A' }}>
+                  View all {leads.filter(l => l.pipeline === 'followup').length} follow-ups →
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── PIPELINE STRIP (Collapsible) ── */}
+        <div className="glass rounded-2xl overflow-hidden">
+          {/* Header — click to toggle */}
+          <button
+            onClick={() => setPipelineOpen(o => !o)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#FDFAF8] transition-colors">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🎯</span>
+              <p className="text-xs font-bold text-[#9A8F82] uppercase tracking-widest">Pipeline</p>
+              {stageFilter !== 'all' && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                  style={{ background: `${getStg(stageFilter).accent}20`, color: getStg(stageFilter).color }}>
+                  {getStg(stageFilter).icon} {getStg(stageFilter).label}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] text-[#B8B0A0]">{leads.length} leads</p>
+              <span className="text-[#B8B0A0] text-sm transition-transform duration-200"
+                style={{ display: 'inline-block', transform: pipelineOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                ▾
+              </span>
+            </div>
+          </button>
+
+          {/* Dropdown content */}
+          <div style={{
+            maxHeight: pipelineOpen ? 200 : 0,
+            overflow: 'hidden',
+            transition: 'max-height 0.25s ease',
+          }}>
+            <div className="px-4 pb-4 pt-1">
+              <div className="relative">
+                <div className="flex gap-2 scroll-x overflow-x-auto pb-1">
+                  {PIPELINE_STAGES.map(stage => {
+                    const count = leads.filter(l => l.pipeline === stage.key).length
+                    const pct = leads.length > 0 ? (count / leads.length) * 100 : 0
+                    const active = stageFilter === stage.key
+                    return (
+                      <button key={stage.key}
+                        onClick={() => { setStageFilter(s => s === stage.key ? 'all' : stage.key); setActiveTab('list') }}
+                        className="flex-1 min-w-[72px] p-2.5 rounded-xl text-center transition-all relative overflow-hidden"
+                        style={{
+                          background: active ? `${stage.accent}20` : '#FAFAF8',
+                          border: `1px solid ${active ? stage.accent + '60' : '#E8E2D8'}`,
+                          boxShadow: active ? `0 0 16px ${stage.accent}20` : 'none',
+                        }}>
+                        <p className="text-base mb-1">{stage.icon}</p>
+                        <p className="text-lg font-black text-[#1C1712]">{count}</p>
+                        <p className="text-[7px] font-bold uppercase leading-tight mt-0.5" style={{ color: active ? stage.color : '#9A8F82' }}>{stage.label}</p>
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F0EBE0]">
+                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: stage.accent }} />
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="pointer-events-none absolute right-0 top-0 bottom-1 w-10 sm:hidden" style={{ background: 'linear-gradient(90deg, transparent, #FFFFFF)' }} />
+              </div>
+            </div>
           </div>
         </div>
 
         {/* ── LIST VIEW ── */}
         {activeTab === 'list' && (
           <div className="glass rounded-2xl overflow-hidden">
-
-            {/* ── SINGLE FILTER ROW ── */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#F0EBE0] overflow-x-auto scroll-x">
-
-              {/* Search */}
-              <div className="flex items-center gap-2 bg-[#F7F5F1] border border-[#E8E2D8] rounded-xl px-3 py-1.5 flex-shrink-0 w-44">
-                <span className="text-[#9A8F82] text-xs">🔍</span>
-                <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
-                  className="flex-1 bg-transparent text-xs text-[#1C1712] placeholder:text-[#C4BAB0] outline-none w-full" />
-                {search && <button onClick={() => setSearch('')} className="text-[#9A8F82] hover:text-red-500 text-xs flex-shrink-0">✕</button>}
+            <div className="px-5 py-4 border-b border-[#F0EBE0] flex flex-col gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button onClick={() => setStageFilter('all')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                  style={{ background: stageFilter === 'all' ? '#1C1712' : '#F5F0E8', color: stageFilter === 'all' ? 'white' : '#7A6E60', border: '1px solid #E8E2D8' }}>
+                  All {leads.length}
+                </button>
+                {PIPELINE_STAGES.map(s => {
+                  const c = leads.filter(l => l.pipeline === s.key).length
+                  if (!c) return null
+                  return (
+                    <button key={s.key} onClick={() => setStageFilter(s.key)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                      style={{
+                        background: stageFilter === s.key ? `${s.accent}20` : '#F5F0E8',
+                        color: stageFilter === s.key ? s.color : '#7A6E60',
+                        border: `1px solid ${stageFilter === s.key ? s.accent + '50' : '#E8E2D8'}`,
+                      }}>
+                      {s.icon} {c}
+                    </button>
+                  )
+                })}
               </div>
-
-              <div className="w-px h-4 bg-[#E8E2D8] flex-shrink-0" />
-
-              {/* Stage label */}
-              <span className="text-[9px] font-bold uppercase tracking-[1.5px] text-[#B8B0A0] flex-shrink-0">Stage</span>
-
-              {/* Stage pills */}
-              <button onClick={() => setStageFilter('all')}
-                className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex-shrink-0"
-                style={{
-                  background: stageFilter === 'all' ? '#1C1712' : 'var(--color-background-secondary, #F5F0E8)',
-                  color: stageFilter === 'all' ? 'white' : '#7A6E60',
-                  border: '0.5px solid #E8E2D8',
-                }}>
-                All {leads.length}
-              </button>
-              {PIPELINE_STAGES.map(s => {
-                const c = leads.filter(l => l.pipeline === s.key).length
-                if (!c) return null
-                return (
-                  <button key={s.key} onClick={() => setStageFilter(s.key)}
-                    className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex-shrink-0"
-                    style={{
-                      background: stageFilter === s.key ? `${s.accent}20` : 'var(--color-background-secondary, #F5F0E8)',
-                      color: stageFilter === s.key ? s.color : '#7A6E60',
-                      border: `0.5px solid ${stageFilter === s.key ? s.accent + '60' : '#E8E2D8'}`,
-                    }}>
-                    {s.icon} {c}
-                  </button>
-                )
-              })}
-
-              <div className="w-px h-4 bg-[#E8E2D8] flex-shrink-0" />
-
-              {/* Calls quick filter */}
-              <button
-                onClick={() => {
-                  setStageFilter(prev => prev === 'followup' ? 'all' : 'followup')
-                  setActiveTab('list')
-                }}
-                className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex-shrink-0 flex items-center gap-1"
-                style={{
-                  background: stageFilter === 'followup' ? '#10B981' : 'var(--color-background-secondary, #F5F0E8)',
-                  color: stageFilter === 'followup' ? 'white' : '#7A6E60',
-                  border: `0.5px solid ${stageFilter === 'followup' ? '#10B981' : '#E8E2D8'}`,
-                }}>
-                📞 Calls {todayCalls.length}
-              </button>
-
-              <div className="w-px h-4 bg-[#E8E2D8] flex-shrink-0" />
-
-              {/* Date label */}
-              <span className="text-[9px] font-bold uppercase tracking-[1.5px] text-[#B8B0A0] flex-shrink-0">Date</span>
-
-              {/* Date quick buttons */}
-              {[
-                { label: 'All',   value: 'all'   },
-                { label: 'Today', value: 'today' },
-                { label: 'Week',  value: 'week'  },
-                { label: 'Month', value: 'month' },
-              ].map(f => (
-                <button key={f.value}
-                  onClick={() => { setDateFilter(f.value as any); setShowDatePicker(false) }}
-                  className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex-shrink-0"
-                  style={{
-                    background: dateFilter === f.value && dateFilter !== 'custom' ? '#1C1712' : 'var(--color-background-secondary, #F5F0E8)',
-                    color: dateFilter === f.value && dateFilter !== 'custom' ? 'white' : '#7A6E60',
-                    border: '0.5px solid #E8E2D8',
-                  }}>
-                  {f.label}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 max-w-xs">
+                  <input type="text" placeholder="Search leads..." value={search} onChange={e => setSearch(e.target.value)}
+                    className="w-full rounded-xl pl-8 pr-8 py-2 text-xs text-[#1C1712] placeholder:text-[#C4BAB0] outline-none bg-[#F7F5F1] border border-[#E8E2D8] focus:border-[#B8860B] transition-colors" />
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9A8F82] text-xs">🔍</span>
+                  {search && <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9A8F82] hover:text-red-500 text-xs">✕</button>}
+                </div>
+                <button onClick={() => setLeadModalOpen(true)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold"
+                  style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309' }}>
+                  + Add
                 </button>
-              ))}
-
-              {/* Date range toggle */}
-              <button
-                onClick={() => { setShowDatePicker(p => !p); if (dateFilter !== 'custom') setDateFilter('custom') }}
-                className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all flex-shrink-0 flex items-center gap-1"
-                style={{
-                  background: dateFilter === 'custom' ? '#B8860B' : 'var(--color-background-secondary, #F5F0E8)',
-                  color:      dateFilter === 'custom' ? 'white'   : '#7A6E60',
-                  border: `0.5px solid ${dateFilter === 'custom' ? '#B8860B' : '#E8E2D8'}`,
-                }}>
-                📅 {dateFilter === 'custom' && fromDate ? `${fromDate}${toDate ? '→' + toDate : ''}` : 'Range'}
-              </button>
-
-              {/* Clear all */}
-              {(dateFilter !== 'all' || stageFilter !== 'all' || search) && (
-                <button onClick={() => { clearAllFilters(); setSearch('') }}
-                  className="text-[11px] font-medium text-red-400 hover:text-red-600 flex-shrink-0">
-                  Clear all
-                </button>
-              )}
-
-              {/* Add button */}
-              <button onClick={() => setLeadModalOpen(true)}
-                className="ml-auto px-3 py-1.5 rounded-xl text-xs font-bold flex-shrink-0"
-                style={{ background: '#FFFBEB', border: '0.5px solid #FDE68A', color: '#B45309' }}>
-                + Add
-              </button>
+              </div>
             </div>
-
-            {/* Date Range Picker */}
-            {showDatePicker && (
-              <div className="flex items-center gap-2 px-4 py-2.5 border-b flex-wrap"
-                style={{ background: '#FFFBEB', borderColor: '#FDE68A' }}>
-                <span className="text-[11px] font-medium text-amber-700">From</span>
-                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
-                  className="rounded-lg px-3 py-1.5 text-xs text-[#1C1712] outline-none"
-                  style={{ border: '0.5px solid #FDE68A', background: 'white' }} />
-                <span className="text-[11px] font-medium text-amber-700">To</span>
-                <input type="date" value={toDate} min={fromDate} onChange={e => setToDate(e.target.value)}
-                  className="rounded-lg px-3 py-1.5 text-xs text-[#1C1712] outline-none"
-                  style={{ border: '0.5px solid #FDE68A', background: 'white' }} />
-                <button onClick={() => setShowDatePicker(false)}
-                  className="px-4 py-1.5 rounded-lg text-xs font-medium text-white"
-                  style={{ background: '#1C1712' }}>
-                  Apply
-                </button>
-              </div>
-            )}
 
             {stageFilter !== 'all' && (
               <div className="px-5 py-2 flex items-center gap-2" style={{ background: `${getStg(stageFilter).accent}10`, borderBottom: `1px solid ${getStg(stageFilter).accent}20` }}>
@@ -736,7 +952,7 @@ export default function InteriorDesignDashboard() {
               <div className="text-center py-16">
                 <p className="text-4xl mb-3">{leads.length === 0 ? '🎯' : '🔍'}</p>
                 <p className="text-sm font-bold text-[#1C1712]">{leads.length === 0 ? 'No leads yet' : 'No results'}</p>
-                <p className="text-xs text-[#9A8F82] mt-1">{leads.length === 0 ? 'Add your first lead' : 'Try clearing filters'}</p>
+                <p className="text-xs text-[#9A8F82] mt-1">{leads.length === 0 ? 'Add your first lead' : 'Try clearing filter'}</p>
                 {leads.length === 0 && (
                   <button onClick={() => setLeadModalOpen(true)} className="mt-4 px-5 py-2.5 rounded-xl text-sm font-bold text-white" style={{ background: 'linear-gradient(135deg, #B8860B, #D97706)' }}>
                     + Add First Lead
@@ -748,7 +964,7 @@ export default function InteriorDesignDashboard() {
                 {/* ── MOBILE CARD LIST ── */}
                 <div className="sm:hidden divide-y divide-[#F7F5F1]">
                   {filteredLeads.map((lead, i) => {
-                    const stg = getStg(lead.pipeline)
+                    const stg = getLeadBadge(lead)
                     const g = GRADIENTS[i % GRADIENTS.length]
                     return (
                       <div key={lead.id} onClick={() => setSelectedLeadId(lead.id)} className="px-4 py-3.5 active:bg-[#FDFAF8]">
@@ -794,14 +1010,14 @@ export default function InteriorDesignDashboard() {
                   <table className="w-full">
                     <thead>
                       <tr style={{ background: '#FAFAF8', borderBottom: '1px solid #F0EBE0' }}>
-                        {['#', 'Lead', 'Phone', 'Requirement', 'Budget', 'Stage', 'Date'].map((h, i) => (
+                        {['#', 'Lead', 'Phone', 'Requirement', 'Budget', 'Stage', 'Date', ''].map((h, i) => (
                           <th key={i} className="text-left text-[9px] font-black uppercase tracking-[2px] px-4 py-3 whitespace-nowrap first:pl-5 last:pr-5 text-[#9A8F82]">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {filteredLeads.map((lead, i) => {
-                        const stg = getStg(lead.pipeline)
+                        const stg = getLeadBadge(lead)
                         const g = GRADIENTS[i % GRADIENTS.length]
                         const isHov = hoveredRow === lead.id
                         return (
@@ -809,7 +1025,7 @@ export default function InteriorDesignDashboard() {
                             onClick={() => setSelectedLeadId(lead.id)}
                             onMouseEnter={() => setHoveredRow(lead.id)}
                             onMouseLeave={() => setHoveredRow(null)}
-                            className="transition-all cursor-pointer"
+                            className="transition-all"
                             style={{ borderBottom: '1px solid #F7F5F1', background: isHov ? '#FDFAF8' : 'white' }}>
                             <td className="pl-5 pr-2 py-3.5"><span className="text-[10px] font-bold text-[#C4BAB0]">{i + 1}</span></td>
                             <td className="pl-2 pr-4 py-3.5">
@@ -833,7 +1049,18 @@ export default function InteriorDesignDashboard() {
                                 {stg.icon} {stg.label}
                               </span>
                             </td>
-                            <td className="px-4 py-3.5 pr-5"><p className="text-[10px] whitespace-nowrap text-[#B8B0A0]">{lead.date}</p></td>
+                            <td className="px-4 py-3.5"><p className="text-[10px] whitespace-nowrap text-[#B8B0A0]">{lead.date}</p></td>
+                            <td className="pr-5 pl-2 py-3.5">
+                              <div className={`flex gap-1.5 items-center transition-all duration-200 ${isHov ? 'opacity-100' : 'opacity-0'}`}>
+                                <button onClick={() => setCallLead(lead)}
+                                  className="w-8 h-8 rounded-xl flex items-center justify-center text-white hover:scale-110 transition-all"
+                                  style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 4px 12px rgba(16,185,129,0.4)' }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                  </svg>
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         )
                       })}
@@ -847,7 +1074,6 @@ export default function InteriorDesignDashboard() {
               <div className="px-5 py-3 flex items-center justify-between border-t border-[#F0EBE0]" style={{ background: '#FAFAF8' }}>
                 <p className="text-[10px] text-[#9A8F82]">
                   <span className="font-bold text-[#1C1712]">{filteredLeads.length}</span> of <span className="font-bold text-[#1C1712]">{leads.length}</span> leads
-                  {dateFilter !== 'all' && <span className="ml-1 text-amber-600 font-bold">· date filtered</span>}
                 </p>
               </div>
             )}
@@ -902,6 +1128,16 @@ export default function InteriorDesignDashboard() {
                                 <span className="text-[10px] font-bold text-amber-700">{lead.budget}</span>
                               </div>
                             )}
+                            {stage.key === 'followup' && (() => {
+                              const b = getLeadBadge(lead)
+                              return b.label !== 'Follow Up' ? (
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg mb-1.5 ml-1.5"
+                                  style={{ background: b.light, border: `1px solid ${b.border}` }}>
+                                  <span className="text-[9px]">{b.icon}</span>
+                                  <span className="text-[10px] font-bold" style={{ color: b.color }}>{b.label}</span>
+                                </div>
+                              ) : null
+                            })()}
                             {lead.requirement && lead.requirement !== '—' && (
                               <p className="text-[10px] text-[#9A8F82] mb-2 line-clamp-2 leading-relaxed">{lead.requirement}</p>
                             )}
@@ -948,7 +1184,7 @@ export default function InteriorDesignDashboard() {
         )}
 
         {/* ── MODALS ── */}
-        {callLead && <CallPopup lead={callLead} onClose={() => setCallLead(null)} onUpdatePipeline={updatePipeline} />}
+        {callLead && <CallPopup lead={callLead} onClose={() => setCallLead(null)} onUpdatePipeline={updatePipeline} onMarkCalled={markAsCalled} />}
 
         {moveModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -963,9 +1199,9 @@ export default function InteriorDesignDashboard() {
               </div>
               <div className="px-4 py-3 border-b border-[#F0EBE0]">
                 <p className="text-[9px] text-[#9A8F82] uppercase tracking-wider mb-2">Current</p>
-                <div className="flex items-center gap-2.5 p-2.5 rounded-xl" style={{ background: `${getStg(moveModal.pipeline).accent}15`, border: `1px solid ${getStg(moveModal.pipeline).accent}30` }}>
-                  <span>{getStg(moveModal.pipeline).icon}</span>
-                  <span className="text-sm font-bold" style={{ color: getStg(moveModal.pipeline).color }}>{getStg(moveModal.pipeline).label}</span>
+                <div className="flex items-center gap-2.5 p-2.5 rounded-xl" style={{ background: `${getLeadBadge(moveModal).accent}15`, border: `1px solid ${getLeadBadge(moveModal).accent}30` }}>
+                  <span>{getLeadBadge(moveModal).icon}</span>
+                  <span className="text-sm font-bold" style={{ color: getLeadBadge(moveModal).color }}>{getLeadBadge(moveModal).label}</span>
                 </div>
               </div>
               <div className="p-3 flex flex-col gap-1.5">
@@ -984,7 +1220,6 @@ export default function InteriorDesignDashboard() {
         )}
 
       </main>
-
       {selectedLeadId && (
         <LeadDetailPanel
           leadId={selectedLeadId}
