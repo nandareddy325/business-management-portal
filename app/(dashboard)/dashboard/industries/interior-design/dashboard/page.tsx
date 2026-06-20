@@ -2,21 +2,20 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
-  UserPlus, Zap, Phone, Calendar,
+  UserPlus, Phone, Calendar,
   MapPin, FileText, Trophy, XCircle, TrendingUp
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 const STAGES = [
-  { key: 'new',         label: 'New Leads',    icon: UserPlus, color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', href: '/dashboard/industries/interior-design/new-leads',   description: 'Fresh enquiries just came in' },
-  { key: 'fresh-leads', label: 'Fresh Leads',  icon: Zap,      color: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0', href: '/dashboard/industries/interior-design/fresh-leads',  description: 'Contacted, awaiting response' },
-  { key: 'calling',     label: 'Calling',      icon: Phone,    color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', href: '/dashboard/industries/interior-design/calling',      description: 'In call, follow-up pending' },
-  { key: 'followup',    label: 'Follow Up',    icon: Calendar, color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', href: '/dashboard/industries/interior-design/follow-up',    description: 'Interested — date confirmed' },
-  { key: 'sitevisit',   label: 'Site Visit',   icon: MapPin,   color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC', href: '/dashboard/industries/interior-design/site-visit',   description: 'Site visit scheduled / done' },
-  { key: 'quotation',   label: 'Quotations',   icon: FileText, color: '#DB2777', bg: '#FDF2F8', border: '#FBCFE8', href: '/dashboard/industries/interior-design/quotations',   description: 'Quotation sent to client' },
-  { key: 'won',         label: 'Won / Closing',icon: Trophy,   color: '#B8860B', bg: '#FFFBEB', border: '#FDE68A', href: '/dashboard/industries/interior-design/won',          description: 'Deal closed! 🎉' },
-  { key: 'lost',        label: 'Lost',         icon: XCircle,  color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', href: '/dashboard/industries/interior-design/lost',         description: 'Not interested / dropped' },
+  { key: 'new',       label: 'New Leads',  icon: UserPlus, color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', href: '/dashboard/industries/interior-design/new-leads',  description: 'Fresh enquiries just came in' },
+  { key: 'followup',  label: 'Follow Up',  icon: Calendar, color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', href: '/dashboard/industries/interior-design/follow-up', description: 'Interested — date confirmed' },
+  { key: 'rnr',       label: 'RNR',        icon: Phone,    color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', href: '/dashboard/industries/interior-design/rnr',        description: 'Ring No Response' },
+  { key: 'sitevisit', label: 'Site Visit', icon: MapPin,   color: '#0891B2', bg: '#ECFEFF', border: '#A5F3FC', href: '/dashboard/industries/interior-design/site-visit', description: 'Site visit scheduled / done' },
+  { key: 'quotation', label: 'Quotations', icon: FileText, color: '#DB2777', bg: '#FDF2F8', border: '#FBCFE8', href: '/dashboard/industries/interior-design/quotations', description: 'Quotation sent to client' },
+  { key: 'won',       label: 'Won / Closing', icon: Trophy, color: '#B8860B', bg: '#FFFBEB', border: '#FDE68A', href: '/dashboard/industries/interior-design/won',       description: 'Deal closed! 🎉' },
+  { key: 'lost',      label: 'Lost',       icon: XCircle,  color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', href: '/dashboard/industries/interior-design/lost',       description: 'Not interested / dropped' },
 ]
 
 export default async function InteriorDesignDashboard() {
@@ -30,15 +29,21 @@ export default async function InteriorDesignDashboard() {
 
   const { data: allLeads } = await supabase
     .from('leads')
-    .select('id, pipeline_stage, budget, created_at, lead_name, phone')
+    .select('id, pipeline_stage, budget, created_at, lead_name, phone, notes')
     .eq('company_id', profile.company_id)
     .eq('industry', 'interior-design')
 
   const stageCounts: Record<string, number> = {}
   STAGES.forEach(s => { stageCounts[s.key] = 0 })
+  stageCounts['rnr'] = 0
   allLeads?.forEach((l: any) => {
-    if (l.pipeline_stage && stageCounts[l.pipeline_stage] !== undefined) {
-      stageCounts[l.pipeline_stage]++
+    const s = l.pipeline_stage
+    if (!s) return
+    // RNR = followup with [RNR] tag
+    if (s === 'followup' && String(l.notes || '').startsWith('[RNR]')) {
+      stageCounts['rnr'] = (stageCounts['rnr'] || 0) + 1
+    } else if (stageCounts[s] !== undefined) {
+      stageCounts[s]++
     }
   })
 

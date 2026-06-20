@@ -34,46 +34,45 @@ function buildNavGroups(industrySlug: string) {
     {
       section: 'PIPELINE', icon: '🎯',
       items: [
-        { label: 'Dashboard',     icon: '📊', href: `${IND}/dashboard`,   stage: null },
-        { label: 'All Leads',     icon: '👥', href: `${IND}/all-leads`,   stage: null },
-        { label: 'New Leads',     icon: '🆕', href: `${IND}/new-leads`,   stage: null },
-        { label: 'Fresh Leads',   icon: '⚡', href: `${IND}/fresh-leads`, stage: null },
-        { label: 'Calling',       icon: '📞', href: `${IND}/calling`,     stage: null },
-        { label: 'Follow Up',     icon: '🔄', href: `${IND}/follow-up`,   stage: null },
-        { label: 'Site Visit',    icon: '🏠', href: `${IND}/site-visit`,  stage: null },
-        { label: 'Quotations',    icon: '💰', href: `${IND}/quotations`,  stage: null },
-        { label: 'Won / Closing', icon: '🏆', href: `${IND}/won`,         stage: null },
-        { label: 'Lost',          icon: '❌', href: `${IND}/lost`,        stage: null },
+        { label: 'Dashboard',     icon: '📊', href: `${IND}/dashboard`  },
+        { label: 'All Leads',     icon: '👥', href: `${IND}/all-leads`  },
+        { label: 'New Leads',     icon: '🆕', href: `${IND}/new-leads`  },
+        { label: 'Follow Up',     icon: '🔄', href: `${IND}/follow-up`  },
+        { label: 'RNR',           icon: '📵', href: `${IND}/rnr`        },
+        { label: 'Site Visit',    icon: '🏠', href: `${IND}/site-visit` },
+        { label: 'Quotations',    icon: '💰', href: `${IND}/quotations` },
+        { label: 'Won / Closing', icon: '🏆', href: `${IND}/won`        },
+        { label: 'Lost',          icon: '❌', href: `${IND}/lost`       },
       ],
     },
     {
       section: 'PROJECTS', icon: '🏗️',
       items: [
-        { label: 'All Projects', icon: '🏗️', href: `${IND}/projects`,  stage: null },
-        { label: 'Clients',      icon: '👥', href: `${IND}/clients`,   stage: null },
-        { label: 'Designs',      icon: '🎨', href: `${IND}/designs`,   stage: null },
-        { label: 'Materials',    icon: '📦', href: `${IND}/materials`, stage: null },
+        { label: 'All Projects', icon: '🏗️', href: `${IND}/projects`  },
+        { label: 'Clients',      icon: '👥', href: `${IND}/clients`   },
+        { label: 'Designs',      icon: '🎨', href: `${IND}/designs`   },
+        { label: 'Materials',    icon: '📦', href: `${IND}/materials` },
       ],
     },
     {
       section: 'HR & ADMIN', icon: '👔',
       items: [
-        { label: 'HRMS',       icon: '👔', href: '/hr/employees',  stage: null },
-        { label: 'Attendance', icon: '📅', href: '/hr/attendance', stage: null },
+        { label: 'HRMS',       icon: '👔', href: '/hr/employees'  },
+        { label: 'Attendance', icon: '📅', href: '/hr/attendance' },
       ],
     },
     {
       section: 'FINANCE', icon: '💳',
       items: [
-        { label: 'Invoices', icon: '🧾', href: '/billing/invoices', stage: null },
-        { label: 'Payments', icon: '💳', href: '/billing/payments', stage: null },
-        { label: 'Reports',  icon: '📊', href: '/reports',          stage: null },
+        { label: 'Invoices', icon: '🧾', href: '/billing/invoices' },
+        { label: 'Payments', icon: '💳', href: '/billing/payments' },
+        { label: 'Reports',  icon: '📊', href: '/reports'          },
       ],
     },
     {
       section: 'SYSTEM', icon: '⚙️',
       items: [
-        { label: 'Settings', icon: '⚙️', href: '/dashboard/settings', stage: null },
+        { label: 'Settings', icon: '⚙️', href: '/dashboard/settings' },
       ],
     },
   ]
@@ -82,41 +81,40 @@ function buildNavGroups(industrySlug: string) {
     {
       section: 'MY PIPELINE', icon: '🎯',
       items: [
-        { label: 'Dashboard',   icon: '📊', href: `${IND}/dashboard`,   stage: null },
-        { label: 'All Leads',   icon: '👥', href: `${IND}/all-leads`,   stage: null },
-        { label: 'New Leads',   icon: '🆕', href: `${IND}/new-leads`,   stage: null },
-        { label: 'Fresh Leads', icon: '⚡', href: `${IND}/fresh-leads`, stage: null },
-        { label: 'Calling',     icon: '📞', href: `${IND}/calling`,     stage: null },
-        { label: 'Follow Up',   icon: '🔄', href: `${IND}/follow-up`,   stage: null },
-        { label: 'Site Visit',  icon: '🏠', href: `${IND}/site-visit`,  stage: null },
-        { label: 'Quotations',  icon: '💰', href: `${IND}/quotations`,  stage: null },
-        { label: 'Won',         icon: '🏆', href: `${IND}/won`,         stage: null },
+        { label: 'Dashboard',  icon: '📊', href: `${IND}/dashboard`  },
+        { label: 'All Leads',  icon: '👥', href: `${IND}/all-leads`  },
+        { label: 'New Leads',  icon: '🆕', href: `${IND}/new-leads`  },
+        { label: 'Follow Up',  icon: '🔄', href: `${IND}/follow-up`  },
+        { label: 'RNR',        icon: '📵', href: `${IND}/rnr`        },
+        { label: 'Site Visit', icon: '🏠', href: `${IND}/site-visit` },
+        { label: 'Quotations', icon: '💰', href: `${IND}/quotations` },
+        { label: 'Won',        icon: '🏆', href: `${IND}/won`        },
       ],
     },
     {
       section: 'PROJECTS', icon: '🏗️',
       items: [
-        { label: 'My Projects', icon: '🏗️', href: `${IND}/projects`, stage: null },
-        { label: 'Clients',     icon: '👥', href: `${IND}/clients`,  stage: null },
+        { label: 'My Projects', icon: '🏗️', href: `${IND}/projects` },
+        { label: 'Clients',     icon: '👥', href: `${IND}/clients`  },
       ],
     },
     {
       section: 'HR & ADMIN', icon: '👔',
       items: [
-        { label: 'Attendance', icon: '📅', href: '/hr/attendance', stage: null },
+        { label: 'Attendance', icon: '📅', href: '/hr/attendance' },
       ],
     },
     {
       section: 'FINANCE', icon: '💳',
       items: [
-        { label: 'Invoices', icon: '🧾', href: '/billing/invoices', stage: null },
-        { label: 'Payments', icon: '💳', href: '/billing/payments', stage: null },
+        { label: 'Invoices', icon: '🧾', href: '/billing/invoices' },
+        { label: 'Payments', icon: '💳', href: '/billing/payments' },
       ],
     },
     {
       section: 'ACCOUNT', icon: '🔑',
       items: [
-        { label: 'My Account', icon: '👤', href: '/settings/users', stage: null },
+        { label: 'My Account', icon: '👤', href: '/settings/users' },
       ],
     },
   ]
@@ -126,7 +124,6 @@ function buildNavGroups(industrySlug: string) {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -196,17 +193,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             const { data: ci } = await supabase.from('company_industries').select('industries(slug)').eq('company_id', profile.company_id).eq('is_active', true)
             if (ci) setActiveIndustries(ci.map((c: any) => c.industries?.slug).filter(Boolean))
 
-            // Fetch pipeline_stage counts
             const { data: leads } = await supabase
               .from('leads')
-              .select('pipeline_stage')
+              .select('pipeline_stage, notes')
               .eq('company_id', profile.company_id)
               .eq('industry', 'interior-design')
             if (leads) {
               const counts: Record<string, number> = {}
               leads.forEach(l => {
-                const s = l.pipeline_stage || 'new-leads'
-                counts[s] = (counts[s] || 0) + 1
+                const s = l.pipeline_stage || 'new'
+                // RNR = followup stage with [RNR] tag in notes
+                if (s === 'followup' && String(l.notes || '').startsWith('[RNR]')) {
+                  counts['rnr'] = (counts['rnr'] || 0) + 1
+                } else {
+                  counts[s] = (counts[s] || 0) + 1
+                }
               })
               setStageCounts(counts)
               setTotalLeads(leads.length)
@@ -236,14 +237,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         if (!profile?.company_id) return
         const { data: leads } = await supabase
           .from('leads')
-          .select('pipeline_stage')
+          .select('pipeline_stage, notes')
           .eq('company_id', profile.company_id)
           .eq('industry', 'interior-design')
         if (!leads) return
         const counts: Record<string, number> = {}
         leads.forEach(l => {
-          const s = l.pipeline_stage || 'new-leads'
-          counts[s] = (counts[s] || 0) + 1
+          const s = l.pipeline_stage || 'new'
+          if (s === 'followup' && String(l.notes || '').startsWith('[RNR]')) {
+            counts['rnr'] = (counts['rnr'] || 0) + 1
+          } else {
+            counts[s] = (counts[s] || 0) + 1
+          }
         })
         setStageCounts(counts)
         setTotalLeads(leads.length)
@@ -271,29 +276,26 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     })
   }, [role, adminNavGroups, employeeNavGroups, empPermissions])
 
-  // Badge count per pipeline stage page
   const getBadge = (href: string) => {
     const IND_BASE = `/dashboard/industries/${currentIndustrySlug}`
     const stageMap: Record<string, string> = {
-      [`${IND_BASE}/new-leads`]:   'new-leads',
-      [`${IND_BASE}/fresh-leads`]: 'fresh-leads',
-      [`${IND_BASE}/calling`]:     'calling',
-      [`${IND_BASE}/follow-up`]:   'follow-up',
-      [`${IND_BASE}/site-visit`]:  'site-visit',
-      [`${IND_BASE}/quotations`]:  'quotations',
-      [`${IND_BASE}/won`]:         'won',
-      [`${IND_BASE}/lost`]:        'lost',
+      [`${IND_BASE}/new-leads`]:  'new',
+      [`${IND_BASE}/follow-up`]:  'followup',
+      [`${IND_BASE}/rnr`]:        'rnr',
+      [`${IND_BASE}/site-visit`]: 'sitevisit',
+      [`${IND_BASE}/quotations`]: 'quotation',
+      [`${IND_BASE}/won`]:        'won',
+      [`${IND_BASE}/lost`]:       'lost',
+      [`${IND_BASE}/all-leads`]:  '__total__',
     }
     const stageKey = stageMap[href]
     if (!stageKey) return null
-    const c = stageCounts[stageKey]
+    const c = stageKey === '__total__' ? totalLeads : stageCounts[stageKey]
     return c ? String(c) : null
   }
 
   const isActive = (href: string) => {
-    if (href === `/dashboard/industries/${currentIndustrySlug}`) {
-      return pathname === href
-    }
+    if (href === `/dashboard/industries/${currentIndustrySlug}`) return pathname === href
     return pathname.startsWith(href)
   }
 
@@ -322,37 +324,32 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const getBadgeStyle = (href: string, active: boolean): React.CSSProperties => {
     if (active) return { background: 'rgba(255,255,255,0.22)', color: '#fff' }
-    if (href.includes('/follow-up'))  return { background: '#FEF3C7', color: '#B45309' }
-    if (href.includes('/won'))        return { background: '#DCFCE7', color: '#15803D' }
-    if (href.includes('/lost'))       return { background: '#FEE2E2', color: '#DC2626' }
+    if (href.includes('/follow-up')) return { background: '#FEF3C7', color: '#B45309' }
+    if (href.includes('/rnr'))       return { background: '#FEE2E2', color: '#DC2626' }
+    if (href.includes('/won'))       return { background: '#DCFCE7', color: '#15803D' }
+    if (href.includes('/lost'))      return { background: '#FEE2E2', color: '#DC2626' }
     return { background: '#F0F0EE', color: '#888' }
   }
 
   return (
     <>
       {isOpen && (
-        <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 40, backdropFilter: 'blur(4px)' }}
-          className="lg:hidden"
-          onClick={onClose}
-        />
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 40, backdropFilter: 'blur(4px)' }}
+          className="lg:hidden" onClick={onClose} />
       )}
 
       <aside style={{
         position: 'fixed', top: 0, left: 0, height: '100%', width: 236, maxWidth: '82vw', zIndex: 50,
         display: 'flex', flexDirection: 'column',
-        background: '#FFFFFF',
-        borderRight: '1px solid #EBEBEB',
+        background: '#FFFFFF', borderRight: '1px solid #EBEBEB',
         boxShadow: '4px 0 24px rgba(0,0,0,0.06)',
         transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'transform 0.28s cubic-bezier(0.4,0,0.2,1)',
         fontFamily: "'Inter', sans-serif",
         paddingTop: 'env(safe-area-inset-top)',
-      }}
-        className="lg:translate-x-0"
-      >
+      }} className="lg:translate-x-0">
 
-        {/* ── LOGO ── */}
+        {/* LOGO */}
         <div style={{ padding: '20px 16px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 34, height: 34, borderRadius: 12, background: 'linear-gradient(135deg,#F5C518,#E0A800)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 900, color: '#1C1C1E', boxShadow: '0 4px 12px rgba(245,197,24,0.4)' }}>G</div>
@@ -361,13 +358,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <p style={{ fontSize: 9, fontWeight: 400, color: '#F5C518', textTransform: 'uppercase', letterSpacing: 2, margin: 0 }}>Premium Suite</p>
             </div>
           </div>
-          <button onClick={onClose} className="lg:hidden" aria-label="Close menu"
+          <button onClick={onClose} className="lg:hidden"
             style={{ width: 36, height: 36, borderRadius: 10, background: '#F5F5F3', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#888' }}>
             <X size={16} />
           </button>
         </div>
 
-        {/* ── INDUSTRY CHIP ── */}
+        {/* INDUSTRY CHIP */}
         <div style={{ padding: '0 12px 14px', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#F9F9F7', border: '1px solid #EBEBEB', borderRadius: 16, padding: '10px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
             <div style={{ width: 32, height: 32, background: '#fff', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, border: '1px solid #F0F0EE', flexShrink: 0, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -398,7 +395,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     return (
                       <Link key={slug} href={`/dashboard/industries/${slug}/dashboard`}
                         onClick={() => { handleIndustrySwitch(slug); setIndustryDropdownOpen(false) }}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', fontSize: 11, fontWeight: 600, background: isCurrent ? '#1C1C1E' : 'transparent', color: isCurrent ? '#fff' : '#666', textDecoration: 'none', transition: 'background 0.15s' }}>
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', fontSize: 11, fontWeight: 600, background: isCurrent ? '#1C1C1E' : 'transparent', color: isCurrent ? '#fff' : '#666', textDecoration: 'none' }}>
                         <span style={{ fontSize: 14 }}>{ind.icon}</span>
                         <span style={{ flex: 1 }}>{ind.label}</span>
                         {isCurrent && <span style={{ fontSize: 8, background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: 20, fontWeight: 800, letterSpacing: 1 }}>ACTIVE</span>}
@@ -413,9 +410,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,#EBEBEB,transparent)', margin: '0 12px', flexShrink: 0 }} />
 
-        {/* ── NAV ── */}
-        <nav style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '10px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}
-          className="scroll-hide">
+        {/* NAV */}
+        <nav style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '10px 10px', display: 'flex', flexDirection: 'column', gap: 2 }} className="scroll-hide">
 
           {role === 'employee' && empPermissions.length > 0 && (
             <div style={{ padding: '4px 6px 10px' }}>
@@ -429,15 +425,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
           )}
 
-
-
           {navGroups.map((group) => {
             const isOpen_ = openSections[group.section] ?? true
             const hasActive = group.items.some(item => isActive(item.href))
             return (
               <div key={group.section} style={{ marginBottom: 2 }}>
                 <button onClick={() => toggleSection(group.section)}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 10px', borderRadius: 12, border: 'none', background: hasActive ? '#F5F5F3' : 'transparent', cursor: 'pointer', transition: 'background 0.15s' }}>
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 10px', borderRadius: 12, border: 'none', background: hasActive ? '#F5F5F3' : 'transparent', cursor: 'pointer' }}>
                   <span style={{ fontSize: 13 }}>{group.icon}</span>
                   <span style={{ flex: 1, textAlign: 'left', fontSize: 9, fontWeight: 800, color: '#BBB', textTransform: 'uppercase', letterSpacing: 2 }}>{group.section}</span>
                   <ChevronDown size={11} style={{ color: '#CCC', transform: isOpen_ ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
@@ -449,15 +443,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       const active = isActive(item.href)
                       const badge = getBadge(item.href)
                       return (
-                        <Link key={item.label} href={item.href}
-                          onClick={onClose}
+                        <Link key={item.label} href={item.href} onClick={onClose}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 9, padding: '11px 10px', borderRadius: 12,
                             background: active ? '#1C1C1E' : 'transparent',
                             color: active ? '#fff' : '#555',
                             fontWeight: active ? 700 : 500,
                             fontSize: 12, textDecoration: 'none',
-                            transition: 'all 0.15s',
                             boxShadow: active ? '0 2px 10px rgba(0,0,0,0.12)' : 'none',
                           }}
                           onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#F5F5F3' }}
@@ -477,22 +469,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
             )
           })}
-
-          {role === 'employee' && navGroups.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px 16px' }}>
-              <p style={{ fontSize: 28, margin: '0 0 10px' }}>🔒</p>
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>No modules assigned</p>
-              <p style={{ fontSize: 11, color: '#BBB', margin: '4px 0 0' }}>Contact your admin</p>
-            </div>
-          )}
         </nav>
 
         <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,#EBEBEB,transparent)', margin: '0 12px', flexShrink: 0 }} />
 
-        {/* ── USER FOOTER ── */}
+        {/* USER FOOTER */}
         <div style={{ padding: '12px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#F9F9F7', border: '1px solid #EBEBEB', borderRadius: 16, padding: '10px 12px' }}>
-            <div style={{ width: 34, height: 34, borderRadius: 12, background: `linear-gradient(135deg,${avatarColor.from},${avatarColor.to})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0, boxShadow: `0 4px 10px ${avatarColor.from}40` }}>
+            <div style={{ width: 34, height: 34, borderRadius: 12, background: `linear-gradient(135deg,${avatarColor.from},${avatarColor.to})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
               {userInitials}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -504,10 +488,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
               <p style={{ fontSize: 10, color: '#BBB', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userCompany}</p>
             </div>
-            <button onClick={handleLogout} aria-label="Log out"
-              style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid #EBEBEB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#BBB', flexShrink: 0, transition: 'all 0.15s' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#FEF2F2'; (e.currentTarget as HTMLElement).style.color = '#EF4444'; (e.currentTarget as HTMLElement).style.borderColor = '#FECACA' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; (e.currentTarget as HTMLElement).style.color = '#BBB'; (e.currentTarget as HTMLElement).style.borderColor = '#EBEBEB' }}>
+            <button onClick={handleLogout}
+              style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid #EBEBEB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#BBB', flexShrink: 0 }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#FEF2F2'; (e.currentTarget as HTMLElement).style.color = '#EF4444' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; (e.currentTarget as HTMLElement).style.color = '#BBB' }}>
               <LogOut size={14} />
             </button>
           </div>
