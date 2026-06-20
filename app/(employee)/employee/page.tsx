@@ -90,7 +90,7 @@ export default async function EmployeePortalPage() {
               <span className="text-[11px] text-[#B8860B] font-medium">
                 Present today
                 {(todayAttendance as any)?.check_in && (
-                  <> · In: {new Date((todayAttendance as any).check_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</>
+                  <> · In: {new Date((todayAttendance as any).check_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })}</>
                 )}
               </span>
             </div>
@@ -106,33 +106,14 @@ export default async function EmployeePortalPage() {
             Mark Attendance
           </p>
 
-          {/* Status indicator */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <div className={`w-2.5 h-2.5 rounded-full ${isCheckedIn ? 'bg-emerald-400' : 'bg-[#E2D9C8]'}`} />
-              <span className="text-xs font-medium text-[#7A6E60]">
-                Check In: {isCheckedIn
-                  ? new Date((todayAttendance as any).check_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-                  : '—'}
-              </span>
-            </div>
-            <div className="w-px h-4 bg-[#E2D9C8]" />
-            <div className="flex items-center gap-2">
-              <div className={`w-2.5 h-2.5 rounded-full ${isCheckedOut ? 'bg-red-400' : 'bg-[#E2D9C8]'}`} />
-              <span className="text-xs font-medium text-[#7A6E60]">
-                Check Out: {isCheckedOut
-                  ? new Date((todayAttendance as any).check_out).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-                  : '—'}
-              </span>
-            </div>
-          </div>
-
-          {/* Mark Button — client component */}
+          {/* Mark Button — client component handles status dots */}
           <AttendanceMarkButton
             employeeId={employee.id}
             isCheckedIn={isCheckedIn}
             isCheckedOut={isCheckedOut}
             attendanceId={(todayAttendance as any)?.id ?? null}
+            checkInTimeISO={(todayAttendance as any)?.check_in ?? null}
+            checkOutTimeISO={(todayAttendance as any)?.check_out ?? null}
           />
         </div>
 
@@ -151,7 +132,7 @@ export default async function EmployeePortalPage() {
               </p>
               {(todayAttendance as any)?.check_in && (
                 <p className="text-[11px] text-emerald-600 mt-1">
-                  In: {new Date((todayAttendance as any).check_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  In: {new Date((todayAttendance as any).check_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })}
                 </p>
               )}
             </div>
