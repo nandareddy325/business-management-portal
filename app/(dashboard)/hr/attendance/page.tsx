@@ -21,6 +21,12 @@ const GRADIENTS = [
 
 const ini = (name: string) => name?.split(' ').map((x: string) => x[0]).join('').slice(0, 2).toUpperCase() || '?'
 
+const fmtIST = (iso: string) =>
+  new Date(iso).toLocaleTimeString('en-IN', {
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'Asia/Kolkata'
+  })
+
 export default async function AttendancePage({
   searchParams,
 }: {
@@ -41,7 +47,6 @@ export default async function AttendancePage({
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   })
 
-  // Step 1: Fetch all active employees for this company
   const { data: employees } = await supabase
     .from('employees')
     .select('id, full_name, designation, department')
@@ -49,8 +54,6 @@ export default async function AttendancePage({
     .eq('is_active', true)
     .order('full_name')
 
-  // Step 2: Fetch attendance by employee_id list — NOT by company_id
-  // This ensures employee self-marked attendance (which may not have company_id) is also included
   const employeeIds = (employees ?? []).map((e: any) => e.id)
 
   const { data: attendance } = employeeIds.length > 0
@@ -76,7 +79,7 @@ export default async function AttendancePage({
   return (
     <div className="space-y-5 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>HR & Admin</p>
@@ -94,7 +97,7 @@ export default async function AttendancePage({
         </div>
       </div>
 
-      {/* ── KPI Cards ── */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total Staff', value: totalCount,   color: '#7C3AED', icon: '👥' },
@@ -117,7 +120,7 @@ export default async function AttendancePage({
         ))}
       </div>
 
-      {/* ── Progress bar ── */}
+      {/* Progress bar */}
       {totalCount > 0 && (
         <div className="bg-white border border-[#E8E2D8] rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-2">
@@ -132,7 +135,6 @@ export default async function AttendancePage({
               <p className="text-[9px] text-[#9A8F82]">attendance rate</p>
             </div>
           </div>
-
           <div className="h-3 bg-[#F0EBE0] rounded-full overflow-hidden flex">
             <div className="h-full transition-all duration-700 rounded-l-full"
               style={{ width: `${totalCount > 0 ? (presentCount / totalCount) * 100 : 0}%`, background: '#16A34A' }} />
@@ -141,7 +143,6 @@ export default async function AttendancePage({
             <div className="h-full transition-all duration-700"
               style={{ width: `${totalCount > 0 ? (absentCount / totalCount) * 100 : 0}%`, background: '#DC2626' }} />
           </div>
-
           <div className="flex items-center gap-4 mt-2">
             {[
               { label: 'Present', color: '#16A34A', count: presentCount },
@@ -155,7 +156,6 @@ export default async function AttendancePage({
               </div>
             ))}
           </div>
-
           {unmarkedCount > 0 && (
             <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-xl"
               style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
@@ -166,14 +166,13 @@ export default async function AttendancePage({
         </div>
       )}
 
-      {/* ── Table ── */}
+      {/* Table */}
       <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
-
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr style={{ background: '#FAFAF8', borderBottom: '1px solid #F0EBE0' }}>
-                {['#', 'Employee', 'Department', 'Designation', 'Status', 'Check In', 'Notes'].map(h => (
+                {['#', 'Employee', 'Department', 'Designation', 'Status', 'Check In', 'Check Out', 'Notes'].map(h => (
                   <th key={h} className="text-left text-[9px] font-black text-[#9A8F82] uppercase tracking-[2px] px-4 py-3 whitespace-nowrap first:pl-5 last:pr-5">{h}</th>
                 ))}
               </tr>
@@ -218,12 +217,23 @@ export default async function AttendancePage({
                         recordId={rec?.id ?? null}
                       />
                     </td>
+                    {/* Check In — IST */}
                     <td className="px-4 py-3.5">
-                      <p className="text-xs text-[#7A6E60] font-mono">
-                        {rec?.check_in
-                          ? new Date(rec.check_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-                          : '—'}
-                      </p>
+                      {rec?.check_in ? (
+                        <span className="text-xs font-mono font-bold text-emerald-700 px-2 py-1 rounded-lg"
+                          style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                          🟢 {fmtIST(rec.check_in)}
+                        </span>
+                      ) : <span className="text-[#C4BAB0] text-xs">—</span>}
+                    </td>
+                    {/* Check Out — IST */}
+                    <td className="px-4 py-3.5">
+                      {rec?.check_out ? (
+                        <span className="text-xs font-mono font-bold text-red-700 px-2 py-1 rounded-lg"
+                          style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                          🔴 {fmtIST(rec.check_out)}
+                        </span>
+                      ) : <span className="text-[#C4BAB0] text-xs">—</span>}
                     </td>
                     <td className="px-4 py-3.5 pr-5">
                       <p className="text-xs text-[#7A6E60] max-w-[140px] truncate">{rec?.notes ?? '—'}</p>
@@ -231,10 +241,9 @@ export default async function AttendancePage({
                   </tr>
                 )
               })}
-
               {!employees?.length && (
                 <tr>
-                  <td colSpan={7} className="py-20 text-center">
+                  <td colSpan={8} className="py-20 text-center">
                     <div className="w-16 h-16 bg-[#F5F0E8] border border-[#E2D9C8] rounded-2xl flex items-center justify-center mx-auto mb-4">
                       <Calendar className="w-8 h-8 text-[#B8860B]" />
                     </div>
@@ -247,7 +256,7 @@ export default async function AttendancePage({
           </table>
         </div>
 
-        {/* Mobile cards */}
+        {/* Mobile */}
         <div className="md:hidden divide-y divide-[#F0EBE0]">
           {(employees ?? []).map((emp: any, i: number) => {
             const rec = attendanceMap[emp.id]
@@ -271,14 +280,30 @@ export default async function AttendancePage({
                   currentStatus={rec?.status ?? null}
                   recordId={rec?.id ?? null}
                 />
+                {/* Mobile check in/out times */}
+                {(rec?.check_in || rec?.check_out) && (
+                  <div className="flex items-center gap-3 mt-2">
+                    {rec?.check_in && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg text-emerald-700"
+                        style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                        🟢 In: {fmtIST(rec.check_in)}
+                      </span>
+                    )}
+                    {rec?.check_out && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg text-red-700"
+                        style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                        🔴 Out: {fmtIST(rec.check_out)}
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })}
         </div>
 
         {employees?.length > 0 && (
-          <div className="px-5 py-3 border-t border-[#F0EBE0] flex items-center justify-between"
-            style={{ background: '#FAFAF8' }}>
+          <div className="px-5 py-3 border-t border-[#F0EBE0] flex items-center justify-between" style={{ background: '#FAFAF8' }}>
             <p className="text-[10px] text-[#9A8F82]">
               <span className="font-bold text-[#1C1712]">{markedCount}</span> of <span className="font-bold text-[#1C1712]">{totalCount}</span> marked
             </p>
