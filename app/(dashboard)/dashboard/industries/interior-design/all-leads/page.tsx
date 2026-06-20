@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { Users } from 'lucide-react'
-import { LeadDetailPanel } from '@/components/dashboard/lead-detail-panel'
 
 const GRADIENTS = [
   ['#7C3AED', '#4F46E5'], ['#0891B2', '#0E7490'], ['#059669', '#047857'],
@@ -52,6 +52,8 @@ const INTEREST_CONFIG: Record<string, { bg: string; color: string }> = {
 const ini = (name: string) =>
   name?.split(' ').map((x: string) => x[0]).join('').slice(0, 2).toUpperCase() || '?'
 
+const LEAD_BASE = '/dashboard/industries/interior-design/leads'
+
 const UNIQUE_STAGES = [
   { key: 'new',         label: '🆕 New Leads' },
   { key: 'fresh-leads', label: '⚡ Fresh Leads' },
@@ -64,10 +66,10 @@ const UNIQUE_STAGES = [
 ]
 
 export default function AllLeadsPage() {
+  const router = useRouter()
   const [leads, setLeads] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<string | null>(null)
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -205,7 +207,8 @@ export default function AllLeadsPage() {
                   const int = INTEREST_CONFIG[l.interest] ?? { bg: '#F5F0E8', color: '#7A6E60' }
                   const budget = (() => { const b = parseFloat(String(l.budget || '').replace(/[^0-9.]/g, '')); return l.budget ? (isNaN(b) ? l.budget : '₹' + b.toLocaleString('en-IN')) : null })()
                   return (
-                    <tr key={l.id} onClick={() => setSelectedLeadId(l.id)}
+                    <tr key={l.id}
+                      onClick={() => router.push(`${LEAD_BASE}/${l.id}`)}
                       className="border-b border-[#F7F5F1] last:border-0 hover:bg-[#FDFAF8] transition-colors cursor-pointer">
                       <td className="pl-5 pr-2 py-3.5"><span className="text-[10px] font-bold text-[#C4BAB0]">{i + 1}</span></td>
                       <td className="pl-2 pr-4 py-3.5">
@@ -263,7 +266,9 @@ export default function AllLeadsPage() {
               const int = INTEREST_CONFIG[l.interest] ?? { bg: '#F5F0E8', color: '#7A6E60' }
               const budget = (() => { const b = parseFloat(String(l.budget || '').replace(/[^0-9.]/g, '')); return l.budget ? (isNaN(b) ? l.budget : '₹' + b.toLocaleString('en-IN')) : null })()
               return (
-                <div key={l.id} onClick={() => setSelectedLeadId(l.id)} className="px-4 py-4 hover:bg-[#FDFAF8] transition-colors cursor-pointer">
+                <div key={l.id}
+                  onClick={() => router.push(`${LEAD_BASE}/${l.id}`)}
+                  className="px-4 py-4 hover:bg-[#FDFAF8] transition-colors cursor-pointer">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
                       style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 3px 10px ${g[0]}40` }}>
@@ -295,15 +300,6 @@ export default function AllLeadsPage() {
             <p className="text-[10px] text-[#B8B0A0]">Interior Design · GK CRM</p>
           </div>
         </div>
-      )}
-
-      {/* Lead Detail Panel */}
-      {selectedLeadId && (
-        <LeadDetailPanel
-          leadId={selectedLeadId}
-          onClose={() => setSelectedLeadId(null)}
-          onStageUpdate={() => { setSelectedLeadId(null); fetchLeads() }}
-        />
       )}
     </div>
   )
