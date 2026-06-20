@@ -78,10 +78,16 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
+  const getCurrentUserId = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    return user?.id ?? null
+  }
+
   const handleStageChange = async (stageKey: string) => {
     if (savingStage) return
     setSavingStage(true)
     const prev = lead.pipeline_stage
+    const userId = await getCurrentUserId()
     setLead((l: any) => ({ ...l, pipeline_stage: stageKey }))
     await supabase.from('leads').update({ pipeline_stage: stageKey }).eq('id', leadId)
     try {
@@ -90,6 +96,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
         title: 'Stage Updated',
         description: `${prev} → ${stageKey}`,
         stage_from: prev, stage_to: stageKey,
+        user_id: userId,
         created_at: new Date().toISOString(),
       })
       const { data: acts } = await supabase.from('lead_activities').select('*').eq('lead_id', leadId).order('created_at', { ascending: false })
@@ -101,11 +108,13 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const handleSaveNote = async () => {
     if (!noteText.trim()) return
     setSavingNote(true)
+    const userId = await getCurrentUserId()
     try {
       await supabase.from('lead_activities').insert({
         lead_id: leadId, type: noteType,
         title: noteType === 'note' ? 'Note added' : noteType === 'call' ? 'Call logged' : noteType === 'sitevisit' ? 'Site Visit' : 'Quotation',
         description: noteText.trim(),
+        user_id: userId,
         created_at: new Date().toISOString(),
       })
       if (noteType === 'note') {
@@ -319,6 +328,12 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
                         <p className="text-[9px] text-[#C4BAB0] whitespace-nowrap">{timeAgo(act.created_at)}</p>
                       </div>
                       {act.description && <p className="text-[11px] text-[#7A6E60] mt-1 leading-relaxed">{act.description}</p>}
+                      {act.user_name && (
+                        <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold"
+                          style={{ background: act.type === 'call' ? '#F0FDF4' : '#F5F3FF', color: act.type === 'call' ? '#16A34A' : '#7C3AED' }}>
+                          👤 {act.user_name}
+                        </span>
+                      )}
                       <p className="text-[9px] text-[#C4BAB0] mt-1">{fmtDate(act.created_at)}</p>
                     </div>
                   </div>

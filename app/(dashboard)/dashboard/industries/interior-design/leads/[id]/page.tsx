@@ -17,11 +17,32 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
 
   let activities: any[] = []
   try {
-    const { data: acts } = await supabase
+    // Use admin client to bypass RLS on lead_activities
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    const { data: acts } = await supabaseAdmin
       .from('lead_activities').select('*')
       .eq('lead_id', id)
       .order('created_at', { ascending: false })
-    activities = acts ?? []
+
+    // Fetch user names for activities
+    const userIds = [...new Set((acts ?? []).map((a: any) => a.user_id).filter(Boolean))]
+    const userMap: Record<string, string> = {}
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabaseAdmin
+        .from('profiles').select('id, full_name, email')
+        .in('id', userIds)
+      profiles?.forEach((p: any) => {
+        userMap[p.id] = p.full_name || p.email || 'Unknown'
+      })
+    }
+    activities = (acts ?? []).map((a: any) => ({
+      ...a,
+      user_name: a.user_id ? (userMap[a.user_id] || 'Unknown') : null
+    }))
   } catch {}
 
   // Add synthetic created activity
