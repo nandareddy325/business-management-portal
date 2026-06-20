@@ -64,6 +64,11 @@ export default async function InteriorDesignDashboard() {
   let todayCalls: any[] = []
   let yesterdayCalls: any[] = []
 
+  // Get current user role
+  const { data: currentProfile } = await supabase
+    .from('profiles').select('role').eq('id', user.id).single()
+  const isAdmin = currentProfile?.role === 'admin' || currentProfile?.role === 'super_admin'
+
   if (leadIds.length > 0) {
     try {
       const { createClient } = await import('@supabase/supabase-js')
@@ -72,25 +77,50 @@ export default async function InteriorDesignDashboard() {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       )
 
-      const { data: todayActs } = await supabaseAdmin
+      // Fetch user profiles for name display
+      const { data: allProfiles } = await supabaseAdmin
+        .from('profiles').select('id, full_name, email')
+      const profileMap: Record<string, string> = {}
+      allProfiles?.forEach((p: any) => {
+        profileMap[p.id] = p.full_name || p.email || 'Unknown'
+      })
+
+      // Build today's calls query
+      let todayQuery = supabaseAdmin
         .from('lead_activities')
-        .select('id, lead_id, title, description, created_at')
+        .select('id, lead_id, title, description, created_at, user_id')
         .in('lead_id', leadIds)
         .eq('type', 'call')
         .gte('created_at', todayStart.toISOString())
         .lte('created_at', todayEnd.toISOString())
         .order('created_at', { ascending: false })
-      todayCalls = todayActs ?? []
 
-      const { data: yestActs } = await supabaseAdmin
+      // Non-admin: only their own calls
+      if (!isAdmin) todayQuery = todayQuery.eq('user_id', user.id)
+
+      const { data: todayActs } = await todayQuery
+      todayCalls = (todayActs ?? []).map((a: any) => ({
+        ...a,
+        user_name: a.user_id ? (profileMap[a.user_id] || 'Unknown') : null
+      }))
+
+      // Build yesterday's calls query
+      let yestQuery = supabaseAdmin
         .from('lead_activities')
-        .select('id, lead_id, title, description, created_at')
+        .select('id, lead_id, title, description, created_at, user_id')
         .in('lead_id', leadIds)
         .eq('type', 'call')
         .gte('created_at', yestStart.toISOString())
         .lte('created_at', yestEnd.toISOString())
         .order('created_at', { ascending: false })
-      yesterdayCalls = yestActs ?? []
+
+      if (!isAdmin) yestQuery = yestQuery.eq('user_id', user.id)
+
+      const { data: yestActs } = await yestQuery
+      yesterdayCalls = (yestActs ?? []).map((a: any) => ({
+        ...a,
+        user_name: a.user_id ? (profileMap[a.user_id] || 'Unknown') : null
+      }))
     } catch {}
   }
 
@@ -162,9 +192,17 @@ export default async function InteriorDesignDashboard() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-[#1C1712] truncate">{lead?.lead_name ?? 'Unknown'}</p>
                           {act.description && <p className="text-[10px] text-[#7A6E60] truncate mt-0.5">{act.description}</p>}
-                          <p className="text-[9px] text-[#C4BAB0] mt-0.5">
-                            {new Date(act.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[9px] text-[#C4BAB0]">
+                              {new Date(act.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                            {act.user_name && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                style={{ background: '#F0FDF4', color: '#16A34A' }}>
+                                👤 {act.user_name}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
                           style={{ background: '#F0FDF4', color: '#16A34A' }}>📞</span>
@@ -209,9 +247,17 @@ export default async function InteriorDesignDashboard() {
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold text-[#1C1712] truncate">{lead?.lead_name ?? 'Unknown'}</p>
                           {act.description && <p className="text-[10px] text-[#7A6E60] truncate mt-0.5">{act.description}</p>}
-                          <p className="text-[9px] text-[#C4BAB0] mt-0.5">
-                            {new Date(act.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[9px] text-[#C4BAB0]">
+                              {new Date(act.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                            {act.user_name && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                style={{ background: '#FFFBEB', color: '#D97706' }}>
+                                👤 {act.user_name}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
                           style={{ background: '#FFFBEB', color: '#D97706' }}>📋</span>
