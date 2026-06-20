@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { Users } from 'lucide-react'
+import { LeadDetailPanel } from '@/components/dashboard/lead-detail-panel'
 
 const GRADIENTS = [
   ['#7C3AED', '#4F46E5'], ['#0891B2', '#0E7490'], ['#059669', '#047857'],
@@ -66,31 +67,31 @@ export default function AllLeadsPage() {
   const [leads, setLeads] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<string | null>(null)
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  useEffect(() => {
-    const fetchLeads = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
-      if (!profile?.company_id) return
-      const { data } = await supabase
-        .from('leads').select('*')
-        .eq('company_id', profile.company_id)
-        .eq('industry', 'interior-design')
-        .order('created_at', { ascending: false })
-      const sorted = [...(data ?? [])].sort((a, b) =>
-        (STAGE_ORDER[a.pipeline_stage] ?? 99) - (STAGE_ORDER[b.pipeline_stage] ?? 99)
-      )
-      setLeads(sorted)
-      setLoading(false)
-    }
-    fetchLeads()
-  }, [])
+  const fetchLeads = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
+    if (!profile?.company_id) return
+    const { data } = await supabase
+      .from('leads').select('*')
+      .eq('company_id', profile.company_id)
+      .eq('industry', 'interior-design')
+      .order('created_at', { ascending: false })
+    const sorted = [...(data ?? [])].sort((a, b) =>
+      (STAGE_ORDER[a.pipeline_stage] ?? 99) - (STAGE_ORDER[b.pipeline_stage] ?? 99)
+    )
+    setLeads(sorted)
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchLeads() }, [])
 
   const matchStage = (lead: any, key: string) => {
     if (key === 'new') return lead.pipeline_stage === 'new' || lead.pipeline_stage === 'new-leads'
@@ -123,8 +124,7 @@ export default function AllLeadsPage() {
         </div>
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
           style={{ background: '#F5F3FF', color: '#7C3AED', border: '1px solid #DDD6FE' }}>
-          <Users className="w-4 h-4" />
-          All Stages
+          <Users className="w-4 h-4" />All Stages
         </div>
       </div>
 
@@ -205,7 +205,8 @@ export default function AllLeadsPage() {
                   const int = INTEREST_CONFIG[l.interest] ?? { bg: '#F5F0E8', color: '#7A6E60' }
                   const budget = (() => { const b = parseFloat(String(l.budget || '').replace(/[^0-9.]/g, '')); return l.budget ? (isNaN(b) ? l.budget : '₹' + b.toLocaleString('en-IN')) : null })()
                   return (
-                    <tr key={l.id} className="border-b border-[#F7F5F1] last:border-0 hover:bg-[#FDFAF8] transition-colors">
+                    <tr key={l.id} onClick={() => setSelectedLeadId(l.id)}
+                      className="border-b border-[#F7F5F1] last:border-0 hover:bg-[#FDFAF8] transition-colors cursor-pointer">
                       <td className="pl-5 pr-2 py-3.5"><span className="text-[10px] font-bold text-[#C4BAB0]">{i + 1}</span></td>
                       <td className="pl-2 pr-4 py-3.5">
                         <div className="flex items-center gap-3">
@@ -222,25 +223,18 @@ export default function AllLeadsPage() {
                       <td className="px-4 py-3.5"><p className="text-sm font-mono text-[#1C1712]">{l.phone ?? '—'}</p></td>
                       <td className="px-4 py-3.5">
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
-                          style={{ background: stg.bg, color: stg.color, border: `1px solid ${stg.color}30` }}>
-                          {stg.label}
-                        </span>
+                          style={{ background: stg.bg, color: stg.color, border: `1px solid ${stg.color}30` }}>{stg.label}</span>
                       </td>
                       <td className="px-4 py-3.5">
-                        {l.source ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
-                            style={{ background: src.bg, color: src.color, border: `1px solid ${src.color}30` }}>
-                            {src.icon} {l.source}
-                          </span>
-                        ) : <span className="text-[#C4BAB0]">—</span>}
+                        {l.source ? <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
+                          style={{ background: src.bg, color: src.color, border: `1px solid ${src.color}30` }}>{src.icon} {l.source}</span>
+                        : <span className="text-[#C4BAB0]">—</span>}
                       </td>
                       <td className="px-4 py-3.5">
-                        {l.interest ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
-                            style={{ background: int.bg, color: int.color, border: `1px solid ${int.color}30` }}>
-                            {l.interest === 'High' ? '🔥' : l.interest === 'Medium' ? '⚡' : '❄️'} {l.interest}
-                          </span>
-                        ) : <span className="text-[#C4BAB0]">—</span>}
+                        {l.interest ? <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
+                          style={{ background: int.bg, color: int.color, border: `1px solid ${int.color}30` }}>
+                          {l.interest === 'High' ? '🔥' : l.interest === 'Medium' ? '⚡' : '❄️'} {l.interest}</span>
+                        : <span className="text-[#C4BAB0]">—</span>}
                       </td>
                       <td className="px-4 py-3.5">
                         {budget ? <p className="text-sm font-bold" style={{ color: '#B8860B' }}>{budget}</p> : <span className="text-[#C4BAB0]">—</span>}
@@ -269,7 +263,7 @@ export default function AllLeadsPage() {
               const int = INTEREST_CONFIG[l.interest] ?? { bg: '#F5F0E8', color: '#7A6E60' }
               const budget = (() => { const b = parseFloat(String(l.budget || '').replace(/[^0-9.]/g, '')); return l.budget ? (isNaN(b) ? l.budget : '₹' + b.toLocaleString('en-IN')) : null })()
               return (
-                <div key={l.id} className="px-4 py-4 hover:bg-[#FDFAF8] transition-colors">
+                <div key={l.id} onClick={() => setSelectedLeadId(l.id)} className="px-4 py-4 hover:bg-[#FDFAF8] transition-colors cursor-pointer">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
                       style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 3px 10px ${g[0]}40` }}>
@@ -301,6 +295,15 @@ export default function AllLeadsPage() {
             <p className="text-[10px] text-[#B8B0A0]">Interior Design · GK CRM</p>
           </div>
         </div>
+      )}
+
+      {/* Lead Detail Panel */}
+      {selectedLeadId && (
+        <LeadDetailPanel
+          leadId={selectedLeadId}
+          onClose={() => setSelectedLeadId(null)}
+          onStageUpdate={() => { setSelectedLeadId(null); fetchLeads() }}
+        />
       )}
     </div>
   )
