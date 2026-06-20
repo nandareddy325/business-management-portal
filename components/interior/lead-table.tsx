@@ -245,18 +245,7 @@ export function LeadTable({
           <p className="text-[10px] text-[#B8B0A0]">Interior Design · GK CRM</p>
         </div>
       </div>
-
-      {/* Lead Detail Panel */}
-      {selectedLeadId && (
-        <LeadDetailPanel
-          leadId={selectedLeadId}
-          onClose={() => setSelectedLeadId(null)}
-          onStageUpdate={() => {
-            setSelectedLeadId(null)
-            window.location.reload()
-          }}
-        />
-      )}
+      
     </>
   )
 }
