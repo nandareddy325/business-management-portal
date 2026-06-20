@@ -34,15 +34,16 @@ function buildNavGroups(industrySlug: string) {
     {
       section: 'PIPELINE', icon: '🎯',
       items: [
-        { label: 'Lead Pipeline',      icon: '🎯', href: IND,                               stage: 'all' },
-        { label: 'Called',             icon: '📞', href: `${IND}?stage=called`,             stage: 'called' },
-        { label: 'Interested',         icon: '✨', href: `${IND}?stage=interested`,         stage: 'interested' },
-        { label: 'Follow Ups',         icon: '🔄', href: `${IND}?stage=followup`,           stage: 'followup' },
-        { label: 'Site Visits',        icon: '🏠', href: `${IND}?stage=sitevisit`,          stage: 'sitevisit' },
-        { label: 'Quotation Sent',     icon: '💰', href: `${IND}?stage=quotation`,          stage: 'quotation' },
-        { label: 'Won / Closed',       icon: '✅', href: `${IND}?stage=won`,               stage: 'won' },
-        { label: 'Project Started',    icon: '🚀', href: `${IND}?stage=project_started`,    stage: 'project_started' },
-        { label: 'Lost',               icon: '❌', href: `${IND}?stage=lost`,              stage: 'lost' },
+        { label: 'Dashboard',     icon: '📊', href: `${IND}/dashboard`,   stage: null },
+        { label: 'All Leads',     icon: '👥', href: `${IND}/all-leads`,   stage: null },
+        { label: 'New Leads',     icon: '🆕', href: `${IND}/new-leads`,   stage: null },
+        { label: 'Fresh Leads',   icon: '⚡', href: `${IND}/fresh-leads`, stage: null },
+        { label: 'Calling',       icon: '📞', href: `${IND}/calling`,     stage: null },
+        { label: 'Follow Up',     icon: '🔄', href: `${IND}/follow-up`,   stage: null },
+        { label: 'Site Visit',    icon: '🏠', href: `${IND}/site-visit`,  stage: null },
+        { label: 'Quotations',    icon: '💰', href: `${IND}/quotations`,  stage: null },
+        { label: 'Won / Closing', icon: '🏆', href: `${IND}/won`,         stage: null },
+        { label: 'Lost',          icon: '❌', href: `${IND}/lost`,        stage: null },
       ],
     },
     {
@@ -81,11 +82,15 @@ function buildNavGroups(industrySlug: string) {
     {
       section: 'MY PIPELINE', icon: '🎯',
       items: [
-        { label: 'My Leads',          icon: '🎯', href: IND,                            stage: 'all' },
-        { label: 'Follow Ups',        icon: '🔄', href: `${IND}?stage=followup`,        stage: 'followup' },
-        { label: 'Site Visits',       icon: '🏠', href: `${IND}?stage=sitevisit`,       stage: 'sitevisit' },
-        { label: 'Quotation Sent',    icon: '💰', href: `${IND}?stage=quotation`,       stage: 'quotation' },
-        { label: 'Won',               icon: '✅', href: `${IND}?stage=won`,            stage: 'won' },
+        { label: 'Dashboard',   icon: '📊', href: `${IND}/dashboard`,   stage: null },
+        { label: 'All Leads',   icon: '👥', href: `${IND}/all-leads`,   stage: null },
+        { label: 'New Leads',   icon: '🆕', href: `${IND}/new-leads`,   stage: null },
+        { label: 'Fresh Leads', icon: '⚡', href: `${IND}/fresh-leads`, stage: null },
+        { label: 'Calling',     icon: '📞', href: `${IND}/calling`,     stage: null },
+        { label: 'Follow Up',   icon: '🔄', href: `${IND}/follow-up`,   stage: null },
+        { label: 'Site Visit',  icon: '🏠', href: `${IND}/site-visit`,  stage: null },
+        { label: 'Quotations',  icon: '💰', href: `${IND}/quotations`,  stage: null },
+        { label: 'Won',         icon: '🏆', href: `${IND}/won`,         stage: null },
       ],
     },
     {
@@ -109,7 +114,6 @@ function buildNavGroups(industrySlug: string) {
       ],
     },
     {
-      // ✅ Employee ki Change Password section
       section: 'ACCOUNT', icon: '🔑',
       items: [
         { label: 'My Account', icon: '👤', href: '/settings/users', stage: null },
@@ -155,8 +159,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [activeIndustries, setActiveIndustries] = useState<string[]>([])
   const [stageCounts, setStageCounts] = useState<Record<string, number>>({})
   const [totalLeads, setTotalLeads] = useState(0)
-  const [wonLeads, setWonLeads] = useState(0)
-  const [activeStage, setActiveStage] = useState<string | null>(null)
   const [industryDropdownOpen, setIndustryDropdownOpen] = useState(false)
   const [empPermissions, setEmpPermissions] = useState<string[]>(['pipeline'])
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -172,11 +174,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
     return () => { document.body.style.overflow = '' }
   }, [isOpen])
-
-  useEffect(() => {
-    const urlStage = searchParams.get('stage')
-    setActiveStage(urlStage || 'all')
-  }, [searchParams])
 
   useEffect(() => {
     const init = async () => {
@@ -198,13 +195,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             if (company?.name) setUserCompany(company.name)
             const { data: ci } = await supabase.from('company_industries').select('industries(slug)').eq('company_id', profile.company_id).eq('is_active', true)
             if (ci) setActiveIndustries(ci.map((c: any) => c.industries?.slug).filter(Boolean))
-            const { data: leads } = await supabase.from('leads').select('pipeline_stage').eq('company_id', profile.company_id)
+
+            // Fetch pipeline_stage counts
+            const { data: leads } = await supabase
+              .from('leads')
+              .select('pipeline_stage')
+              .eq('company_id', profile.company_id)
+              .eq('industry', 'interior-design')
             if (leads) {
               const counts: Record<string, number> = {}
-              leads.forEach(l => { const s = l.pipeline_stage || 'new'; counts[s] = (counts[s] || 0) + 1 })
+              leads.forEach(l => {
+                const s = l.pipeline_stage || 'new-leads'
+                counts[s] = (counts[s] || 0) + 1
+              })
               setStageCounts(counts)
               setTotalLeads(leads.length)
-              setWonLeads((counts['won'] || 0) + (counts['project_started'] || 0))
             }
           }
           if (!isAdmin) {
@@ -229,13 +234,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         if (!user) return
         const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
         if (!profile?.company_id) return
-        const { data: leads } = await supabase.from('leads').select('pipeline_stage').eq('company_id', profile.company_id)
+        const { data: leads } = await supabase
+          .from('leads')
+          .select('pipeline_stage')
+          .eq('company_id', profile.company_id)
+          .eq('industry', 'interior-design')
         if (!leads) return
         const counts: Record<string, number> = {}
-        leads.forEach(l => { const s = l.pipeline_stage || 'new'; counts[s] = (counts[s] || 0) + 1 })
+        leads.forEach(l => {
+          const s = l.pipeline_stage || 'new-leads'
+          counts[s] = (counts[s] || 0) + 1
+        })
         setStageCounts(counts)
         setTotalLeads(leads.length)
-        setWonLeads((counts['won'] || 0) + (counts['project_started'] || 0))
       }).subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
@@ -253,7 +264,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navGroups = useMemo(() => {
     if (role === 'admin') return adminNavGroups
     return employeeNavGroups.filter(group => {
-      // ACCOUNT section — always show to employees
       if (group.section === 'ACCOUNT') return true
       const requiredPerm = SECTION_PERMISSION[group.section]
       if (!requiredPerm) return false
@@ -261,25 +271,30 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     })
   }, [role, adminNavGroups, employeeNavGroups, empPermissions])
 
-  const getBadge = (stage: string | null) => {
-    if (!stage || stage === 'all') return totalLeads > 0 ? String(totalLeads) : null
-    const c = stageCounts[stage]; return c ? String(c) : null
-  }
-
-  const isActive = (href: string, stage: string | null) => {
-    const hrefPath = href.split('?')[0]
-    if (hrefPath !== IND) return pathname.startsWith(hrefPath) && hrefPath !== IND
-    if (!pathname.startsWith(IND)) return false
-    if (stage === 'all') return activeStage === 'all' || activeStage === null
-    return activeStage === stage
-  }
-
-  const handleNavClick = (stage: string | null, href: string) => {
-    if (href === IND) {
-      setActiveStage(stage)
-      setTimeout(() => window.dispatchEvent(new CustomEvent('sidebar-stage-change', { detail: { stage } })), 100)
+  // Badge count per pipeline stage page
+  const getBadge = (href: string) => {
+    const IND_BASE = `/dashboard/industries/${currentIndustrySlug}`
+    const stageMap: Record<string, string> = {
+      [`${IND_BASE}/new-leads`]:   'new-leads',
+      [`${IND_BASE}/fresh-leads`]: 'fresh-leads',
+      [`${IND_BASE}/calling`]:     'calling',
+      [`${IND_BASE}/follow-up`]:   'follow-up',
+      [`${IND_BASE}/site-visit`]:  'site-visit',
+      [`${IND_BASE}/quotations`]:  'quotations',
+      [`${IND_BASE}/won`]:         'won',
+      [`${IND_BASE}/lost`]:        'lost',
     }
-    onClose()
+    const stageKey = stageMap[href]
+    if (!stageKey) return null
+    const c = stageCounts[stageKey]
+    return c ? String(c) : null
+  }
+
+  const isActive = (href: string) => {
+    if (href === `/dashboard/industries/${currentIndustrySlug}`) {
+      return pathname === href
+    }
+    return pathname.startsWith(href)
   }
 
   const handleIndustrySwitch = (slug: string) => {
@@ -305,11 +320,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     finance:  { label: 'Finance',  color: '#16A34A', bg: '#F0FDF4' },
   }
 
-  const getBadgeStyle = (stage: string | null, active: boolean): React.CSSProperties => {
+  const getBadgeStyle = (href: string, active: boolean): React.CSSProperties => {
     if (active) return { background: 'rgba(255,255,255,0.22)', color: '#fff' }
-    if (stage === 'followup') return { background: '#FEF3C7', color: '#B45309' }
-    if (stage === 'won' || stage === 'project_started') return { background: '#DCFCE7', color: '#15803D' }
-    if (stage === 'lost') return { background: '#FEE2E2', color: '#DC2626' }
+    if (href.includes('/follow-up'))  return { background: '#FEF3C7', color: '#B45309' }
+    if (href.includes('/won'))        return { background: '#DCFCE7', color: '#15803D' }
+    if (href.includes('/lost'))       return { background: '#FEE2E2', color: '#DC2626' }
     return { background: '#F0F0EE', color: '#888' }
   }
 
@@ -381,7 +396,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     const ind = INDUSTRIES[slug]; if (!ind) return null
                     const isCurrent = slug === currentIndustrySlug
                     return (
-                      <Link key={slug} href={`/dashboard/industries/${slug}`}
+                      <Link key={slug} href={`/dashboard/industries/${slug}/dashboard`}
                         onClick={() => { handleIndustrySwitch(slug); setIndustryDropdownOpen(false) }}
                         style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', fontSize: 11, fontWeight: 600, background: isCurrent ? '#1C1C1E' : 'transparent', color: isCurrent ? '#fff' : '#666', textDecoration: 'none', transition: 'background 0.15s' }}>
                         <span style={{ fontSize: 14 }}>{ind.icon}</span>
@@ -414,34 +429,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
           )}
 
-          {/* Dashboard pinned */}
-          {(() => {
-            const isDashActive = pathname === '/dashboard'
-            return (
-              <Link href="/dashboard" onClick={() => { onClose(); window.location.href = '/dashboard' }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 9, padding: '12px 12px', borderRadius: 14,
-                  background: isDashActive ? '#1C1C1E' : '#F5F5F3',
-                  color: isDashActive ? '#fff' : '#1C1C1E',
-                  fontWeight: 700, fontSize: 13, textDecoration: 'none',
-                  marginBottom: 8, border: isDashActive ? 'none' : '1px solid #EBEBEB',
-                  boxShadow: isDashActive ? '0 4px 14px rgba(0,0,0,0.14)' : '0 1px 4px rgba(0,0,0,0.04)',
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={e => { if (!isDashActive) { (e.currentTarget as HTMLElement).style.background = '#EBEBEB' } }}
-                onMouseLeave={e => { if (!isDashActive) { (e.currentTarget as HTMLElement).style.background = '#F5F5F3' } }}>
-                <span style={{ fontSize: 16 }}>📊</span>
-                <span style={{ flex: 1 }}>Dashboard</span>
-                {totalLeads > 0 && (
-                  <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: isDashActive ? 'rgba(255,255,255,0.2)' : '#EBEBEB', color: isDashActive ? '#fff' : '#888' }}>{totalLeads}</span>
-                )}
-              </Link>
-            )
-          })()}
+
 
           {navGroups.map((group) => {
             const isOpen_ = openSections[group.section] ?? true
-            const hasActive = group.items.some(item => isActive(item.href, item.stage))
+            const hasActive = group.items.some(item => isActive(item.href))
             return (
               <div key={group.section} style={{ marginBottom: 2 }}>
                 <button onClick={() => toggleSection(group.section)}
@@ -454,11 +446,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <div style={{ overflow: 'hidden', maxHeight: isOpen_ ? 600 : 0, opacity: isOpen_ ? 1 : 0, transition: 'max-height 0.22s ease, opacity 0.18s ease' }}>
                   <div style={{ paddingTop: 2, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {group.items.map((item) => {
-                      const active = isActive(item.href, item.stage)
-                      const badge = getBadge(item.stage)
+                      const active = isActive(item.href)
+                      const badge = getBadge(item.href)
                       return (
                         <Link key={item.label} href={item.href}
-                          onClick={() => handleNavClick(item.stage, item.href)}
+                          onClick={onClose}
                           style={{
                             display: 'flex', alignItems: 'center', gap: 9, padding: '11px 10px', borderRadius: 12,
                             background: active ? '#1C1C1E' : 'transparent',
@@ -473,7 +465,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                           <span style={{ fontSize: 13, lineHeight: 1, flexShrink: 0 }}>{item.icon}</span>
                           <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
                           {badge && (
-                            <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 20, flexShrink: 0, ...getBadgeStyle(item.stage, active) }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 20, flexShrink: 0, ...getBadgeStyle(item.href, active) }}>
                               {badge}
                             </span>
                           )}
