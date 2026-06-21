@@ -1,23 +1,17 @@
 'use client'
 // @ts-nocheck
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClientSupabaseClient } from '@/lib/supabase/client'
+import { Building2, Phone, Mail, Globe, MapPin, FileText, Save } from 'lucide-react'
 
 export default function CompanySettingsPage() {
+  const supabase = createClientSupabaseClient()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [company, setCompany] = useState({
-    name: '',
-    industry: '',
-    phone: '',
-    email: '',
-    website: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
-    gstin: '',
+    name: '', industry: '', phone: '', email: '',
+    website: '', address: '', city: '', state: '', pincode: '', gstin: '',
   })
 
   useEffect(() => {
@@ -25,22 +19,15 @@ export default function CompanySettingsPage() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
-        const { data: profile } = await supabase
-          .from('profiles').select('company_id').eq('id', user.id).single()
+        const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
         if (!profile?.company_id) return
-        const { data: comp } = await supabase
-          .from('companies').select('*').eq('id', profile.company_id).single()
+        const { data: comp } = await supabase.from('companies').select('*').eq('id', profile.company_id).single()
         if (comp) setCompany({
-          name: comp.name || '',
-          industry: comp.industry || '',
-          phone: comp.phone || '',
-          email: comp.email || '',
-          website: comp.website || '',
-          address: comp.address || '',
-          city: comp.city || '',
-          state: comp.state || '',
-          pincode: comp.pincode || '',
-          gstin: comp.gstin || '',
+          name: comp.name || '', industry: comp.industry || '',
+          phone: comp.phone || '', email: comp.email || '',
+          website: comp.website || '', address: comp.address || '',
+          city: comp.city || '', state: comp.state || '',
+          pincode: comp.pincode || '', gstin: comp.gstin || '',
         })
       } catch (err) { console.error(err) }
       finally { setLoading(false) }
@@ -49,132 +36,135 @@ export default function CompanySettingsPage() {
   }, [])
 
   const handleSave = async () => {
-    setSaving(true)
-    setSaved(false)
+    setSaving(true); setSaved(false)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data: profile } = await supabase
-        .from('profiles').select('company_id').eq('id', user.id).single()
+      const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
       if (!profile?.company_id) return
-      await supabase.from('companies').update({
-        name: company.name,
-        industry: company.industry,
-        phone: company.phone,
-        email: company.email,
-        website: company.website,
-        address: company.address,
-        city: company.city,
-        state: company.state,
-        pincode: company.pincode,
-        gstin: company.gstin,
-      }).eq('id', profile.company_id)
+      await supabase.from('companies').update(company).eq('id', profile.company_id)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) { console.error(err) }
     finally { setSaving(false) }
   }
 
-  const fields = [
-    { key: 'name',     label: 'Company Name',  placeholder: 'GK Interiors',        type: 'text',  required: true },
-    { key: 'industry', label: 'Industry',       placeholder: 'interior-design',     type: 'text' },
-    { key: 'phone',    label: 'Phone',          placeholder: '+91 98765 43210',     type: 'tel' },
-    { key: 'email',    label: 'Email',          placeholder: 'info@company.com',    type: 'email' },
-    { key: 'website',  label: 'Website',        placeholder: 'www.company.com',     type: 'text' },
-    { key: 'gstin',    label: 'GSTIN',          placeholder: '29ABCDE1234F1Z5',     type: 'text' },
-    { key: 'address',  label: 'Address',        placeholder: '123, Main Street',    type: 'text' },
-    { key: 'city',     label: 'City',           placeholder: 'Hyderabad',           type: 'text' },
-    { key: 'state',    label: 'State',          placeholder: 'Telangana',           type: 'text' },
-    { key: 'pincode',  label: 'Pincode',        placeholder: '500001',              type: 'text' },
-  ]
-
   if (loading) return (
     <div className="flex items-center justify-center py-32">
-      <div className="w-8 h-8 border-2 border-[#B8860B] border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
+        style={{ borderColor: '#B8860B', borderTopColor: 'transparent' }} />
     </div>
   )
 
+  const inputClass = "w-full px-4 py-2.5 rounded-xl border text-sm text-[#1C1712] outline-none transition-all"
+  const inputStyle = { borderColor: '#E8E2D8', background: '#FAFAF8' }
+
   return (
-    <main className="flex-1 p-4 md:p-6 max-w-3xl">
+    <main className="p-4 md:p-0 max-w-3xl space-y-5">
 
       {/* Header */}
-      <div className="mb-6">
-        <p className="text-[10px] font-bold text-[#B8860B] uppercase tracking-widest mb-1">Settings</p>
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>Settings</p>
         <h1 className="text-2xl font-bold text-[#1C1712]">Company Profile</h1>
         <p className="text-sm text-[#9A8F82] mt-1">Update your company information and business details.</p>
       </div>
 
-      {/* Form Card */}
-      <div className="bg-white rounded-2xl border border-[#E8E2D8] overflow-hidden">
-
-        {/* Section — Basic Info */}
-        <div className="px-6 py-4 border-b border-[#F0EBE0]" style={{ background: '#FDFAF8' }}>
-          <p className="text-xs font-black text-[#9A8F82] uppercase tracking-widest">Basic Information</p>
+      {/* Basic Info Card */}
+      <div className="bg-white border border-[#E2D9C8] rounded-2xl overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-[#F0EBE0]" style={{ background: '#1C1712' }}>
+          <Building2 size={16} color="#B8860B" />
+          <p className="text-sm font-semibold text-white">Basic Information</p>
         </div>
-        <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {fields.slice(0, 6).map(f => (
-            <div key={f.key} className={f.key === 'name' ? 'sm:col-span-2' : ''}>
-              <label className="block text-xs font-bold text-[#7A6E60] uppercase tracking-wider mb-1.5">
-                {f.label} {f.required && <span className="text-red-400">*</span>}
-              </label>
-              <input
-                type={f.type}
-                value={(company as any)[f.key]}
-                onChange={e => setCompany(prev => ({ ...prev, [f.key]: e.target.value }))}
-                placeholder={f.placeholder}
-                className="w-full px-4 py-2.5 rounded-xl border border-[#E8E2D8] text-sm text-[#1C1712] outline-none transition-all bg-[#F7F5F1]"
-                onFocus={e => e.target.style.borderColor = '#B8860B'}
-                onBlur={e => e.target.style.borderColor = '#E8E2D8'}
-              />
+        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+          <div className="sm:col-span-2">
+            <label className="block text-[10px] font-bold text-[#7A6E60] uppercase tracking-wider mb-1.5">
+              Company Name <span className="text-red-400">*</span>
+            </label>
+            <input type="text" value={company.name}
+              onChange={e => setCompany(p => ({ ...p, name: e.target.value }))}
+              placeholder="GK Interiors" className={inputClass} style={inputStyle}
+              onFocus={e => e.target.style.borderColor = '#B8860B'}
+              onBlur={e => e.target.style.borderColor = '#E8E2D8'}
+            />
+          </div>
+
+          {[
+            { key: 'phone', label: 'Phone', placeholder: '+91 98765 43210', type: 'tel', icon: Phone },
+            { key: 'email', label: 'Email', placeholder: 'info@company.com', type: 'email', icon: Mail },
+            { key: 'website', label: 'Website', placeholder: 'www.company.com', type: 'text', icon: Globe },
+            { key: 'gstin', label: 'GSTIN', placeholder: '29ABCDE1234F1Z5', type: 'text', icon: FileText },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="block text-[10px] font-bold text-[#7A6E60] uppercase tracking-wider mb-1.5">{f.label}</label>
+              <div className="relative">
+                <f.icon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input type={f.type} value={(company as any)[f.key]}
+                  onChange={e => setCompany(p => ({ ...p, [f.key]: e.target.value }))}
+                  placeholder={f.placeholder}
+                  className={inputClass + ' pl-9'} style={inputStyle}
+                  onFocus={e => e.target.style.borderColor = '#B8860B'}
+                  onBlur={e => e.target.style.borderColor = '#E8E2D8'}
+                />
+              </div>
             </div>
           ))}
-        </div>
-
-        {/* Section — Address */}
-        <div className="px-6 py-4 border-t border-b border-[#F0EBE0]" style={{ background: '#FDFAF8' }}>
-          <p className="text-xs font-black text-[#9A8F82] uppercase tracking-widest">Address Details</p>
-        </div>
-        <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {fields.slice(6).map(f => (
-            <div key={f.key} className={f.key === 'address' ? 'sm:col-span-2' : ''}>
-              <label className="block text-xs font-bold text-[#7A6E60] uppercase tracking-wider mb-1.5">{f.label}</label>
-              <input
-                type={f.type}
-                value={(company as any)[f.key]}
-                onChange={e => setCompany(prev => ({ ...prev, [f.key]: e.target.value }))}
-                placeholder={f.placeholder}
-                className="w-full px-4 py-2.5 rounded-xl border border-[#E8E2D8] text-sm text-[#1C1712] outline-none transition-all bg-[#F7F5F1]"
-                onFocus={e => e.target.style.borderColor = '#B8860B'}
-                onBlur={e => e.target.style.borderColor = '#E8E2D8'}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Save Button */}
-        <div className="px-6 py-4 border-t border-[#F0EBE0] flex items-center justify-between" style={{ background: '#FDFAF8' }}>
-          {saved && (
-            <p className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
-              ✅ Changes saved successfully!
-            </p>
-          )}
-          {!saved && <div />}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-6 py-2.5 rounded-xl text-sm font-black text-white transition-all hover:scale-[1.02] disabled:opacity-50"
-            style={{ background: 'linear-gradient(135deg, #1C1712, #2d2822)', boxShadow: '0 4px 14px rgba(28,23,18,0.2)' }}>
-            {saving ? '⏳ Saving...' : '💾 Save Changes'}
-          </button>
         </div>
       </div>
 
-      {/* Danger Zone */}
-      <div className="mt-6 bg-white rounded-2xl border border-red-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-red-100" style={{ background: '#FEF2F2' }}>
-          <p className="text-xs font-black text-red-400 uppercase tracking-widest">Danger Zone</p>
+      {/* Address Card */}
+      <div className="bg-white border border-[#E2D9C8] rounded-2xl overflow-hidden">
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-[#F0EBE0]" style={{ background: '#1C1712' }}>
+          <MapPin size={16} color="#B8860B" />
+          <p className="text-sm font-semibold text-white">Address Details</p>
         </div>
-        <div className="p-6 flex items-center justify-between">
+        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <label className="block text-[10px] font-bold text-[#7A6E60] uppercase tracking-wider mb-1.5">Address</label>
+            <input type="text" value={company.address}
+              onChange={e => setCompany(p => ({ ...p, address: e.target.value }))}
+              placeholder="123, Main Street" className={inputClass} style={inputStyle}
+              onFocus={e => e.target.style.borderColor = '#B8860B'}
+              onBlur={e => e.target.style.borderColor = '#E8E2D8'}
+            />
+          </div>
+          {[
+            { key: 'city', label: 'City', placeholder: 'Hyderabad' },
+            { key: 'state', label: 'State', placeholder: 'Telangana' },
+            { key: 'pincode', label: 'Pincode', placeholder: '500001' },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="block text-[10px] font-bold text-[#7A6E60] uppercase tracking-wider mb-1.5">{f.label}</label>
+              <input type="text" value={(company as any)[f.key]}
+                onChange={e => setCompany(p => ({ ...p, [f.key]: e.target.value }))}
+                placeholder={f.placeholder} className={inputClass} style={inputStyle}
+                onFocus={e => e.target.style.borderColor = '#B8860B'}
+                onBlur={e => e.target.style.borderColor = '#E8E2D8'}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Save Button */}
+      <div className="flex items-center justify-between bg-white border border-[#E2D9C8] rounded-2xl px-5 py-4">
+        {saved ? (
+          <p className="text-sm font-semibold text-emerald-600">✅ Changes saved successfully!</p>
+        ) : <div />}
+        <button onClick={handleSave} disabled={saving}
+          className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
+          style={{ background: '#1C1712' }}>
+          <Save size={14} color="#B8860B" />
+          {saving ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="bg-white border border-red-100 rounded-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-red-100" style={{ background: '#FEF2F2' }}>
+          <p className="text-xs font-bold text-red-500 uppercase tracking-widest">Danger Zone</p>
+        </div>
+        <div className="p-5 flex items-center justify-between">
           <div>
             <p className="text-sm font-bold text-[#1C1712]">Delete Company Account</p>
             <p className="text-xs text-[#9A8F82] mt-0.5">Permanently delete all data. This cannot be undone.</p>
