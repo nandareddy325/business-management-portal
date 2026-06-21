@@ -1,12 +1,13 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+
 import {
   UserPlus, Phone, Calendar,
   MapPin, FileText, Trophy, XCircle, TrendingUp
 } from 'lucide-react'
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60  // 60 seconds cache
 
 const STAGES = [
   { key: 'new',       label: 'New Leads',  icon: UserPlus, color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', href: '/dashboard/industries/interior-design/new-leads',  description: 'Fresh enquiries just came in' },
@@ -192,11 +193,18 @@ export default async function InteriorDesignDashboard() {
       <div className="px-4 md:px-0">
         <div className="flex items-start justify-between gap-3 mb-1">
           <p className="text-[10px] font-bold uppercase tracking-[4px]" style={{ color: '#B8860B' }}>Interior Design</p>
-          <Link href="/dashboard/industries/interior-design/analytics"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-white flex-shrink-0 transition-all hover:scale-105"
-            style={{ background: 'linear-gradient(135deg, #B8860B, #D97706)', boxShadow: '0 4px 12px rgba(184,134,11,0.35)' }}>
-            📊 Analytics
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard/industries/interior-design/analytics"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-white flex-shrink-0 transition-all hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #B8860B, #D97706)', boxShadow: '0 4px 12px rgba(184,134,11,0.35)' }}>
+              📊 Analytics
+            </Link>
+            <Link href="/dashboard/industries/interior-design/cre"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-white flex-shrink-0 transition-all hover:scale-105"
+              style={{ background: 'linear-gradient(135deg, #1C1712, #2d2218)', border: '1px solid rgba(184,134,11,0.3)' }}>
+              📋 CRE
+            </Link>
+          </div>
         </div>
         <h1 className="text-2xl font-bold text-[#1C1712]">Pipeline Dashboard</h1>
         <p className="text-sm text-[#9A8F82] mt-0.5">All stages overview — real time data</p>
