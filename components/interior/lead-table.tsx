@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { LeadDetailPanel } from '@/components/dashboard/lead-detail-panel'
+// import LeadDetailPanel from '@/components/dashboard/lead-detail-panel'
 import { useState } from 'react'
 
 const GRADIENTS = [
