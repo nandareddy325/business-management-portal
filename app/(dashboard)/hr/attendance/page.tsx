@@ -14,12 +14,30 @@ const STATUS_CONFIG: Record<string, { bg: string; color: string; label: string; 
   leave:    { bg: '#EFF6FF', color: '#2563EB', label: 'Leave',    icon: '🏖️' },
 }
 
-const GRADIENTS = [
-  ['#7C3AED', '#4F46E5'], ['#0891B2', '#0E7490'], ['#059669', '#047857'],
-  ['#D97706', '#B45309'], ['#DB2777', '#BE185D'], ['#7C3AED', '#6D28D9'],
+const avatarColors = [
+  { bg: '#EFF6FF', text: '#1D4ED8' },
+  { bg: '#F0FDF4', text: '#166534' },
+  { bg: '#FDF4FF', text: '#7E22CE' },
+  { bg: '#FFF7ED', text: '#C2410C' },
+  { bg: '#FFF1F2', text: '#BE123C' },
+  { bg: '#ECFEFF', text: '#0E7490' },
 ]
 
-const ini = (name: string) => name?.split(' ').map((x: string) => x[0]).join('').slice(0, 2).toUpperCase() || '?'
+const deptStyles: Record<string, { bg: string; text: string }> = {
+  Design:     { bg: '#EFF6FF', text: '#1D4ED8' },
+  Sales:      { bg: '#F0FDF4', text: '#166534' },
+  Operations: { bg: '#FFFBEB', text: '#B45309' },
+  HR:         { bg: '#FDF4FF', text: '#7E22CE' },
+  Finance:    { bg: '#F0FDF4', text: '#166534' },
+  IT:         { bg: '#ECFEFF', text: '#0E7490' },
+  Marketing:  { bg: '#FFF7ED', text: '#C2410C' },
+  CRE:        { bg: '#FFF1F2', text: '#BE123C' },
+  MD:         { bg: '#F5F3FF', text: '#6D28D9' },
+  Other:      { bg: '#F5F0E8', text: '#7A6E60' },
+}
+
+const ini = (name: string) =>
+  name?.split(' ').map((x: string) => x[0]).join('').slice(0, 2).toUpperCase() || '?'
 
 const fmtIST = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-IN', {
@@ -143,7 +161,7 @@ export default async function AttendancePage({
             <div className="h-full transition-all duration-700"
               style={{ width: `${totalCount > 0 ? (absentCount / totalCount) * 100 : 0}%`, background: '#DC2626' }} />
           </div>
-          <div className="flex items-center gap-4 mt-2">
+          <div className="flex items-center gap-4 mt-2 flex-wrap">
             {[
               { label: 'Present', color: '#16A34A', count: presentCount },
               { label: 'Leave',   color: '#2563EB', count: leaveCount },
@@ -166,21 +184,22 @@ export default async function AttendancePage({
         </div>
       )}
 
-      {/* Table */}
+      {/* DESKTOP Table */}
       <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr style={{ background: '#FAFAF8', borderBottom: '1px solid #F0EBE0' }}>
+              <tr style={{ background: '#1C1712' }}>
                 {['#', 'Employee', 'Department', 'Designation', 'Status', 'Check In', 'Check Out', 'Notes'].map(h => (
-                  <th key={h} className="text-left text-[9px] font-black text-[#9A8F82] uppercase tracking-[2px] px-4 py-3 whitespace-nowrap first:pl-5 last:pr-5">{h}</th>
+                  <th key={h} className="text-left text-[9px] font-black uppercase tracking-[2px] px-4 py-3 whitespace-nowrap first:pl-5 last:pr-5" style={{ color: '#B8860B' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {(employees ?? []).map((emp: any, i: number) => {
                 const rec = attendanceMap[emp.id]
-                const g = GRADIENTS[i % GRADIENTS.length]
+                const av = avatarColors[i % avatarColors.length]
+                const dept = deptStyles[emp.department] ?? deptStyles['Other']
                 return (
                   <tr key={emp.id}
                     className="border-b border-[#F7F5F1] last:border-0 hover:bg-[#FDFAF8] transition-colors"
@@ -190,8 +209,10 @@ export default async function AttendancePage({
                     </td>
                     <td className="pl-2 pr-4 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
-                          style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 3px 10px ${g[0]}40` }}>
+                        <div
+                          className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+                          style={{ background: av.bg, color: av.text }}
+                        >
                           {ini(emp.full_name)}
                         </div>
                         <p className="text-sm font-bold text-[#1C1712]">{emp.full_name}</p>
@@ -200,7 +221,7 @@ export default async function AttendancePage({
                     <td className="px-4 py-3.5">
                       {emp.department ? (
                         <span className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-                          style={{ background: '#F5F0E8', color: '#7A6E60', border: '1px solid #E8E2D8' }}>
+                          style={{ background: dept.bg, color: dept.text }}>
                           {emp.department}
                         </span>
                       ) : <span className="text-[#C4BAB0]">—</span>}
@@ -217,7 +238,6 @@ export default async function AttendancePage({
                         recordId={rec?.id ?? null}
                       />
                     </td>
-                    {/* Check In — IST */}
                     <td className="px-4 py-3.5">
                       {rec?.check_in ? (
                         <span className="text-xs font-mono font-bold text-emerald-700 px-2 py-1 rounded-lg"
@@ -226,7 +246,6 @@ export default async function AttendancePage({
                         </span>
                       ) : <span className="text-[#C4BAB0] text-xs">—</span>}
                     </td>
-                    {/* Check Out — IST */}
                     <td className="px-4 py-3.5">
                       {rec?.check_out ? (
                         <span className="text-xs font-mono font-bold text-red-700 px-2 py-1 rounded-lg"
@@ -256,23 +275,42 @@ export default async function AttendancePage({
           </table>
         </div>
 
-        {/* Mobile */}
+        {/* MOBILE — Premium Cards */}
         <div className="md:hidden divide-y divide-[#F0EBE0]">
           {(employees ?? []).map((emp: any, i: number) => {
             const rec = attendanceMap[emp.id]
-            const g = GRADIENTS[i % GRADIENTS.length]
+            const av = avatarColors[i % avatarColors.length]
+            const dept = deptStyles[emp.department] ?? deptStyles['Other']
+            const status = rec?.status ? STATUS_CONFIG[rec.status] : null
             return (
-              <div key={emp.id} className="px-4 py-4">
+              <div key={emp.id} className="p-4">
+
+                {/* Top row — Avatar + Name + Status badge */}
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-                    style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})` }}>
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
+                    style={{ background: av.bg, color: av.text }}
+                  >
                     {ini(emp.full_name)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-[#1C1712]">{emp.full_name}</p>
-                    <p className="text-[10px] text-[#9A8F82]">{emp.designation ?? ''} {emp.department ? `· ${emp.department}` : ''}</p>
+                    <p className="text-sm font-bold text-[#1C1712] truncate">{emp.full_name}</p>
+                    <p className="text-[11px] text-[#7A6E60] truncate">
+                      {emp.designation ?? ''}
+                      {emp.department ? ` · ${emp.department}` : ''}
+                    </p>
                   </div>
+                  {emp.department && (
+                    <span
+                      className="text-[10px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0"
+                      style={{ background: dept.bg, color: dept.text }}
+                    >
+                      {emp.department}
+                    </span>
+                  )}
                 </div>
+
+                {/* Status Dropdown */}
                 <AttendanceStatusDropdown
                   employeeId={emp.id}
                   companyId={profile.company_id}
@@ -280,21 +318,37 @@ export default async function AttendancePage({
                   currentStatus={rec?.status ?? null}
                   recordId={rec?.id ?? null}
                 />
-                {/* Mobile check in/out times */}
+
+                {/* Check In / Out — info boxes */}
                 {(rec?.check_in || rec?.check_out) && (
-                  <div className="flex items-center gap-3 mt-2">
+                  <div className="grid grid-cols-2 gap-2 mt-3">
                     {rec?.check_in && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg text-emerald-700"
-                        style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
-                        🟢 In: {fmtIST(rec.check_in)}
-                      </span>
+                      <div className="rounded-xl px-3 py-2.5 border border-[#BBF7D0]" style={{ background: '#F0FDF4' }}>
+                        <p className="text-[10px] text-emerald-700 uppercase tracking-wider font-semibold">Check In</p>
+                        <p className="text-xs font-bold text-emerald-800 mt-1 font-mono">🟢 {fmtIST(rec.check_in)}</p>
+                      </div>
                     )}
                     {rec?.check_out && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg text-red-700"
-                        style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
-                        🔴 Out: {fmtIST(rec.check_out)}
-                      </span>
+                      <div className="rounded-xl px-3 py-2.5 border border-[#FECACA]" style={{ background: '#FEF2F2' }}>
+                        <p className="text-[10px] text-red-700 uppercase tracking-wider font-semibold">Check Out</p>
+                        <p className="text-xs font-bold text-red-800 mt-1 font-mono">🔴 {fmtIST(rec.check_out)}</p>
+                      </div>
                     )}
+                  </div>
+                )}
+
+                {/* Notes */}
+                {rec?.notes && (
+                  <div className="mt-2 rounded-xl px-3 py-2 border border-[#F0EBE0]" style={{ background: '#FAFAF8' }}>
+                    <p className="text-[10px] text-[#7A6E60] uppercase tracking-wider font-semibold">Notes</p>
+                    <p className="text-xs text-[#1C1712] mt-0.5">{rec.notes}</p>
+                  </div>
+                )}
+
+                {/* Not marked yet warning */}
+                {!rec && (
+                  <div className="mt-2 rounded-xl px-3 py-2 border border-[#FDE68A]" style={{ background: '#FFFBEB' }}>
+                    <p className="text-[11px] font-semibold text-amber-700">⚠️ Not marked yet</p>
                   </div>
                 )}
               </div>
@@ -302,7 +356,7 @@ export default async function AttendancePage({
           })}
         </div>
 
-        {employees?.length > 0 && (
+        {(employees?.length ?? 0) > 0 && (
           <div className="px-5 py-3 border-t border-[#F0EBE0] flex items-center justify-between" style={{ background: '#FAFAF8' }}>
             <p className="text-[10px] text-[#9A8F82]">
               <span className="font-bold text-[#1C1712]">{markedCount}</span> of <span className="font-bold text-[#1C1712]">{totalCount}</span> marked

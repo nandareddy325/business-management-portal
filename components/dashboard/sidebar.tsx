@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { X, ChevronDown, LogOut } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
@@ -57,8 +57,9 @@ function buildNavGroups(industrySlug: string) {
     {
       section: 'HR & ADMIN', icon: '👔',
       items: [
-        { label: 'HRMS',       icon: '👔', href: '/hr/employees'  },
-        { label: 'Attendance', icon: '📅', href: '/hr/attendance' },
+        { label: 'HRMS',         icon: '👔', href: '/hr/employees'    },
+        { label: 'Attendance',   icon: '📅', href: '/hr/attendance'   },
+        { label: 'Work Reports', icon: '📝', href: '/hr/work-reports' },
       ],
     },
     {
@@ -101,7 +102,8 @@ function buildNavGroups(industrySlug: string) {
     {
       section: 'HR & ADMIN', icon: '👔',
       items: [
-        { label: 'Attendance', icon: '📅', href: '/hr/attendance' },
+        { label: 'Attendance',   icon: '📅', href: '/hr/attendance'   },
+        { label: 'Work Reports', icon: '📝', href: '/hr/work-reports' },
       ],
     },
     {
@@ -202,7 +204,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               const counts: Record<string, number> = {}
               leads.forEach(l => {
                 const s = l.pipeline_stage || 'new'
-                // RNR = followup stage with [RNR] tag in notes
                 if (s === 'followup' && String(l.notes || '').startsWith('[RNR]')) {
                   counts['rnr'] = (counts['rnr'] || 0) + 1
                 } else {

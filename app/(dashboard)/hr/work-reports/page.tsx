@@ -39,29 +39,22 @@ export default function WorkReportsPage() {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   })
 
-  useEffect(() => {
-    init()
-  }, [])
+  useEffect(() => { init() }, [])
 
   async function init() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-
       setUserId(user.id)
-
       const { data: profile } = await supabase
         .from('profiles')
         .select('company_id, role, full_name')
         .eq('id', user.id)
         .single()
-
       if (!profile) return
-
       const r = ['admin', 'tenant_admin', 'manager'].includes(profile.role) ? 'admin' : 'user'
       setRole(r)
       setCompanyId(profile.company_id)
-
       await fetchReports(profile.company_id, user.id, r)
     } catch (err) {
       console.error('Init error:', err)
@@ -77,16 +70,10 @@ export default function WorkReportsPage() {
       .eq('company_id', cid)
       .order('report_date', { ascending: false })
       .order('created_at', { ascending: false })
-
-    // User only sees own reports
-    if (r === 'user') {
-      query = query.eq('employee_id', uid)
-    }
-
+    if (r === 'user') query = query.eq('employee_id', uid)
     const { data } = await query.limit(50)
     if (data) {
       setReports(data as any)
-      // Check today's report for current user
       const tr = data.find((r: any) => r.report_date === today && r.employee_id === uid)
       setTodayReport(tr || null)
     }
@@ -95,7 +82,6 @@ export default function WorkReportsPage() {
   async function handleSubmit() {
     if (!form.tasks_completed.trim()) { setError('Tasks completed required'); return }
     setSubmitting(true); setError('')
-
     try {
       const { error: err } = await supabase
         .from('work_reports')
@@ -109,14 +95,11 @@ export default function WorkReportsPage() {
           hours_worked: parseFloat(form.hours_worked) || 8,
           status: 'submitted',
         }, { onConflict: 'employee_id,report_date' })
-
       if (err) throw err
-
-      setSuccess('✅ Work report submitted!')
+      setSuccess('Report submitted successfully!')
       setShowForm(false)
       setForm({ tasks_completed: '', tasks_pending: '', blockers: '', hours_worked: '8' })
       await fetchReports(companyId, userId, role)
-
       setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
       setError(err.message || 'Submit failed')
@@ -137,47 +120,55 @@ export default function WorkReportsPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#B8860B', borderTopColor: 'transparent' }} />
     </div>
   )
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-5 p-4 md:p-0 max-w-4xl" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pt-2">
         <div>
-          <h1 className="text-xl font-bold text-white">Daily Work Reports</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{todayDisplay}</p>
+          <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>HR & Admin</p>
+          <h1 className="text-2xl font-bold text-[#1C1712]">Work Reports</h1>
+          <p className="text-sm text-[#9A8F82] mt-0.5">📅 {todayDisplay}</p>
         </div>
         {!showForm && (
           <button
             onClick={() => { setShowForm(true); if (todayReport) editReport(todayReport) }}
-            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-gray-900 font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 flex-shrink-0"
+            style={{ background: '#1C1712' }}
           >
-            <Plus className="w-4 h-4" />
-            {todayReport ? 'Update Today\'s Report' : 'Submit Today\'s Report'}
+            <Plus className="w-4 h-4" style={{ color: '#B8860B' }} />
+            <span>{todayReport ? "Update Today's Report" : "Submit Today's Report"}</span>
           </button>
         )}
       </div>
 
       {/* Today status banner */}
       {!showForm && (
-        <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${
-          todayReport
-            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-        }`}>
-          {todayReport ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-          <p className="text-sm font-medium">
+        <div
+          className="flex items-center gap-3 px-4 py-3 rounded-2xl border"
+          style={todayReport
+            ? { background: '#F0FDF4', borderColor: '#BBF7D0' }
+            : { background: '#FFFBEB', borderColor: '#FDE68A' }
+          }
+        >
+          {todayReport
+            ? <CheckCircle className="w-4 h-4 flex-shrink-0 text-emerald-600" />
+            : <AlertCircle className="w-4 h-4 flex-shrink-0 text-amber-600" />
+          }
+          <p className="text-sm font-medium" style={{ color: todayReport ? '#166534' : '#92400E' }}>
             {todayReport
               ? `Today's report submitted · ${todayReport.hours_worked}hrs worked`
-              : "Today's work report not submitted yet"}
+              : "Today's work report not submitted yet"
+            }
           </p>
           {!todayReport && (
             <button
               onClick={() => setShowForm(true)}
-              className="ml-auto text-xs font-bold underline"
+              className="ml-auto text-xs font-bold underline text-amber-700"
             >
               Submit now →
             </button>
@@ -185,59 +176,71 @@ export default function WorkReportsPage() {
         </div>
       )}
 
-      {/* Success message */}
+      {/* Success */}
       {success && (
-        <div className="px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm font-medium">
-          {success}
+        <div className="px-4 py-3 rounded-2xl border text-sm font-medium text-emerald-700"
+          style={{ background: '#F0FDF4', borderColor: '#BBF7D0' }}>
+          ✅ {success}
         </div>
       )}
 
       {/* Submit Form */}
       {showForm && (
-        <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+        <div className="bg-white border border-[#E2D9C8] rounded-2xl overflow-hidden">
+          {/* Form Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE0]"
+            style={{ background: '#1C1712' }}>
             <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-amber-400" />
+              <FileText className="w-4 h-4" style={{ color: '#B8860B' }} />
               <h2 className="text-sm font-semibold text-white">
                 {todayReport ? 'Update' : 'Submit'} Work Report — {new Date().toLocaleDateString('en-IN')}
               </h2>
             </div>
-            <button onClick={() => { setShowForm(false); setError('') }} className="text-gray-600 hover:text-gray-400 text-lg">✕</button>
+            <button
+              onClick={() => { setShowForm(false); setError('') }}
+              className="text-gray-400 hover:text-white transition-colors text-lg"
+            >✕</button>
           </div>
 
-          <div className="p-5 space-y-5">   
+          <div className="p-5 space-y-5">
 
             {/* Tasks Completed */}
             <div>
-              <label className="block text-xs font-bold text-amber-400 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#16A34A' }}>
                 ✅ Tasks Completed Today *
               </label>
               <textarea
                 rows={4}
-                placeholder="1. Completed lead pipeline UI&#10;2. Fixed Razorpay integration&#10;3. Updated dashboard sidebar"
+                placeholder={"1. Completed lead pipeline UI\n2. Fixed Razorpay integration\n3. Updated dashboard sidebar"}
                 value={form.tasks_completed}
                 onChange={e => setForm({ ...form, tasks_completed: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500 transition-colors resize-none"
+                className="w-full border rounded-xl px-4 py-3 text-sm focus:outline-none resize-none transition-colors text-[#1C1712] placeholder-[#C4BAB0]"
+                style={{ borderColor: '#E2D9C8', background: '#FAFAF8' }}
+                onFocus={e => e.target.style.borderColor = '#B8860B'}
+                onBlur={e => e.target.style.borderColor = '#E2D9C8'}
               />
             </div>
 
             {/* Tasks Pending */}
             <div>
-              <label className="block text-xs font-bold text-blue-400 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#2563EB' }}>
                 🔄 Pending / Tomorrow's Tasks
               </label>
               <textarea
                 rows={3}
-                placeholder="1. Billing pages fix&#10;2. Employee work report feature&#10;3. Settings page testing"
+                placeholder={"1. Billing pages fix\n2. Employee work report feature\n3. Settings page testing"}
                 value={form.tasks_pending}
                 onChange={e => setForm({ ...form, tasks_pending: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500 transition-colors resize-none"
+                className="w-full border rounded-xl px-4 py-3 text-sm focus:outline-none resize-none transition-colors text-[#1C1712] placeholder-[#C4BAB0]"
+                style={{ borderColor: '#E2D9C8', background: '#FAFAF8' }}
+                onFocus={e => e.target.style.borderColor = '#B8860B'}
+                onBlur={e => e.target.style.borderColor = '#E2D9C8'}
               />
             </div>
 
             {/* Blockers */}
             <div>
-              <label className="block text-xs font-bold text-red-400 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#DC2626' }}>
                 ⚠️ Blockers / Issues
               </label>
               <textarea
@@ -245,56 +248,63 @@ export default function WorkReportsPage() {
                 placeholder="Any blockers or issues faced today... (or type 'None')"
                 value={form.blockers}
                 onChange={e => setForm({ ...form, blockers: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-amber-500 transition-colors resize-none"
+                className="w-full border rounded-xl px-4 py-3 text-sm focus:outline-none resize-none transition-colors text-[#1C1712] placeholder-[#C4BAB0]"
+                style={{ borderColor: '#E2D9C8', background: '#FAFAF8' }}
+                onFocus={e => e.target.style.borderColor = '#B8860B'}
+                onBlur={e => e.target.style.borderColor = '#E2D9C8'}
               />
             </div>
 
             {/* Hours */}
             <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-[#7A6E60]">
                 🕐 Hours Worked
               </label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {['4', '5', '6', '7', '8', '9', '10'].map(h => (
                   <button
                     key={h}
                     onClick={() => setForm({ ...form, hours_worked: h })}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      form.hours_worked === h
-                        ? 'bg-amber-500 text-gray-900 font-bold'
-                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                    }`}
+                    className="px-3 py-2 rounded-xl text-sm font-semibold transition-colors"
+                    style={{
+                      background: form.hours_worked === h ? '#1C1712' : '#F0EBE0',
+                      color: form.hours_worked === h ? '#B8860B' : '#7A6E60',
+                    }}
                   >
                     {h}h
                   </button>
                 ))}
                 <input
                   type="number"
-                  min="1"
-                  max="16"
-                  step="0.5"
+                  min="1" max="16" step="0.5"
                   value={form.hours_worked}
                   onChange={e => setForm({ ...form, hours_worked: e.target.value })}
-                  className="w-16 bg-gray-800 border border-gray-700 rounded-lg px-2 py-2 text-sm text-white text-center focus:outline-none focus:border-amber-500"
+                  className="w-16 border rounded-xl px-2 py-2 text-sm text-[#1C1712] text-center focus:outline-none"
+                  style={{ borderColor: '#E2D9C8', background: '#FAFAF8' }}
                 />
               </div>
             </div>
 
             {error && (
-              <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">⚠ {error}</p>
+              <p className="text-xs px-3 py-2 rounded-xl border text-red-700"
+                style={{ background: '#FEF2F2', borderColor: '#FECACA' }}>
+                ⚠ {error}
+              </p>
             )}
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-1">
               <button
                 onClick={() => { setShowForm(false); setError('') }}
-                className="px-5 py-2.5 rounded-lg text-sm font-medium text-gray-400 border border-gray-700 hover:bg-gray-800 transition-colors"
+                className="px-5 py-2.5 rounded-xl text-sm font-medium border transition-colors"
+                style={{ borderColor: '#E2D9C8', color: '#7A6E60' }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 py-2.5 rounded-lg text-sm font-bold bg-amber-500 hover:bg-amber-400 text-gray-900 transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-opacity disabled:opacity-50"
+                style={{ background: '#B8860B' }}
               >
                 {submitting ? '⏳ Submitting...' : todayReport ? '✅ Update Report' : '✅ Submit Report'}
               </button>
@@ -304,12 +314,13 @@ export default function WorkReportsPage() {
       )}
 
       {/* Reports List */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
+      <div className="bg-white border border-[#E2D9C8] rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0EBE0]"
+          style={{ background: '#1C1712' }}>
           <h2 className="text-sm font-semibold text-white">
             {role === 'admin' ? 'All Team Reports' : 'My Reports'} ({reports.length})
           </h2>
-          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+          <div className="flex items-center gap-1.5 text-xs" style={{ color: '#B8860B' }}>
             <Clock className="w-3.5 h-3.5" />
             Recent first
           </div>
@@ -317,12 +328,14 @@ export default function WorkReportsPage() {
 
         {reports.length === 0 ? (
           <div className="py-16 text-center">
-            <FileText className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-            <p className="text-gray-500 text-sm">No work reports yet</p>
-            <p className="text-gray-600 text-xs mt-1">Submit today's report to get started</p>
+            <div className="w-14 h-14 bg-[#F5F0E8] border border-[#E2D9C8] rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-7 h-7 text-[#B8860B]" />
+            </div>
+            <p className="text-[#1C1712] font-bold text-sm">No work reports yet</p>
+            <p className="text-[#9A8F82] text-xs mt-1">Submit today's report to get started</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-800">
+          <div className="divide-y divide-[#F0EBE0]">
             {reports.map((report: any) => (
               <ReportRow
                 key={report.id}
@@ -352,41 +365,46 @@ function ReportRow({ report, isAdmin, isOwn, onEdit }: {
   const isToday = report.report_date === new Date().toISOString().split('T')[0]
 
   return (
-    <div className="px-5 py-4 hover:bg-gray-800/30 transition-colors">
+    <div className="px-5 py-4 hover:bg-[#FDFAF8] transition-colors">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3 flex-1 min-w-0">
+
           {/* Date badge */}
-          <div className={`flex-shrink-0 text-center px-2.5 py-1.5 rounded-lg min-w-[56px] ${
-            isToday ? 'bg-amber-500/10 border border-amber-500/20' : 'bg-gray-800'
-          }`}>
-            <p className={`text-[10px] font-bold uppercase ${isToday ? 'text-amber-400' : 'text-gray-500'}`}>
+          <div
+            className="flex-shrink-0 text-center px-2.5 py-1.5 rounded-xl min-w-[58px] border"
+            style={isToday
+              ? { background: '#1C1712', borderColor: '#1C1712' }
+              : { background: '#F5F0E8', borderColor: '#E2D9C8' }
+            }
+          >
+            <p className="text-[10px] font-bold uppercase" style={{ color: isToday ? '#B8860B' : '#9A8F82' }}>
               {isToday ? 'Today' : date.split(' ')[0]}
             </p>
-            <p className={`text-sm font-bold ${isToday ? 'text-amber-300' : 'text-white'}`}>
+            <p className="text-sm font-bold" style={{ color: isToday ? '#F5F0E8' : '#1C1712' }}>
               {date.split(' ').slice(1).join(' ')}
             </p>
           </div>
 
           <div className="flex-1 min-w-0">
             {isAdmin && (
-              <p className="text-xs text-amber-400 font-semibold mb-1">
+              <p className="text-xs font-semibold mb-1" style={{ color: '#B8860B' }}>
                 {report.employee?.full_name || 'Unknown'}
               </p>
             )}
-            <p className="text-sm text-white line-clamp-2">{report.tasks_completed}</p>
+            <p className="text-sm text-[#1C1712] line-clamp-2">{report.tasks_completed}</p>
 
             {expanded && (
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 space-y-3">
                 {report.tasks_pending && (
-                  <div>
-                    <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">Pending</p>
-                    <p className="text-xs text-gray-400 whitespace-pre-line">{report.tasks_pending}</p>
+                  <div className="rounded-xl px-3 py-2.5 border border-[#DBEAFE]" style={{ background: '#EFF6FF' }}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider mb-1 text-blue-700">🔄 Pending</p>
+                    <p className="text-xs text-blue-800 whitespace-pre-line">{report.tasks_pending}</p>
                   </div>
                 )}
                 {report.blockers && (
-                  <div>
-                    <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">Blockers</p>
-                    <p className="text-xs text-gray-400 whitespace-pre-line">{report.blockers}</p>
+                  <div className="rounded-xl px-3 py-2.5 border border-[#FECACA]" style={{ background: '#FEF2F2' }}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider mb-1 text-red-700">⚠️ Blockers</p>
+                    <p className="text-xs text-red-800 whitespace-pre-line">{report.blockers}</p>
                   </div>
                 )}
               </div>
@@ -395,16 +413,29 @@ function ReportRow({ report, isAdmin, isOwn, onEdit }: {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-xs text-gray-500">{report.hours_worked}h</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-            report.status === 'submitted' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-gray-700 text-gray-400'
-          }`}>
+          <span className="text-xs text-[#7A6E60] font-medium">{report.hours_worked}h</span>
+          <span
+            className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+            style={report.status === 'submitted'
+              ? { background: '#F0FDF4', color: '#166534' }
+              : { background: '#F5F0E8', color: '#7A6E60' }
+            }
+          >
             {report.status}
           </span>
           {isOwn && isToday && (
-            <button onClick={onEdit} className="text-xs text-amber-400 hover:text-amber-300 font-medium">Edit</button>
+            <button
+              onClick={onEdit}
+              className="text-xs font-semibold underline"
+              style={{ color: '#B8860B' }}
+            >
+              Edit
+            </button>
           )}
-          <button onClick={() => setExpanded(!expanded)} className="text-gray-600 hover:text-gray-400">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-[#C4BAB0] hover:text-[#7A6E60] transition-colors"
+          >
             <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </button>
         </div>

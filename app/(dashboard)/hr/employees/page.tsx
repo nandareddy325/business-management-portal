@@ -31,14 +31,15 @@ export default async function EmployeesPage() {
   ]
 
   const deptColors: Record<string, { bg: string; text: string }> = {
-    Design:     { bg: 'bg-blue-50',   text: 'text-blue-700' },
-    Sales:      { bg: 'bg-emerald-50',text: 'text-emerald-700' },
-    Operations: { bg: 'bg-amber-50',  text: 'text-amber-700' },
-    HR:         { bg: 'bg-pink-50',   text: 'text-pink-700' },
-    Finance:    { bg: 'bg-purple-50', text: 'text-purple-700' },
-    IT:         { bg: 'bg-cyan-50',   text: 'text-cyan-700' },
-    Marketing:  { bg: 'bg-orange-50', text: 'text-orange-700' },
-    Other:      { bg: 'bg-[#F0EBE0]', text: 'text-[#7A6E60]' },
+    Design:     { bg: 'bg-blue-50',    text: 'text-blue-700' },
+    Sales:      { bg: 'bg-emerald-50', text: 'text-emerald-700' },
+    Operations: { bg: 'bg-amber-50',   text: 'text-amber-700' },
+    HR:         { bg: 'bg-pink-50',    text: 'text-pink-700' },
+    Finance:    { bg: 'bg-purple-50',  text: 'text-purple-700' },
+    IT:         { bg: 'bg-cyan-50',    text: 'text-cyan-700' },
+    Marketing:  { bg: 'bg-orange-50',  text: 'text-orange-700' },
+    CRE:        { bg: 'bg-rose-50',    text: 'text-rose-700' },
+    Other:      { bg: 'bg-[#F0EBE0]',  text: 'text-[#7A6E60]' },
   }
 
   const avatarColors = [
@@ -51,7 +52,7 @@ export default async function EmployeesPage() {
   ]
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 p-4 md:p-0">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -82,85 +83,116 @@ export default async function EmployeesPage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-[#FDFAF4] border border-[#E2D9C8] rounded-2xl overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-[#E2D9C8] text-left">
-              {['Employee', 'Designation', 'Department', 'Phone', 'Joined'].map(h => (
-                <th key={h} className="px-5 py-3.5 text-[11px] font-semibold text-[#7A6E60] uppercase tracking-wider">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#F0EBE0]">
-            {(employees ?? []).map((emp: any, i: number) => {
-              const av = avatarColors[i % avatarColors.length]
-              const deptStyle = deptColors[emp.department] ?? deptColors['Other']
-              return (
-                <tr key={emp.id} className="hover:bg-[#F5F0E8] transition-colors">
+      {/* Empty state */}
+      {!employees?.length && (
+        <div className="bg-[#FDFAF4] border border-[#E2D9C8] rounded-2xl py-16 text-center">
+          <div className="w-12 h-12 bg-[#F0EBE0] rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <UserCheck className="w-6 h-6 text-[#7A6E60]" />
+          </div>
+          <p className="text-[#7A6E60] text-sm font-medium">No employees added yet</p>
+          <p className="text-[#B8A99A] text-xs mt-1">Click "+ Add Employee" to get started</p>
+        </div>
+      )}
 
-                  {/* Employee */}
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 ${av.bg} ${av.text} rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0`}>
-                        {emp.full_name?.charAt(0)?.toUpperCase() ?? '?'}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-[#1C1712]">{emp.full_name}</p>
-                        <p className="text-xs text-[#7A6E60]">{emp.email ?? '—'}</p>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Designation */}
-                  <td className="px-5 py-3.5 text-sm text-[#7A6E60]">
-                    {emp.designation ?? '—'}
-                  </td>
-
-                  {/* Department */}
-                  <td className="px-5 py-3.5">
-                    {emp.department ? (
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${deptStyle.bg} ${deptStyle.text}`}>
-                        {emp.department}
-                      </span>
-                    ) : (
-                      <span className="text-[#7A6E60]">—</span>
-                    )}
-                  </td>
-
-                  {/* Phone */}
-                  <td className="px-5 py-3.5 text-sm text-[#7A6E60]">
-                    {emp.phone ?? '—'}
-                  </td>
-
-                  {/* Joined */}
-                  <td className="px-5 py-3.5 text-xs text-[#7A6E60]">
-                    {emp.join_date
-                      ? new Date(emp.join_date).toLocaleDateString('en-IN')
-                      : '—'}
-                  </td>
-
-                </tr>
-              )
-            })}
-
-            {/* Empty state */}
-            {!employees?.length && (
-              <tr>
-                <td colSpan={5} className="py-16 text-center">
-                  <div className="w-12 h-12 bg-[#F0EBE0] rounded-2xl flex items-center justify-center mx-auto mb-3">
-                    <UserCheck className="w-6 h-6 text-[#7A6E60]" />
-                  </div>
-                  <p className="text-[#7A6E60] text-sm font-medium">No employees added yet</p>
-                  <p className="text-[#B8A99A] text-xs mt-1">Click "+ Add Employee" to get started</p>
-                </td>
+      {/* DESKTOP — Table */}
+      {!!employees?.length && (
+        <div className="hidden md:block bg-[#FDFAF4] border border-[#E2D9C8] rounded-2xl overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-[#E2D9C8] text-left">
+                {['Employee', 'Designation', 'Department', 'Phone', 'Joined'].map(h => (
+                  <th key={h} className="px-5 py-3.5 text-[11px] font-semibold text-[#7A6E60] uppercase tracking-wider">
+                    {h}
+                  </th>
+                ))}
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-[#F0EBE0]">
+              {(employees ?? []).map((emp: any, i: number) => {
+                const av = avatarColors[i % avatarColors.length]
+                const deptStyle = deptColors[emp.department] ?? deptColors['Other']
+                return (
+                  <tr key={emp.id} className="hover:bg-[#F5F0E8] transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 ${av.bg} ${av.text} rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0`}>
+                          {emp.full_name?.charAt(0)?.toUpperCase() ?? '?'}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-[#1C1712]">{emp.full_name}</p>
+                          <p className="text-xs text-[#7A6E60]">{emp.email ?? '—'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 text-sm text-[#7A6E60]">{emp.designation ?? '—'}</td>
+                    <td className="px-5 py-3.5">
+                      {emp.department ? (
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${deptStyle.bg} ${deptStyle.text}`}>
+                          {emp.department}
+                        </span>
+                      ) : <span className="text-[#7A6E60]">—</span>}
+                    </td>
+                    <td className="px-5 py-3.5 text-sm text-[#7A6E60]">{emp.phone ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-xs text-[#7A6E60]">
+                      {emp.join_date ? new Date(emp.join_date).toLocaleDateString('en-IN') : '—'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* MOBILE — Cards */}
+      {!!employees?.length && (
+        <div className="md:hidden space-y-3">
+          {(employees ?? []).map((emp: any, i: number) => {
+            const av = avatarColors[i % avatarColors.length]
+            const deptStyle = deptColors[emp.department] ?? deptColors['Other']
+            return (
+              <div key={emp.id} className="bg-[#FDFAF4] border border-[#E2D9C8] rounded-2xl p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  {/* Avatar */}
+                  <div className={`w-11 h-11 ${av.bg} ${av.text} rounded-xl flex items-center justify-center text-base font-bold flex-shrink-0`}>
+                    {emp.full_name?.charAt(0)?.toUpperCase() ?? '?'}
+                  </div>
+                  {/* Name + Email */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-[#1C1712] truncate">{emp.full_name}</p>
+                    <p className="text-xs text-[#7A6E60] truncate">{emp.email ?? '—'}</p>
+                  </div>
+                  {/* Dept badge */}
+                  {emp.department && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${deptStyle.bg} ${deptStyle.text}`}>
+                      {emp.department}
+                    </span>
+                  )}
+                </div>
+
+                {/* Details grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-white rounded-xl px-3 py-2 border border-[#F0EBE0]">
+                    <p className="text-[10px] text-[#7A6E60] uppercase tracking-wide font-semibold">Designation</p>
+                    <p className="text-xs font-semibold text-[#1C1712] mt-0.5">{emp.designation ?? '—'}</p>
+                  </div>
+                  <div className="bg-white rounded-xl px-3 py-2 border border-[#F0EBE0]">
+                    <p className="text-[10px] text-[#7A6E60] uppercase tracking-wide font-semibold">Phone</p>
+                    <p className="text-xs font-semibold text-[#1C1712] mt-0.5">{emp.phone ?? '—'}</p>
+                  </div>
+                  <div className="bg-white rounded-xl px-3 py-2 border border-[#F0EBE0] col-span-2">
+                    <p className="text-[10px] text-[#7A6E60] uppercase tracking-wide font-semibold">Joined</p>
+                    <p className="text-xs font-semibold text-[#1C1712] mt-0.5">
+                      {emp.join_date ? new Date(emp.join_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
     </div>
   )
 }
