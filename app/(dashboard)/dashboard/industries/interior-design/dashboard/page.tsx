@@ -6,8 +6,6 @@ import {
   MapPin, FileText, Trophy, XCircle, TrendingUp
 } from 'lucide-react'
 
-import { CRMTeamSection } from '@/components/interior/crm-team-section'
-
 export const dynamic = 'force-dynamic'
 
 const STAGES = [
@@ -188,17 +186,24 @@ export default async function InteriorDesignDashboard() {
   const LEAD_BASE = '/dashboard/industries/interior-design/leads'
 
   return (
-    <div className="space-y-6 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
+    <div className="space-y-6 px-0 md:px-6 pt-4 pb-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
 
       {/* Header */}
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>Interior Design</p>
+      <div className="px-4 md:px-0">
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <p className="text-[10px] font-bold uppercase tracking-[4px]" style={{ color: '#B8860B' }}>Interior Design</p>
+          <Link href="/dashboard/industries/interior-design/analytics"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black text-white flex-shrink-0 transition-all hover:scale-105"
+            style={{ background: 'linear-gradient(135deg, #B8860B, #D97706)', boxShadow: '0 4px 12px rgba(184,134,11,0.35)' }}>
+            📊 Analytics
+          </Link>
+        </div>
         <h1 className="text-2xl font-bold text-[#1C1712]">Pipeline Dashboard</h1>
         <p className="text-sm text-[#9A8F82] mt-0.5">All stages overview — real time data</p>
       </div>
 
       {/* Top Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 px-4 md:px-0">
         {[
           { label: 'Total Leads',  value: String(totalLeads),  color: '#7C3AED', icon: '👥' },
           { label: 'Active',       value: String(activeLeads), color: '#2563EB', icon: '⚡' },
@@ -216,7 +221,7 @@ export default async function InteriorDesignDashboard() {
       </div>
 
       {/* Today's Calls + Yesterday's Calls */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 md:px-0">
 
         {/* Today's Calls */}
         <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
@@ -330,7 +335,7 @@ export default async function InteriorDesignDashboard() {
       </div>
 
       {/* Conversion + Budget */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 px-4 md:px-0">
         <div className="bg-white border border-[#E8E2D8] rounded-2xl p-4 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: '#FFFBEB' }}>
             <TrendingUp className="w-6 h-6" style={{ color: '#B8860B' }} />
@@ -356,7 +361,7 @@ export default async function InteriorDesignDashboard() {
       </div>
 
       {/* Stage Cards */}
-      <div>
+      <div className="px-4 md:px-0">
         <p className="text-[10px] font-bold uppercase tracking-[4px] mb-3" style={{ color: '#B8860B' }}>Stage Wise Count</p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Link href="/dashboard/industries/interior-design/all-leads">
@@ -402,7 +407,7 @@ export default async function InteriorDesignDashboard() {
       </div>
 
       {/* Total Leads Breakdown */}
-      <div>
+      <div className="px-4 md:px-0">
         <p className="text-[10px] font-bold uppercase tracking-[4px] mb-3" style={{ color: '#B8860B' }}>Total Leads Breakdown</p>
         <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
           {STAGES.map((stage, i) => {
@@ -439,7 +444,7 @@ export default async function InteriorDesignDashboard() {
       </div>
 
       {/* ── CRM Team Section ── */}
-      <div>
+      <div className="px-4 md:px-0">
         <p className="text-[10px] font-bold uppercase tracking-[4px] mb-3" style={{ color: '#B8860B' }}>CRM Team</p>
         <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
           {crmTeam.length === 0 ? (
@@ -528,7 +533,7 @@ export default async function InteriorDesignDashboard() {
       </div>
 
 
-      <div className="text-center py-2">
+      <div className="text-center py-2 px-4 md:px-0">
         <p className="text-[10px] text-[#C4BAB0]">Interior Design Pipeline · GK CRM · Real-time data</p>
       </div>
     </div>

@@ -13,16 +13,14 @@ export default async function RNRPage() {
   if (!profile?.company_id) redirect('/login')
 
   // RNR = followup stage + notes starting with [RNR]
-  const { data: allFollowup } = await supabase
+  const { data: rnrLeads } = await supabase
     .from('leads').select('*')
     .eq('company_id', profile.company_id)
     .eq('industry', 'interior-design')
-    .eq('pipeline_stage', 'followup')
+    .eq('pipeline_stage', 'rnr')
     .order('created_at', { ascending: false })
 
-  const leads = (allFollowup ?? []).filter((l: any) =>
-    String(l.notes || '').startsWith('[RNR]')
-  )
+  const leads = rnrLeads ?? []
   const count = leads.length
 
   return (

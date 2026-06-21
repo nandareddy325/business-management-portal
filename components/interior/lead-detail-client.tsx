@@ -11,14 +11,13 @@ const GRADIENTS = [
 ]
 
 const PIPELINE_STAGES = [
-  { key: 'new',         label: 'New Lead',   icon: '🆕', color: '#7C3AED', bg: '#F5F3FF' },
-  { key: 'fresh-leads', label: 'Fresh',      icon: '⚡', color: '#16A34A', bg: '#F0FDF4' },
-  { key: 'calling',     label: 'Calling',    icon: '📞', color: '#2563EB', bg: '#EFF6FF' },
-  { key: 'followup',    label: 'Follow Up',  icon: '🔄', color: '#D97706', bg: '#FFFBEB' },
-  { key: 'sitevisit',   label: 'Site Visit', icon: '🏠', color: '#0891B2', bg: '#ECFEFF' },
-  { key: 'quotation',   label: 'Quotation',  icon: '💰', color: '#DB2777', bg: '#FDF2F8' },
-  { key: 'won',         label: 'Won',        icon: '🏆', color: '#B8860B', bg: '#FFFBEB' },
-  { key: 'lost',        label: 'Lost',       icon: '❌', color: '#DC2626', bg: '#FEF2F2' },
+  { key: 'new',       label: 'New Lead',   icon: '🆕', color: '#7C3AED', bg: '#F5F3FF' },
+  { key: 'followup',  label: 'Follow Up',  icon: '🔄', color: '#D97706', bg: '#FFFBEB' },
+  { key: 'rnr',       label: 'RNR',        icon: '📵', color: '#DC2626', bg: '#FEF2F2' },
+  { key: 'sitevisit', label: 'Site Visit', icon: '🏠', color: '#0891B2', bg: '#ECFEFF' },
+  { key: 'quotation', label: 'Quotation',  icon: '💰', color: '#DB2777', bg: '#FDF2F8' },
+  { key: 'won',       label: 'Won',        icon: '🏆', color: '#B8860B', bg: '#FFFBEB' },
+  { key: 'lost',      label: 'Lost',       icon: '❌', color: '#DC2626', bg: '#FEF2F2' },
 ]
 
 const SOURCE_CONFIG: Record<string, { bg: string; color: string; icon: string }> = {
@@ -129,10 +128,10 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     setSavingNote(false)
   }
 
-  const nameIdx  = lead.lead_name?.charCodeAt(0) % GRADIENTS.length
-  const g        = GRADIENTS[nameIdx] ?? GRADIENTS[0]
-  const src      = SOURCE_CONFIG[lead.source] ?? SOURCE_CONFIG['Other']
-  const curStage = PIPELINE_STAGES.find(s => s.key === lead.pipeline_stage) ?? PIPELINE_STAGES[0]
+  const nameIdx     = lead.lead_name?.charCodeAt(0) % GRADIENTS.length
+  const g           = GRADIENTS[nameIdx] ?? GRADIENTS[0]
+  const src         = SOURCE_CONFIG[lead.source] ?? SOURCE_CONFIG['Other']
+  const curStage    = PIPELINE_STAGES.find(s => s.key === lead.pipeline_stage) ?? PIPELINE_STAGES[0]
   const curStageIdx = PIPELINE_STAGES.findIndex(s => s.key === lead.pipeline_stage)
 
   return (
@@ -222,6 +221,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
                 </button>
               )
             })}
+            {/* Lost separate */}
             <button onClick={() => handleStageChange('lost')} disabled={savingStage}
               className="flex flex-col items-center gap-1 flex-shrink-0 ml-2 transition-all hover:scale-105 disabled:opacity-50"
               style={{ minWidth: '52px' }}>

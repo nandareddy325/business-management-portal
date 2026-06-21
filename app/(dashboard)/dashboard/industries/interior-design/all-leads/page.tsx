@@ -21,22 +21,21 @@ const SOURCE_CONFIG: Record<string, { bg: string; color: string; icon: string }>
 }
 
 const STAGE_CONFIG: Record<string, { bg: string; color: string; label: string }> = {
-  'new':         { bg: '#F5F3FF', color: '#7C3AED', label: '🆕 New Leads' },
-  'new-leads':   { bg: '#F5F3FF', color: '#7C3AED', label: '🆕 New Leads' },
-  'fresh-leads': { bg: '#F0FDF4', color: '#16A34A', label: '⚡ Fresh Leads' },
-  'calling':     { bg: '#EFF6FF', color: '#2563EB', label: '📞 Calling' },
-  'followup':    { bg: '#FFFBEB', color: '#D97706', label: '🔄 Follow Up' },
-  'follow-up':   { bg: '#FFFBEB', color: '#D97706', label: '🔄 Follow Up' },
-  'sitevisit':   { bg: '#ECFEFF', color: '#0891B2', label: '🏠 Site Visit' },
-  'site-visit':  { bg: '#ECFEFF', color: '#0891B2', label: '🏠 Site Visit' },
-  'quotation':   { bg: '#FDF2F8', color: '#DB2777', label: '💰 Quotations' },
-  'quotations':  { bg: '#FDF2F8', color: '#DB2777', label: '💰 Quotations' },
-  'won':         { bg: '#FFFBEB', color: '#B8860B', label: '🏆 Won' },
-  'lost':        { bg: '#FEF2F2', color: '#DC2626', label: '❌ Lost' },
+  'new':        { bg: '#F5F3FF', color: '#7C3AED', label: '🆕 New Leads' },
+  'new-leads':  { bg: '#F5F3FF', color: '#7C3AED', label: '🆕 New Leads' },
+  'followup':   { bg: '#FFFBEB', color: '#D97706', label: '🔄 Follow Up' },
+  'follow-up':  { bg: '#FFFBEB', color: '#D97706', label: '🔄 Follow Up' },
+  'rnr':        { bg: '#FEF2F2', color: '#DC2626', label: '📵 RNR' },
+  'sitevisit':  { bg: '#ECFEFF', color: '#0891B2', label: '🏠 Site Visit' },
+  'site-visit': { bg: '#ECFEFF', color: '#0891B2', label: '🏠 Site Visit' },
+  'quotation':  { bg: '#FDF2F8', color: '#DB2777', label: '💰 Quotations' },
+  'quotations': { bg: '#FDF2F8', color: '#DB2777', label: '💰 Quotations' },
+  'won':        { bg: '#FFFBEB', color: '#B8860B', label: '🏆 Won' },
+  'lost':       { bg: '#FEF2F2', color: '#DC2626', label: '❌ Lost' },
 }
 
 const STAGE_ORDER: Record<string, number> = {
-  'calling': 1, 'followup': 2, 'follow-up': 2,
+  'calling': 1, 'followup': 2, 'follow-up': 2, 'rnr': 2,
   'sitevisit': 3, 'site-visit': 3,
   'quotation': 4, 'quotations': 4,
   'fresh-leads': 5, 'new': 6, 'new-leads': 6,
@@ -55,14 +54,13 @@ const ini = (name: string) =>
 const LEAD_BASE = '/dashboard/industries/interior-design/leads'
 
 const UNIQUE_STAGES = [
-  { key: 'new',         label: '🆕 New Leads' },
-  { key: 'fresh-leads', label: '⚡ Fresh Leads' },
-  { key: 'calling',     label: '📞 Calling' },
-  { key: 'followup',    label: '🔄 Follow Up' },
-  { key: 'sitevisit',   label: '🏠 Site Visit' },
-  { key: 'quotation',   label: '💰 Quotations' },
-  { key: 'won',         label: '🏆 Won' },
-  { key: 'lost',        label: '❌ Lost' },
+  { key: 'new',       label: '🆕 New Leads' },
+  { key: 'followup',  label: '🔄 Follow Up' },
+  { key: 'rnr',       label: '📵 RNR' },
+  { key: 'sitevisit', label: '🏠 Site Visit' },
+  { key: 'quotation', label: '💰 Quotations' },
+  { key: 'won',       label: '🏆 Won' },
+  { key: 'lost',      label: '❌ Lost' },
 ]
 
 export default function AllLeadsPage() {
@@ -97,6 +95,7 @@ export default function AllLeadsPage() {
 
   const matchStage = (lead: any, key: string) => {
     if (key === 'new') return lead.pipeline_stage === 'new' || lead.pipeline_stage === 'new-leads'
+    if (key === 'rnr') return lead.pipeline_stage === 'rnr'
     if (key === 'followup') return lead.pipeline_stage === 'followup' || lead.pipeline_stage === 'follow-up'
     if (key === 'sitevisit') return lead.pipeline_stage === 'sitevisit' || lead.pipeline_stage === 'site-visit'
     if (key === 'quotation') return lead.pipeline_stage === 'quotation' || lead.pipeline_stage === 'quotations'
@@ -119,10 +118,6 @@ export default function AllLeadsPage() {
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>Interior Design · Pipeline</p>
           <h1 className="text-2xl font-bold text-[#1C1712]">All Leads</h1>
-          <p className="text-sm text-[#9A8F82] mt-0.5">
-            <span className="font-bold text-[#1C1712]">{filteredLeads.length}</span>{' '}
-            {activeFilter ? `leads — ${STAGE_CONFIG[activeFilter]?.label}` : 'total leads — anni stages'}
-          </p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
           style={{ background: '#F5F3FF', color: '#7C3AED', border: '1px solid #DDD6FE' }}>
