@@ -120,17 +120,14 @@ export function Header({ onMenuClick, title = 'Dashboard', subtitle = 'Overview'
   const notifTypeIcon: Record<string, string> = { lead: '🎯', payment: '💰', system: '⚙️' }
 
   // ✅ Employee ki /settings/users path
-  const menuItems = userRole === 'admin'
-    ? [
-        { icon: '⚙️', label: 'Settings',      href: '/dashboard/settings' },
-        { icon: '👤', label: 'My Profile',     href: '/settings/users' },
-        { icon: '🏢', label: 'Company Setup',  href: '/dashboard/settings' },
-      ]
-    : [
-        { icon: '👤', label: 'My Account',     href: '/settings/users' },
-        { icon: '🔑', label: 'Change Password', href: '/settings/users' },
-      ]
-
+const menuItems = userRole === 'admin'
+  ? [
+      { icon: '👤', label: 'My Profile',    href: '/dashboard/settings' },
+      { icon: '🏢', label: 'Company Setup', href: '/dashboard/settings/company' },
+    ]
+  : [
+      { icon: '👤', label: 'My Account', href: '/dashboard/settings' },
+    ]
   return (
     <header className="h-16 bg-white border-b border-[#E8E2D8] flex items-center px-3 sm:px-5 gap-2 sm:gap-4 sticky top-0 z-30">
 
