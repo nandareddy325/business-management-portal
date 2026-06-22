@@ -87,13 +87,11 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const [qtPdfProgress, setQtPdfProgress] = useState(0)
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
-  // Won popup
   const [showWonPopup, setShowWonPopup] = useState(false)
   const [wonAmount, setWonAmount] = useState('')
   const [wonNote, setWonNote] = useState('')
   const [savingWon, setSavingWon] = useState(false)
 
-  // Quotation revisions
   const [revisions, setRevisions] = useState<any[]>([])
   const [showRevisions, setShowRevisions] = useState(true)
   const [loadingRevisions, setLoadingRevisions] = useState(false)
@@ -113,38 +111,51 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
 
   const loadRevisions = async () => {
     setLoadingRevisions(true)
-    const { data } = await supabase
-      .from('quotation_revisions')
-      .select('*')
-      .eq('lead_id', leadId)
-      .order('version', { ascending: false })
+    const { data } = await supabase.from('quotation_revisions').select('*').eq('lead_id', leadId).order('version', { ascending: false })
     setRevisions(data ?? [])
     setLoadingRevisions(false)
   }
 
-  // Load revisions on mount — handles page refresh when already on quotation stage
-  useEffect(() => {
-    loadRevisions()
-  }, [])
+  useEffect(() => { loadRevisions() }, [])
 
+  // ── Stage Change — auto logs call ──
   const handleStageChange = async (stageKey: string) => {
     if (savingStage) return
-    if (stageKey === 'followup') { setFollowUpDate(getTomorrow()); setFollowUpTime(getNextHour()); setFollowUpNote(''); setShowFollowUpPopup(true); return }
+    if (stageKey === 'followup')  { setFollowUpDate(getTomorrow()); setFollowUpTime(getNextHour()); setFollowUpNote(''); setShowFollowUpPopup(true); return }
     if (stageKey === 'sitevisit') { setSvDate(getTomorrow()); setSvTime('10:00'); setSvType('before_quotation'); setSvNote(''); setShowSiteVisitPopup(true); return }
     if (stageKey === 'quotation') { setQtDate(getTomorrow()); setQtTime('11:00'); setQtType('after_sitevisit'); setQtAmount(''); setQtNote(''); setQtPdfFile(null); setShowQuotationPopup(true); return }
-    if (stageKey === 'won') { setWonAmount(lead.quotation_amount||''); setWonNote(''); setShowWonPopup(true); return }
+    if (stageKey === 'won')       { setWonAmount(lead.quotation_amount||''); setWonNote(''); setShowWonPopup(true); return }
+
     setSavingStage(stageKey)
     const prev = lead.pipeline_stage
     const { data: { user } } = await supabase.auth.getUser()
     setLead((l: any) => ({ ...l, pipeline_stage: stageKey }))
     await supabase.from('leads').update({ pipeline_stage: stageKey }).eq('id', leadId)
     try {
-      await supabase.from('lead_activities').insert({ lead_id: leadId, type: 'stage_change', title: 'Stage Updated', description: `${prev} → ${stageKey}`, stage_from: prev, stage_to: stageKey, user_id: user?.id, created_at: new Date().toISOString() })
+      const now = new Date().toISOString()
+      // ✅ Auto log call for RNR and Lost — CRE called the client
+      const callDescMap: Record<string, string> = {
+        rnr:  'Called — Ring No Response',
+        lost: 'Called — Not interested / dropped',
+      }
+      const callDesc = callDescMap[stageKey]
+      if (callDesc) {
+        await supabase.from('lead_activities').insert({
+          lead_id: leadId, type: 'call', title: '📞 Call Logged',
+          description: callDesc, user_id: user?.id, created_at: now,
+        })
+      }
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'stage_change', title: 'Stage Updated',
+        description: `${prev} → ${stageKey}`, stage_from: prev, stage_to: stageKey,
+        user_id: user?.id, created_at: now,
+      })
       await refreshActivities()
     } catch {}
     setSavingStage(null)
   }
 
+  // ── Follow Up — auto logs call ──
   const handleSaveFollowUp = async () => {
     if (!followUpDate || !followUpTime) return
     setSavingFollowUp(true)
@@ -152,15 +163,35 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     const { data: { user } } = await supabase.auth.getUser()
     const dt = new Date(`${followUpDate}T${followUpTime}:00`).toISOString()
     try {
-      await supabase.from('leads').update({ pipeline_stage: 'followup', followup_date: dt, followup_note: followUpNote.trim()||null }).eq('id', leadId)
+      await supabase.from('leads').update({
+        pipeline_stage: 'followup', followup_date: dt,
+        followup_note: followUpNote.trim()||null,
+      }).eq('id', leadId)
       setLead((l: any) => ({ ...l, pipeline_stage: 'followup', followup_date: dt, followup_note: followUpNote.trim()||null }))
-      await supabase.from('lead_activities').insert({ lead_id: leadId, type: 'followup', title: '🔔 Follow Up Scheduled', description: `📅 ${fmtDateTime(dt)}${followUpNote.trim()?` — ${followUpNote.trim()}`:''}`, stage_from: prev, stage_to: 'followup', user_id: user?.id, created_at: new Date().toISOString() })
-      if (prev !== 'followup') await supabase.from('lead_activities').insert({ lead_id: leadId, type: 'stage_change', title: 'Stage Updated', description: `${prev} → followup`, stage_from: prev, stage_to: 'followup', user_id: user?.id, created_at: new Date().toISOString() })
-      await refreshActivities(); setShowFollowUpPopup(false)
+      const nowFU = new Date().toISOString()
+      // ✅ Auto call log
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'call', title: '📞 Call Logged',
+        description: `Called — Follow Up scheduled for ${fmtDateTime(dt)}`,
+        user_id: user?.id, created_at: nowFU,
+      })
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'followup', title: '🔔 Follow Up Scheduled',
+        description: `📅 ${fmtDateTime(dt)}${followUpNote.trim()?` — ${followUpNote.trim()}`:''}`,
+        stage_from: prev, stage_to: 'followup', user_id: user?.id, created_at: nowFU,
+      })
+      if (prev !== 'followup') await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'stage_change', title: 'Stage Updated',
+        description: `${prev} → followup`, stage_from: prev, stage_to: 'followup',
+        user_id: user?.id, created_at: nowFU,
+      })
+      await refreshActivities()
+      setShowFollowUpPopup(false)
     } catch (e) { console.error(e) }
     setSavingFollowUp(false)
   }
 
+  // ── Site Visit — auto logs call ──
   const handleSaveSiteVisit = async () => {
     if (!svDate || !svTime) return
     setSavingSV(true)
@@ -168,11 +199,30 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     const { data: { user } } = await supabase.auth.getUser()
     const dt = new Date(`${svDate}T${svTime}:00`).toISOString()
     try {
-      await supabase.from('leads').update({ pipeline_stage: 'sitevisit', sitevisit_date: dt, sitevisit_type: svType, sitevisit_note: svNote.trim()||null }).eq('id', leadId)
+      await supabase.from('leads').update({
+        pipeline_stage: 'sitevisit', sitevisit_date: dt,
+        sitevisit_type: svType, sitevisit_note: svNote.trim()||null,
+      }).eq('id', leadId)
       setLead((l: any) => ({ ...l, pipeline_stage: 'sitevisit', sitevisit_date: dt, sitevisit_type: svType, sitevisit_note: svNote.trim()||null }))
-      await supabase.from('lead_activities').insert({ lead_id: leadId, type: 'sitevisit', title: '🏠 Site Visit Scheduled', description: `📅 ${fmtDateTime(dt)} · ${svType==='before_quotation'?'Before Quotation':'After Quotation'}${svNote.trim()?` — ${svNote.trim()}`:''}`, stage_from: prev, stage_to: 'sitevisit', user_id: user?.id, created_at: new Date().toISOString() })
-      if (prev !== 'sitevisit') await supabase.from('lead_activities').insert({ lead_id: leadId, type: 'stage_change', title: 'Stage Updated', description: `${prev} → sitevisit`, stage_from: prev, stage_to: 'sitevisit', user_id: user?.id, created_at: new Date().toISOString() })
-      await refreshActivities(); setShowSiteVisitPopup(false)
+      const nowSV = new Date().toISOString()
+      // ✅ Auto call log
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'call', title: '📞 Call Logged',
+        description: `Called — Site Visit confirmed for ${fmtDateTime(dt)}`,
+        user_id: user?.id, created_at: nowSV,
+      })
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'sitevisit', title: '🏠 Site Visit Scheduled',
+        description: `📅 ${fmtDateTime(dt)} · ${svType==='before_quotation'?'Before Quotation':'After Quotation'}${svNote.trim()?` — ${svNote.trim()}`:''}`,
+        stage_from: prev, stage_to: 'sitevisit', user_id: user?.id, created_at: nowSV,
+      })
+      if (prev !== 'sitevisit') await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'stage_change', title: 'Stage Updated',
+        description: `${prev} → sitevisit`, stage_from: prev, stage_to: 'sitevisit',
+        user_id: user?.id, created_at: nowSV,
+      })
+      await refreshActivities()
+      setShowSiteVisitPopup(false)
     } catch (e) { console.error(e) }
     setSavingSV(false)
   }
@@ -190,6 +240,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     } catch { setQtPdfUploading(false); return null }
   }
 
+  // ── Quotation — auto logs call ──
   const handleSaveQuotation = async () => {
     if (!qtDate || !qtTime) return
     setSavingQT(true)
@@ -197,51 +248,47 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     const { data: { user } } = await supabase.auth.getUser()
     const dt = new Date(`${qtDate}T${qtTime}:00`).toISOString()
     const qtTypeLabel = qtType === 'before_sitevisit' ? 'Before Site Visit' : 'After Site Visit'
-
     try {
-      // Upload PDF
       let pdfUrl: string | null = null
       if (qtPdfFile) pdfUrl = await uploadPdf(qtPdfFile)
 
-      // Get current version number
-      const { count } = await supabase
-        .from('quotation_revisions')
-        .select('*', { count: 'exact', head: true })
-        .eq('lead_id', leadId)
+      const { count } = await supabase.from('quotation_revisions').select('*', { count: 'exact', head: true }).eq('lead_id', leadId)
       const nextVersion = (count ?? 0) + 1
 
-      // Save revision
       await supabase.from('quotation_revisions').insert({
-        lead_id: leadId,
-        version: nextVersion,
-        amount: qtAmount.trim() || null,
-        pdf_url: pdfUrl,
-        quotation_type: qtType,
-        note: qtNote.trim() || null,
-        user_id: user?.id,
-        created_at: new Date().toISOString(),
+        lead_id: leadId, version: nextVersion,
+        amount: qtAmount.trim()||null, pdf_url: pdfUrl,
+        quotation_type: qtType, note: qtNote.trim()||null,
+        user_id: user?.id, created_at: new Date().toISOString(),
       })
 
-      // Update lead with latest
       await supabase.from('leads').update({
-        pipeline_stage: 'quotation',
-        quotation_date: dt,
-        quotation_type: qtType,
-        quotation_amount: qtAmount.trim()||null,
+        pipeline_stage: 'quotation', quotation_date: dt,
+        quotation_type: qtType, quotation_amount: qtAmount.trim()||null,
         quotation_note: qtNote.trim()||null,
         quotation_pdf_url: pdfUrl || lead.quotation_pdf_url,
       }).eq('id', leadId)
 
       setLead((l: any) => ({ ...l, pipeline_stage: 'quotation', quotation_date: dt, quotation_type: qtType, quotation_amount: qtAmount.trim()||null, quotation_note: qtNote.trim()||null, quotation_pdf_url: pdfUrl || l.quotation_pdf_url }))
 
-      // Log activity with version
+      const nowQT = new Date().toISOString()
+      // ✅ Auto call log
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'call', title: '📞 Call Logged',
+        description: `Called — Quotation discussed${qtAmount.trim()?` ₹${Number(qtAmount).toLocaleString('en-IN')}` : ''}`,
+        user_id: user?.id, created_at: nowQT,
+      })
       await supabase.from('lead_activities').insert({
         lead_id: leadId, type: 'quotation',
         title: `💰 Quotation v${nextVersion} ${nextVersion === 1 ? 'Sent' : 'Updated'}`,
         description: `${qtAmount.trim()?`₹${qtAmount.trim()} · `:''}${qtTypeLabel}${pdfUrl?' · 📄 PDF':''} ${qtNote.trim()?`— ${qtNote.trim()}`:''}`.trim(),
-        stage_from: prev, stage_to: 'quotation', user_id: user?.id, created_at: new Date().toISOString(),
+        stage_from: prev, stage_to: 'quotation', user_id: user?.id, created_at: nowQT,
       })
-      if (prev !== 'quotation') await supabase.from('lead_activities').insert({ lead_id: leadId, type: 'stage_change', title: 'Stage Updated', description: `${prev} → quotation`, stage_from: prev, stage_to: 'quotation', user_id: user?.id, created_at: new Date().toISOString() })
+      if (prev !== 'quotation') await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'stage_change', title: 'Stage Updated',
+        description: `${prev} → quotation`, stage_from: prev, stage_to: 'quotation',
+        user_id: user?.id, created_at: nowQT,
+      })
 
       await refreshActivities()
       await loadRevisions()
@@ -251,18 +298,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     setSavingQT(false)
   }
 
-  const handleSaveNote = async () => {
-    if (!noteText.trim()) return
-    setSavingNote(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    try {
-      await supabase.from('lead_activities').insert({ lead_id: leadId, type: noteType, title: noteType==='note'?'Note added':noteType==='call'?'Call logged':noteType==='sitevisit'?'Site Visit':'Quotation', description: noteText.trim(), user_id: user?.id, created_at: new Date().toISOString() })
-      if (noteType === 'note') { await supabase.from('leads').update({ notes: noteText.trim() }).eq('id', leadId); setLead((l: any) => ({ ...l, notes: noteText.trim() })) }
-      await refreshActivities(); setNoteText(''); setShowModal(false)
-    } catch (e) { console.error(e) }
-    setSavingNote(false)
-  }
-
+  // ── Won — auto logs call ──
   const handleSaveWon = async () => {
     setSavingWon(true)
     const prev = lead.pipeline_stage
@@ -270,32 +306,58 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     try {
       await supabase.from('leads').update({
         pipeline_stage: 'won',
-        won_amount: wonAmount.trim() || null,
-        won_note: wonNote.trim() || null,
+        won_amount: wonAmount.trim()||null,
+        won_note: wonNote.trim()||null,
         won_date: new Date().toISOString(),
       }).eq('id', leadId)
       setLead((l: any) => ({ ...l, pipeline_stage: 'won', won_amount: wonAmount.trim()||null, won_note: wonNote.trim()||null }))
+      const nowWon = new Date().toISOString()
+      // ✅ Auto call log
       await supabase.from('lead_activities').insert({
-        lead_id: leadId, type: 'won',
-        title: '🏆 Deal Won!',
-        description: `${wonAmount.trim()?`₹${Number(wonAmount).toLocaleString('en-IN')} · `:''}${wonNote.trim()||'Deal closed successfully'}`,
-        stage_from: prev, stage_to: 'won',
-        user_id: user?.id, created_at: new Date().toISOString(),
+        lead_id: leadId, type: 'call', title: '📞 Call Logged',
+        description: `Called — Deal closed!${wonAmount.trim()?` ₹${Number(wonAmount).toLocaleString('en-IN')}` : ''}`,
+        user_id: user?.id, created_at: nowWon,
       })
-      if (prev !== 'won') await supabase.from('lead_activities').insert({ lead_id: leadId, type: 'stage_change', title: 'Stage Updated', description: `${prev} → won`, stage_from: prev, stage_to: 'won', user_id: user?.id, created_at: new Date().toISOString() })
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'won', title: '🏆 Deal Won!',
+        description: `${wonAmount.trim()?`₹${Number(wonAmount).toLocaleString('en-IN')} · `:''}${wonNote.trim()||'Deal closed successfully'}`,
+        stage_from: prev, stage_to: 'won', user_id: user?.id, created_at: nowWon,
+      })
+      if (prev !== 'won') await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'stage_change', title: 'Stage Updated',
+        description: `${prev} → won`, stage_from: prev, stage_to: 'won',
+        user_id: user?.id, created_at: nowWon,
+      })
       await refreshActivities()
       setShowWonPopup(false)
     } catch (e) { console.error(e) }
     setSavingWon(false)
   }
 
-  // Stage order — forward only logic
-  const STAGE_ORDER = ['new', 'rnr','followup', 'sitevisit', 'quotation', 'won', 'lost']
+  const handleSaveNote = async () => {
+    if (!noteText.trim()) return
+    setSavingNote(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    try {
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: noteType,
+        title: noteType==='note'?'Note added':noteType==='call'?'Call logged':noteType==='sitevisit'?'Site Visit':'Quotation',
+        description: noteText.trim(), user_id: user?.id, created_at: new Date().toISOString(),
+      })
+      if (noteType === 'note') {
+        await supabase.from('leads').update({ notes: noteText.trim() }).eq('id', leadId)
+        setLead((l: any) => ({ ...l, notes: noteText.trim() }))
+      }
+      await refreshActivities(); setNoteText(''); setShowModal(false)
+    } catch (e) { console.error(e) }
+    setSavingNote(false)
+  }
+
+  // Forward-only stage logic
+  const STAGE_ORDER = ['new', 'rnr', 'followup', 'sitevisit', 'quotation', 'won', 'lost']
   const currentStageIdx = STAGE_ORDER.indexOf(lead.pipeline_stage)
   const isStageDisabled = (stageKey: string) => {
     const targetIdx = STAGE_ORDER.indexOf(stageKey)
-    // Disable stages that are BEFORE current stage (can't go back)
-    // Exception: 'lost' is always available, 'rnr' is always available (can happen anytime)
     if (stageKey === 'lost') return false
     return targetIdx < currentStageIdx
   }
@@ -361,7 +423,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap mb-5">
+          <div className="flex items-center gap-2 flex-wrap mb-3">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background:`${curStage.color}15`,color:curStage.color,border:`1px solid ${curStage.color}35` }}>{curStage.icon} {curStage.label}</span>
             {lead.followup_date&&lead.pipeline_stage==='followup'&&<span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background:'#FEF3C7',color:'#92400E',border:'1px solid #FDE68A' }}>🔔 {fmtDateTime(lead.followup_date)}</span>}
             {lead.sitevisit_date&&lead.pipeline_stage==='sitevisit'&&<span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background:'#E0F2FE',color:'#0369A1',border:'1px solid #BAE6FD' }}>🏠 {fmtDateTime(lead.sitevisit_date)}</span>}
@@ -370,14 +432,13 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
             {lead.source&&<span className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background:'rgba(184,134,11,0.08)',color:C.textMuted,border:`1px solid ${C.border}` }}>📌 {lead.source}</span>}
             <span className="text-xs ml-auto" style={{ color:C.textFaint }}>{fmtDate(lead.created_at)}</span>
           </div>
-
-
         </div>
       </div>
 
       {/* BODY */}
       <div className="p-5 space-y-4 max-w-4xl mx-auto">
 
+        {/* Info grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 slide-up">
           {[{icon:MapPin,label:'City',value:lead.city},{icon:User,label:'Property',value:lead.property_type},{icon:Calendar,label:'Added',value:fmtDate(lead.created_at)},{icon:DollarSign,label:'Budget',value:lead.budget}]
             .map((x,i)=>x.value?(<div key={i} className="rounded-2xl p-4" style={{ background:C.card,border:`1px solid ${C.border}`,boxShadow:'0 2px 8px rgba(184,134,11,0.06)' }}><div className="flex items-center gap-2 mb-2"><x.icon className="w-3.5 h-3.5" style={{ color:C.textFaint }}/><p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:C.textFaint }}>{x.label}</p></div><p className="text-sm font-bold" style={{ color:C.text }}>{x.value}</p></div>):null)}
@@ -419,124 +480,67 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
                 <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:'#065F46' }}>Deal Won! 🎉</p>
                 {lead.won_amount&&<p className="text-2xl font-black" style={{ color:'#059669' }}>₹ {Number(lead.won_amount).toLocaleString('en-IN')}</p>}
               </div>
-              <button onClick={()=>{setWonAmount(lead.won_amount||'');setWonNote(lead.won_note||'');setShowWonPopup(true)}}
-                className="ml-auto text-[9px] font-bold px-2.5 py-1 rounded-lg" style={{ background:'#A7F3D0',color:'#065F46',border:'1px solid #6EE7B7' }}>✏️ Edit</button>
+              <button onClick={()=>{setWonAmount(lead.won_amount||'');setWonNote(lead.won_note||'');setShowWonPopup(true)}} className="ml-auto text-[9px] font-bold px-2.5 py-1 rounded-lg" style={{ background:'#A7F3D0',color:'#065F46',border:'1px solid #6EE7B7' }}>✏️ Edit</button>
             </div>
             {lead.won_note&&<p className="text-sm" style={{ color:'#047857' }}>{lead.won_note}</p>}
             {lead.won_date&&<p className="text-[10px] mt-1" style={{ color:'#059669' }}>Closed on {fmtDate(lead.won_date)}</p>}
           </div>
         )}
 
-        {/* ══ QUOTATION CARD with VERSION HISTORY ══ */}
+        {/* Quotation card with version history */}
         {lead.pipeline_stage==='quotation'&&(
           <div className="rounded-2xl overflow-hidden" style={{ background:'#FDF2F8',border:'1px solid #FBCFE8',boxShadow:'0 2px 8px rgba(219,39,119,0.1)' }}>
-
-            {/* Latest quotation header */}
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:'#9D174D' }}>💰 Quotation</p>
-                  {revisions.length > 0 && (
-                    <span className="text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background:'#9D174D',color:'#fff' }}>
-                      v{revisions[0]?.version} — Latest
-                    </span>
-                  )}
+                  {revisions.length > 0 && <span className="text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background:'#9D174D',color:'#fff' }}>v{revisions[0]?.version} — Latest</span>}
                 </div>
                 <div className="flex items-center gap-2">
-                  {lead.quotation_type && (
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background:lead.quotation_type==='before_sitevisit'?'#E0F2FE':'#FEF3C7',color:lead.quotation_type==='before_sitevisit'?'#0369A1':'#92400E',border:`1px solid ${lead.quotation_type==='before_sitevisit'?'#BAE6FD':'#FDE68A'}` }}>
-                      {lead.quotation_type==='before_sitevisit'?'📋 Before SV':'🏠 After SV'}
-                    </span>
-                  )}
-                  <button onClick={()=>{setQtDate(getTomorrow());setQtTime('11:00');setQtType(lead.quotation_type||'after_sitevisit');setQtAmount('');setQtNote('');setQtPdfFile(null);setShowQuotationPopup(true)}}
-                    className="text-[9px] font-bold px-2.5 py-1 rounded-lg" style={{ background:'#FCE7F3',color:'#9D174D',border:'1px solid #FBCFE8' }}>
-                    + New Revision
-                  </button>
+                  {lead.quotation_type && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background:lead.quotation_type==='before_sitevisit'?'#E0F2FE':'#FEF3C7',color:lead.quotation_type==='before_sitevisit'?'#0369A1':'#92400E',border:`1px solid ${lead.quotation_type==='before_sitevisit'?'#BAE6FD':'#FDE68A'}` }}>{lead.quotation_type==='before_sitevisit'?'📋 Before SV':'🏠 After SV'}</span>}
+                  <button onClick={()=>{setQtDate(getTomorrow());setQtTime('11:00');setQtType(lead.quotation_type||'after_sitevisit');setQtAmount('');setQtNote('');setQtPdfFile(null);setShowQuotationPopup(true)}} className="text-[9px] font-bold px-2.5 py-1 rounded-lg" style={{ background:'#FCE7F3',color:'#9D174D',border:'1px solid #FBCFE8' }}>+ New Revision</button>
                 </div>
               </div>
-
-              {lead.quotation_amount && (
-                <p className="text-2xl font-black mb-1" style={{ color:'#9D174D' }}>₹ {Number(lead.quotation_amount).toLocaleString('en-IN')}</p>
-              )}
+              {lead.quotation_amount && <p className="text-2xl font-black mb-1" style={{ color:'#9D174D' }}>₹ {Number(lead.quotation_amount).toLocaleString('en-IN')}</p>}
               {lead.quotation_date && <p className="text-xs" style={{ color:'#DB2777' }}>{fmtDateTime(lead.quotation_date)}</p>}
               {lead.quotation_note && <p className="text-xs mt-1" style={{ color:'#DB2777' }}>{lead.quotation_note}</p>}
-
-              {/* Latest PDF */}
               {lead.quotation_pdf_url && (
-                <a href={lead.quotation_pdf_url} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 mt-3 px-3 py-2 rounded-xl text-xs font-bold hover:scale-105 transition-all"
-                  style={{ background:'#FCE7F3',color:'#9D174D',border:'1px solid #FBCFE8',boxShadow:'0 2px 6px rgba(219,39,119,0.15)' }}>
+                <a href={lead.quotation_pdf_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-3 px-3 py-2 rounded-xl text-xs font-bold hover:scale-105 transition-all" style={{ background:'#FCE7F3',color:'#9D174D',border:'1px solid #FBCFE8' }}>
                   <FileText className="w-3.5 h-3.5"/> View Latest PDF
                 </a>
               )}
             </div>
 
-            {/* Version History toggle */}
             {revisions.length > 0 && (
               <div style={{ borderTop:'1px solid #FBCFE8' }}>
-                <button
-                  onClick={() => setShowRevisions(!showRevisions)}
-                  className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold"
-                  style={{ color:'#9D174D',background:showRevisions?'#FCE7F3':'transparent' }}>
-                  <span className="flex items-center gap-2">
-                    📋 Quotation History
-                    <span className="px-1.5 py-0.5 rounded-full text-[9px]" style={{ background:'#9D174D',color:'white' }}>{revisions.length}</span>
-                  </span>
+                <button onClick={() => setShowRevisions(!showRevisions)} className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold" style={{ color:'#9D174D',background:showRevisions?'#FCE7F3':'transparent' }}>
+                  <span className="flex items-center gap-2">📋 Quotation History <span className="px-1.5 py-0.5 rounded-full text-[9px]" style={{ background:'#9D174D',color:'white' }}>{revisions.length}</span></span>
                   {showRevisions ? <ChevronUp className="w-3.5 h-3.5"/> : <ChevronDown className="w-3.5 h-3.5"/>}
                 </button>
-
                 {showRevisions && (
                   <div style={{ borderTop:'1px solid #FBCFE8' }}>
-                    {loadingRevisions ? (
-                      <div className="p-4 text-center text-xs" style={{ color:'#DB2777' }}>Loading...</div>
-                    ) : (
+                    {loadingRevisions ? <div className="p-4 text-center text-xs" style={{ color:'#DB2777' }}>Loading...</div> : (
                       revisions.map((rev, i) => (
-                        <div key={rev.id} className="rev-row px-4 py-3 flex items-center gap-3"
-                          style={{ borderBottom: i < revisions.length-1 ? '1px solid #FBCFE8' : 'none' }}>
-
-                          {/* Version badge */}
-                          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black flex-shrink-0"
-                            style={{ background: i===0?'#9D174D':'#FCE7F3', color: i===0?'white':'#9D174D', border:'1px solid #FBCFE8' }}>
-                            v{rev.version}
-                          </div>
-
+                        <div key={rev.id} className="rev-row px-4 py-3 flex items-center gap-3" style={{ borderBottom: i < revisions.length-1 ? '1px solid #FBCFE8' : 'none' }}>
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black flex-shrink-0" style={{ background:i===0?'#9D174D':'#FCE7F3', color:i===0?'white':'#9D174D', border:'1px solid #FBCFE8' }}>v{rev.version}</div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5">
-                              {rev.amount ? (
-                                <p className="text-sm font-black" style={{ color:'#831843' }}>₹ {Number(rev.amount).toLocaleString('en-IN')}</p>
-                              ) : (
-                                <p className="text-xs font-bold" style={{ color:'#DB2777' }}>No amount</p>
-                              )}
+                              {rev.amount ? <p className="text-sm font-black" style={{ color:'#831843' }}>₹ {Number(rev.amount).toLocaleString('en-IN')}</p> : <p className="text-xs font-bold" style={{ color:'#DB2777' }}>No amount</p>}
                               {i===0 && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:'#9D174D',color:'white' }}>Latest</span>}
-                              {/* Price change indicator */}
                               {i < revisions.length-1 && rev.amount && revisions[i+1]?.amount && (
-                                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full"
-                                  style={{
-                                    background: Number(rev.amount) < Number(revisions[i+1].amount) ? '#FEF3C7' : '#FCE7F3',
-                                    color: Number(rev.amount) < Number(revisions[i+1].amount) ? '#92400E' : '#9D174D',
-                                  }}>
-                                  {Number(rev.amount) < Number(revisions[i+1].amount) ? '↓' : '↑'}
-                                  ₹{Math.abs(Number(rev.amount)-Number(revisions[i+1].amount)).toLocaleString('en-IN')}
+                                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:Number(rev.amount)<Number(revisions[i+1].amount)?'#FEF3C7':'#FCE7F3', color:Number(rev.amount)<Number(revisions[i+1].amount)?'#92400E':'#9D174D' }}>
+                                  {Number(rev.amount)<Number(revisions[i+1].amount)?'↓':'↑'}₹{Math.abs(Number(rev.amount)-Number(revisions[i+1].amount)).toLocaleString('en-IN')}
                                 </span>
                               )}
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="text-[9px]" style={{ color:'#DB2777' }}>{fmtDateTime(rev.created_at)}</p>
-                              {rev.quotation_type && (
-                                <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:'rgba(219,39,119,0.1)',color:'#DB2777' }}>
-                                  {rev.quotation_type==='before_sitevisit'?'Before SV':'After SV'}
-                                </span>
-                              )}
+                              {rev.quotation_type && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:'rgba(219,39,119,0.1)',color:'#DB2777' }}>{rev.quotation_type==='before_sitevisit'?'Before SV':'After SV'}</span>}
                               {rev.note && <p className="text-[9px] w-full mt-0.5" style={{ color:'#DB2777' }}>{rev.note}</p>}
                             </div>
                           </div>
-
-                          {/* PDF link per revision */}
                           {rev.pdf_url && (
-                            <a href={rev.pdf_url} target="_blank" rel="noopener noreferrer"
-                              className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center hover:scale-110 transition-all"
-                              style={{ background:'#FCE7F3',border:'1px solid #FBCFE8' }}
-                              title="View PDF">
+                            <a href={rev.pdf_url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center hover:scale-110 transition-all" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8' }} title="View PDF">
                               <FileText className="w-3.5 h-3.5" style={{ color:'#9D174D' }}/>
                             </a>
                           )}
@@ -550,6 +554,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
           </div>
         )}
 
+        {/* Req + Notes */}
         {(lead.interest||lead.notes)&&(
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {lead.interest&&<div className="rounded-2xl p-4" style={{ background:C.card,border:`1px solid ${C.border}` }}><p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:C.textFaint }}>💡 Requirement</p><p className="text-sm leading-relaxed" style={{ color:C.textMuted }}>{lead.interest}</p></div>}
@@ -567,34 +572,14 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
               const disabled = !!savingStage || isStageDisabled(stage.key)
               const isPast = isStageDisabled(stage.key) && !isActive
               return(
-                <button key={stage.key}
-                  onClick={() => !disabled && handleStageChange(stage.key)}
-                  disabled={disabled}
+                <button key={stage.key} onClick={() => !disabled && handleStageChange(stage.key)} disabled={disabled}
                   title={isPast ? 'Cannot go back to a previous stage' : ''}
                   className="stage-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold relative"
-                  style={{
-                    background: isActive
-                      ? `linear-gradient(135deg,${stage.color},${stage.color}cc)`
-                      : isPast
-                      ? 'rgba(0,0,0,0.04)'
-                      : `${stage.color}12`,
-                    color: isActive ? '#fff' : isPast ? '#C4B89A' : stage.color,
-                    border: `1px solid ${isActive ? stage.color : isPast ? 'rgba(184,134,11,0.1)' : stage.color+'30'}`,
-                    boxShadow: isActive ? `0 4px 14px ${stage.color}35` : 'none',
-                    opacity: isPast ? 0.45 : 1,
-                    cursor: isPast ? 'not-allowed' : 'pointer',
-                  }}>
-                  {isLoading
-                    ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"/>
-                    : isPast
-                    ? <span style={{ filter:'grayscale(1)', opacity:0.5 }}>{stage.icon}</span>
-                    : stage.icon}
+                  style={{ background:isActive?`linear-gradient(135deg,${stage.color},${stage.color}cc)`:isPast?'rgba(0,0,0,0.04)':`${stage.color}12`, color:isActive?'#fff':isPast?'#C4B89A':stage.color, border:`1px solid ${isActive?stage.color:isPast?'rgba(184,134,11,0.1)':stage.color+'30'}`, boxShadow:isActive?`0 4px 14px ${stage.color}35`:'none', opacity:isPast?0.45:1, cursor:isPast?'not-allowed':'pointer' }}>
+                  {isLoading ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"/> : isPast ? <span style={{ filter:'grayscale(1)',opacity:0.5 }}>{stage.icon}</span> : stage.icon}
                   {stage.label}
                   {isActive && <span className="text-[10px] opacity-70">✓</span>}
-                  {isPast && (
-                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px]"
-                      style={{ background:'rgba(184,134,11,0.2)', color:'#A89880' }}>🔒</span>
-                  )}
+                  {isPast && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px]" style={{ background:'rgba(184,134,11,0.2)',color:'#A89880' }}>🔒</span>}
                 </button>
               )
             })}
@@ -636,7 +621,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3"><div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:C.textFaint }}>📅 Date</label><input type="date" value={followUpDate} min={new Date().toISOString().split('T')[0]} onChange={e=>setFollowUpDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#FFFBEB',border:'1px solid #FDE68A',color:'#92400E' }}/></div><div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:C.textFaint }}>🕐 Time</label><input type="time" value={followUpTime} onChange={e=>setFollowUpTime(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#FFFBEB',border:'1px solid #FDE68A',color:'#92400E' }}/></div></div>
               <div><p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:C.textFaint }}>Quick Pick</p><QuickTimes value={followUpTime} onChange={setFollowUpTime} color="#D97706"/></div>
-              <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:C.textFaint }}>📝 Note</label><textarea rows={2} value={followUpNote} onChange={e=>setFollowUpNote(e.target.value)} placeholder="E.g. Client busy..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#F5F0E8',border:`1px solid ${C.border}`,color:C.text }} onFocus={e=>(e.target.style.borderColor='#FDE68A')} onBlur={e=>(e.target.style.borderColor=C.border)}/></div>
+              <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:C.textFaint }}>📝 Note</label><textarea rows={2} value={followUpNote} onChange={e=>setFollowUpNote(e.target.value)} placeholder="E.g. Client busy, call after 5 PM..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#F5F0E8',border:`1px solid ${C.border}`,color:C.text }} onFocus={e=>(e.target.style.borderColor='#FDE68A')} onBlur={e=>(e.target.style.borderColor=C.border)}/></div>
               {followUpDate&&followUpTime&&<div className="px-3 py-2.5 rounded-xl" style={{ background:'#FEF3C7',border:'1px solid #FDE68A' }}><p className="text-[9px] font-bold uppercase tracking-wider mb-0.5" style={{ color:'#B45309' }}>Scheduled For</p><p className="text-sm font-black" style={{ color:'#92400E' }}>{fmtDateTime(new Date(`${followUpDate}T${followUpTime}:00`).toISOString())}</p></div>}
               <div className="flex gap-3 pt-1"><button onClick={()=>setShowFollowUpPopup(false)} className="flex-1 py-3 rounded-xl text-sm font-medium" style={{ background:'#F5F0E8',color:C.textMuted,border:`1px solid ${C.border}` }}>Cancel</button><button onClick={handleSaveFollowUp} disabled={!followUpDate||!followUpTime||savingFollowUp} className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#B45309,#D97706)',boxShadow:'0 6px 18px rgba(184,134,11,0.3)' }}>{savingFollowUp?'⏳ Saving...':'🔔 Schedule'}</button></div>
             </div>
@@ -667,45 +652,16 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowQuotationPopup(false)}/>
           <div className="relative w-full max-w-sm scale-in" style={{ background:'#FFF5F9',border:'1px solid #FBCFE8',borderRadius:24,boxShadow:'0 24px 60px rgba(219,39,119,0.15)',maxHeight:'90vh',overflowY:'auto' }}>
             <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #FBCFE8' }}>
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8' }}>💰</div>
-                <div>
-                  <p className="text-sm font-black" style={{ color:'#831843' }}>
-                    {revisions.length > 0 ? `New Revision (v${revisions[0]?.version + 1})` : 'Send Quotation (v1)'}
-                  </p>
-                  <p className="text-[10px]" style={{ color:'#DB2777' }}>{lead.lead_name}</p>
-                </div>
-              </div>
+              <div className="flex items-center gap-2.5"><div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8' }}>💰</div><div><p className="text-sm font-black" style={{ color:'#831843' }}>{revisions.length > 0 ? `New Revision (v${revisions[0]?.version + 1})` : 'Send Quotation (v1)'}</p><p className="text-[10px]" style={{ color:'#DB2777' }}>{lead.lead_name}</p></div></div>
               <button onClick={()=>setShowQuotationPopup(false)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:'#FCE7F3',color:'#DB2777' }}>✕</button>
             </div>
             <div className="p-5 space-y-4">
-              <div><p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'#DB2777' }}>Quotation Type</p>
-                <div className="grid grid-cols-2 gap-2">{([{v:'before_sitevisit',label:'📋 Before',sub:'Site Visit',bg:'#E0F2FE',color:'#0369A1',border:'#BAE6FD'},{v:'after_sitevisit',label:'🏠 After',sub:'Site Visit',bg:'#FEF3C7',color:'#92400E',border:'#FDE68A'}] as const).map(opt=>(<button key={opt.v} onClick={()=>setQtType(opt.v as any)} className="py-3 px-2 rounded-xl text-xs font-bold text-center transition-all" style={{ background:qtType===opt.v?opt.bg:'#FCE7F3',color:qtType===opt.v?opt.color:'#DB2777',border:`2px solid ${qtType===opt.v?opt.border:'#FBCFE8'}`,boxShadow:qtType===opt.v?`0 4px 12px ${opt.color}20`:'none' }}>{opt.label}<br/><span className="text-[9px] opacity-70">{opt.sub}</span></button>))}</div>
-              </div>
-
-              {/* Previous amount reference */}
-              {revisions.length > 0 && revisions[0]?.amount && (
-                <div className="px-3 py-2 rounded-xl flex items-center justify-between" style={{ background:'rgba(219,39,119,0.06)',border:'1px solid #FBCFE8' }}>
-                  <p className="text-[9px] font-bold" style={{ color:'#DB2777' }}>Previous (v{revisions[0].version})</p>
-                  <p className="text-sm font-black" style={{ color:'#9D174D' }}>₹ {Number(revisions[0].amount).toLocaleString('en-IN')}</p>
-                </div>
-              )}
-
-              <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DB2777' }}>₹ New Amount</label>
-                <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-black" style={{ color:'#DB2777' }}>₹</span><input type="number" value={qtAmount} onChange={e=>setQtAmount(e.target.value)} placeholder={revisions[0]?.amount||'450000'} className="w-full pl-7 pr-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8',color:'#831843' }} onFocus={e=>(e.target.style.borderColor='#F9A8D4')} onBlur={e=>(e.target.style.borderColor='#FBCFE8')}/></div>
-                {/* Auto diff */}
-                {qtAmount && revisions[0]?.amount && (
-                  <p className="text-[10px] mt-1 font-bold" style={{ color: Number(qtAmount) < Number(revisions[0].amount) ? '#059669' : '#DC2626' }}>
-                    {Number(qtAmount) < Number(revisions[0].amount) ? '↓ Reduced by' : '↑ Increased by'} ₹{Math.abs(Number(qtAmount)-Number(revisions[0].amount)).toLocaleString('en-IN')}
-                  </p>
-                )}
-              </div>
-
+              <div><p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'#DB2777' }}>Quotation Type</p><div className="grid grid-cols-2 gap-2">{([{v:'before_sitevisit',label:'📋 Before',sub:'Site Visit',bg:'#E0F2FE',color:'#0369A1',border:'#BAE6FD'},{v:'after_sitevisit',label:'🏠 After',sub:'Site Visit',bg:'#FEF3C7',color:'#92400E',border:'#FDE68A'}] as const).map(opt=>(<button key={opt.v} onClick={()=>setQtType(opt.v as any)} className="py-3 px-2 rounded-xl text-xs font-bold text-center transition-all" style={{ background:qtType===opt.v?opt.bg:'#FCE7F3',color:qtType===opt.v?opt.color:'#DB2777',border:`2px solid ${qtType===opt.v?opt.border:'#FBCFE8'}`,boxShadow:qtType===opt.v?`0 4px 12px ${opt.color}20`:'none' }}>{opt.label}<br/><span className="text-[9px] opacity-70">{opt.sub}</span></button>))}</div></div>
+              {revisions.length > 0 && revisions[0]?.amount && (<div className="px-3 py-2 rounded-xl flex items-center justify-between" style={{ background:'rgba(219,39,119,0.06)',border:'1px solid #FBCFE8' }}><p className="text-[9px] font-bold" style={{ color:'#DB2777' }}>Previous (v{revisions[0].version})</p><p className="text-sm font-black" style={{ color:'#9D174D' }}>₹ {Number(revisions[0].amount).toLocaleString('en-IN')}</p></div>)}
+              <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DB2777' }}>₹ New Amount</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-black" style={{ color:'#DB2777' }}>₹</span><input type="number" value={qtAmount} onChange={e=>setQtAmount(e.target.value)} placeholder={revisions[0]?.amount||'450000'} className="w-full pl-7 pr-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8',color:'#831843' }} onFocus={e=>(e.target.style.borderColor='#F9A8D4')} onBlur={e=>(e.target.style.borderColor='#FBCFE8')}/></div>{qtAmount && revisions[0]?.amount && (<p className="text-[10px] mt-1 font-bold" style={{ color: Number(qtAmount) < Number(revisions[0].amount) ? '#059669' : '#DC2626' }}>{Number(qtAmount) < Number(revisions[0].amount) ? '↓ Reduced by' : '↑ Increased by'} ₹{Math.abs(Number(qtAmount)-Number(revisions[0].amount)).toLocaleString('en-IN')}</p>)}</div>
               <div className="grid grid-cols-2 gap-3"><div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DB2777' }}>📅 Date</label><input type="date" value={qtDate} min={new Date().toISOString().split('T')[0]} onChange={e=>setQtDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8',color:'#831843' }}/></div><div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DB2777' }}>🕐 Time</label><input type="time" value={qtTime} onChange={e=>setQtTime(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8',color:'#831843' }}/></div></div>
               <div><p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'#DB2777' }}>Quick Pick</p><QuickTimes value={qtTime} onChange={setQtTime} color="#DB2777"/></div>
               <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DB2777' }}>📝 Note</label><textarea rows={2} value={qtNote} onChange={e=>setQtNote(e.target.value)} placeholder="E.g. Revised after negotiation..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8',color:'#831843' }} onFocus={e=>(e.target.style.borderColor='#F9A8D4')} onBlur={e=>(e.target.style.borderColor='#FBCFE8')}/></div>
-
-              {/* PDF Upload */}
               <div>
                 <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DB2777' }}>📄 PDF (optional)</label>
                 {!qtPdfFile?(
@@ -721,13 +677,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
                 )}
                 <input ref={pdfInputRef} type="file" accept="application/pdf" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)setQtPdfFile(f);e.target.value=''}}/>
               </div>
-
-              <div className="flex gap-3 pt-1">
-                <button onClick={()=>setShowQuotationPopup(false)} className="flex-1 py-3 rounded-xl text-sm font-medium" style={{ background:'#FCE7F3',color:'#DB2777',border:'1px solid #FBCFE8' }}>Cancel</button>
-                <button onClick={handleSaveQuotation} disabled={!qtDate||!qtTime||savingQT||qtPdfUploading} className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#9D174D,#DB2777)',boxShadow:'0 6px 18px rgba(219,39,119,0.3)' }}>
-                  {qtPdfUploading?`⬆️ ${qtPdfProgress}%...`:savingQT?'⏳ Saving...':revisions.length>0?`💰 Save v${revisions[0]?.version+1}`:'💰 Save v1'}
-                </button>
-              </div>
+              <div className="flex gap-3 pt-1"><button onClick={()=>setShowQuotationPopup(false)} className="flex-1 py-3 rounded-xl text-sm font-medium" style={{ background:'#FCE7F3',color:'#DB2777',border:'1px solid #FBCFE8' }}>Cancel</button><button onClick={handleSaveQuotation} disabled={!qtDate||!qtTime||savingQT||qtPdfUploading} className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#9D174D,#DB2777)',boxShadow:'0 6px 18px rgba(219,39,119,0.3)' }}>{qtPdfUploading?`⬆️ ${qtPdfProgress}%...`:savingQT?'⏳ Saving...':revisions.length>0?`💰 Save v${revisions[0]?.version+1}`:'💰 Save v1'}</button></div>
             </div>
           </div>
         </div>
@@ -738,78 +688,16 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{ animation:'fadeIn 0.2s ease' }}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowWonPopup(false)}/>
           <div className="relative w-full max-w-sm scale-in" style={{ background:'linear-gradient(160deg,#ECFDF5,#F0FDF4)',border:'2px solid #6EE7B7',borderRadius:24,boxShadow:'0 24px 60px rgba(5,150,105,0.2)' }}>
-
-            {/* Header */}
             <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #A7F3D0' }}>
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background:'linear-gradient(135deg,#059669,#047857)',boxShadow:'0 4px 12px rgba(5,150,105,0.35)' }}>🏆</div>
-                <div>
-                  <p className="text-sm font-black" style={{ color:'#064E3B' }}>Mark as Won</p>
-                  <p className="text-[10px]" style={{ color:'#059669' }}>{lead.lead_name}</p>
-                </div>
-              </div>
+              <div className="flex items-center gap-2.5"><div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background:'linear-gradient(135deg,#059669,#047857)',boxShadow:'0 4px 12px rgba(5,150,105,0.35)' }}>🏆</div><div><p className="text-sm font-black" style={{ color:'#064E3B' }}>Mark as Won</p><p className="text-[10px]" style={{ color:'#059669' }}>{lead.lead_name}</p></div></div>
               <button onClick={()=>setShowWonPopup(false)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:'#A7F3D0',color:'#059669' }}>✕</button>
             </div>
-
             <div className="p-5 space-y-4">
-
-              {/* Confetti banner */}
-              <div className="rounded-xl py-3 text-center" style={{ background:'linear-gradient(135deg,#059669,#047857)',boxShadow:'0 4px 14px rgba(5,150,105,0.3)' }}>
-                <p className="text-white font-black text-base">🎉 Congratulations! 🎉</p>
-                <p className="text-green-200 text-xs mt-0.5">Deal Closed Successfully</p>
-              </div>
-
-              {/* Final Deal Amount */}
-              <div>
-                <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#059669' }}>₹ Final Deal Amount</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-black" style={{ color:'#059669' }}>₹</span>
-                  <input type="number" value={wonAmount} onChange={e=>setWonAmount(e.target.value)}
-                    placeholder={lead.quotation_amount||'Enter final amount'}
-                    className="w-full pl-7 pr-3 py-3 rounded-xl text-base font-black outline-none"
-                    style={{ background:'#D1FAE5',border:'2px solid #6EE7B7',color:'#064E3B' }}
-                    onFocus={e=>(e.target.style.borderColor='#059669')} onBlur={e=>(e.target.style.borderColor='#6EE7B7')}/>
-                </div>
-                {/* Show vs quotation amount */}
-                {wonAmount && lead.quotation_amount && wonAmount !== lead.quotation_amount && (
-                  <p className="text-[10px] mt-1 font-bold" style={{ color: Number(wonAmount) < Number(lead.quotation_amount) ? '#DC2626' : '#059669' }}>
-                    {Number(wonAmount) < Number(lead.quotation_amount)
-                      ? `↓ ₹${(Number(lead.quotation_amount)-Number(wonAmount)).toLocaleString('en-IN')} less than quoted`
-                      : `↑ ₹${(Number(wonAmount)-Number(lead.quotation_amount)).toLocaleString('en-IN')} more than quoted`}
-                  </p>
-                )}
-              </div>
-
-              {/* Note */}
-              <div>
-                <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#059669' }}>📝 Closing Note (optional)</label>
-                <textarea rows={3} value={wonNote} onChange={e=>setWonNote(e.target.value)}
-                  placeholder="E.g. Client happy with design, signed agreement on 22 Jun..."
-                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
-                  style={{ background:'#D1FAE5',border:'1px solid #A7F3D0',color:'#064E3B' }}
-                  onFocus={e=>(e.target.style.borderColor='#059669')} onBlur={e=>(e.target.style.borderColor='#A7F3D0')}/>
-              </div>
-
-              {/* Summary preview */}
-              {wonAmount&&(
-                <div className="px-4 py-3 rounded-xl" style={{ background:'#D1FAE5',border:'1px solid #6EE7B7' }}>
-                  <p className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color:'#059669' }}>Deal Summary</p>
-                  <p className="text-lg font-black" style={{ color:'#064E3B' }}>₹ {Number(wonAmount).toLocaleString('en-IN')}</p>
-                  {lead.quotation_amount&&<p className="text-[10px]" style={{ color:'#059669' }}>Quoted: ₹{Number(lead.quotation_amount).toLocaleString('en-IN')}</p>}
-                  {wonNote&&<p className="text-xs mt-1" style={{ color:'#047857' }}>{wonNote}</p>}
-                </div>
-              )}
-
-              {/* Buttons */}
-              <div className="flex gap-3 pt-1">
-                <button onClick={()=>setShowWonPopup(false)} className="flex-1 py-3 rounded-xl text-sm font-medium"
-                  style={{ background:'#D1FAE5',color:'#059669',border:'1px solid #A7F3D0' }}>Cancel</button>
-                <button onClick={handleSaveWon} disabled={savingWon}
-                  className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40"
-                  style={{ background:'linear-gradient(135deg,#047857,#059669)',boxShadow:'0 6px 18px rgba(5,150,105,0.35)' }}>
-                  {savingWon?'⏳ Saving...':'🏆 Mark as Won!'}
-                </button>
-              </div>
+              <div className="rounded-xl py-3 text-center" style={{ background:'linear-gradient(135deg,#059669,#047857)',boxShadow:'0 4px 14px rgba(5,150,105,0.3)' }}><p className="text-white font-black text-base">🎉 Congratulations! 🎉</p><p className="text-green-200 text-xs mt-0.5">Deal Closed Successfully</p></div>
+              <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#059669' }}>₹ Final Deal Amount</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-black" style={{ color:'#059669' }}>₹</span><input type="number" value={wonAmount} onChange={e=>setWonAmount(e.target.value)} placeholder={lead.quotation_amount||'Enter final amount'} className="w-full pl-7 pr-3 py-3 rounded-xl text-base font-black outline-none" style={{ background:'#D1FAE5',border:'2px solid #6EE7B7',color:'#064E3B' }} onFocus={e=>(e.target.style.borderColor='#059669')} onBlur={e=>(e.target.style.borderColor='#6EE7B7')}/></div>{wonAmount && lead.quotation_amount && wonAmount !== lead.quotation_amount && (<p className="text-[10px] mt-1 font-bold" style={{ color: Number(wonAmount) < Number(lead.quotation_amount) ? '#DC2626' : '#059669' }}>{Number(wonAmount) < Number(lead.quotation_amount) ? `↓ ₹${(Number(lead.quotation_amount)-Number(wonAmount)).toLocaleString('en-IN')} less than quoted` : `↑ ₹${(Number(wonAmount)-Number(lead.quotation_amount)).toLocaleString('en-IN')} more than quoted`}</p>)}</div>
+              <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#059669' }}>📝 Closing Note (optional)</label><textarea rows={3} value={wonNote} onChange={e=>setWonNote(e.target.value)} placeholder="E.g. Client happy with design, signed agreement..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#D1FAE5',border:'1px solid #A7F3D0',color:'#064E3B' }} onFocus={e=>(e.target.style.borderColor='#059669')} onBlur={e=>(e.target.style.borderColor='#A7F3D0')}/></div>
+              {wonAmount&&(<div className="px-4 py-3 rounded-xl" style={{ background:'#D1FAE5',border:'1px solid #6EE7B7' }}><p className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color:'#059669' }}>Deal Summary</p><p className="text-lg font-black" style={{ color:'#064E3B' }}>₹ {Number(wonAmount).toLocaleString('en-IN')}</p>{lead.quotation_amount&&<p className="text-[10px]" style={{ color:'#059669' }}>Quoted: ₹{Number(lead.quotation_amount).toLocaleString('en-IN')}</p>}{wonNote&&<p className="text-xs mt-1" style={{ color:'#047857' }}>{wonNote}</p>}</div>)}
+              <div className="flex gap-3 pt-1"><button onClick={()=>setShowWonPopup(false)} className="flex-1 py-3 rounded-xl text-sm font-medium" style={{ background:'#D1FAE5',color:'#059669',border:'1px solid #A7F3D0' }}>Cancel</button><button onClick={handleSaveWon} disabled={savingWon} className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#047857,#059669)',boxShadow:'0 6px 18px rgba(5,150,105,0.35)' }}>{savingWon?'⏳ Saving...':'🏆 Mark as Won!'}</button></div>
             </div>
           </div>
         </div>
