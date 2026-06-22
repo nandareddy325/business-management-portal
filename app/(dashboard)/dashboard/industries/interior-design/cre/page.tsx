@@ -70,17 +70,17 @@ export default function CREDashboardPage() {
     setProfiles(profilesRes.data ?? [])
 
     if (leadIds.length > 0) {
-      const { data: callsData } = await supabase
-        .from('lead_activities')
-        .select('*, leads(city, source)')
-        .eq('type', 'call')
-        .in('lead_id', leadIds)
-        .gte('created_at', dateFrom)
-        .lte('created_at', dateTo + 'T23:59:59')
-      setCalls(callsData ?? [])
-    } else {
-      setCalls([])
-    }
+  const { data: callsData } = await supabase
+    .from('lead_activities')
+    .select('*, leads(city, source)')
+    .in('lead_id', leadIds)
+    .gte('created_at', dateFrom)
+    .lte('created_at', dateTo + 'T23:59:59')
+
+  setCalls(callsData ?? [])
+} else {
+  setCalls([])
+}
     setLoading(false)
   }
 
