@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
+import CREWorkReportModal from '@/components/dashboard/CREWorkReportModal'
 
 const GRADIENTS = [
   ['#7C3AED','#4F46E5'],['#0891B2','#0E7490'],['#059669','#047857'],
@@ -13,6 +14,17 @@ const ini = (n: string) => n?.split(' ').map((x: string) => x[0]).join('').slice
 
 export function CRMTeamSection({ crmTeam, leadBase }: { crmTeam: any[]; leadBase: string }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [selectedMember, setSelectedMember] = useState<{ id: string; full_name: string; email?: string } | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+
+  function handleNameClick(member: any) {
+    setSelectedMember({
+      id: member.id,
+      full_name: member.name,
+      email: member.email,
+    })
+    setModalOpen(true)
+  }
 
   return (
     <div>
@@ -57,8 +69,20 @@ export function CRMTeamSection({ crmTeam, leadBase }: { crmTeam: any[]; leadBase
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        {/* Name + Email */}
-                        <p className="text-sm font-bold text-[#1C1712]">{member.name}</p>
+                        {/* Clickable Name */}
+                        <button
+                          onClick={() => handleNameClick(member)}
+                          className="group/name flex items-center gap-1.5"
+                        >
+                          <p className="text-sm font-bold text-[#1C1712] underline decoration-dotted underline-offset-2 group-hover/name:text-[#B8860B] transition-colors">
+                            {member.name}
+                          </p>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full opacity-0 group-hover/name:opacity-100 transition-opacity font-medium"
+                            style={{ background: '#FFFBEB', color: '#B8860B' }}>
+                            view report
+                          </span>
+                        </button>
+
                         <p className="text-[10px] text-[#9A8F82] mt-0.5">{member.email}</p>
 
                         {/* Call counts */}
@@ -121,6 +145,16 @@ export function CRMTeamSection({ crmTeam, leadBase }: { crmTeam: any[]; leadBase
           </div>
         </div>
       )}
+
+      {/* Today's Work Report Modal */}
+      <CREWorkReportModal
+        user={selectedMember}
+        open={modalOpen}
+        onClose={() => {
+          setModalOpen(false)
+          setSelectedMember(null)
+        }}
+      />
     </div>
   )
 }
