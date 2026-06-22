@@ -296,7 +296,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     const targetIdx = STAGE_ORDER.indexOf(stageKey)
     // Disable stages that are BEFORE current stage (can't go back)
     // Exception: 'lost' is always available, 'rnr' is always available (can happen anytime)
-    if (stageKey === 'lost' || stageKey === 'rnr') return false
+    if (stageKey === 'lost') return false
     return targetIdx < currentStageIdx
   }
 
