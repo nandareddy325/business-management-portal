@@ -4,46 +4,57 @@ import { LeadDetailClient } from '@/components/interior/lead-detail-client'
 
 export const dynamic = 'force-dynamic'
 
-export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> | { id: string } }) {
+export default async function LeadDetailPage({
+  params,
+}: {
+  params: Promise<{ id?: string; leadId?: string }> | { id?: string; leadId?: string }
+}) {
   const resolvedParams = params instanceof Promise ? await params : params
-  const { id } = resolvedParams
+  // Support both [id] and [leadId] folder names
+  const leadId = resolvedParams.id || resolvedParams.leadId || ''
 
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: lead } = await supabase
-    .from('leads').select('*').eq('id', id).single()
+    .from('leads').select('*').eq('id', leadId).single()
 
   let activities: any[] = []
   try {
-    // Use admin client to bypass RLS on lead_activities
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabaseAdmin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-    const { data: acts } = await supabaseAdmin
-      .from('lead_activities').select('*')
-      .eq('lead_id', id)
-      .order('created_at', { ascending: false })
+    const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const SKEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-    // Fetch user names for activities
+    // Fetch activities via REST
+    const actsRes = await fetch(
+      `${SURL}/rest/v1/lead_activities?lead_id=eq.${leadId}&order=created_at.desc`,
+      { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}` }, cache: 'no-store' }
+    )
+    const acts = actsRes.ok ? await actsRes.json() : []
+
+    // Fetch user profiles
     const userIds = [...new Set((acts ?? []).map((a: any) => a.user_id).filter(Boolean))]
     const userMap: Record<string, string> = {}
     if (userIds.length > 0) {
-      const { data: profiles } = await supabaseAdmin
-        .from('profiles').select('id, full_name, email')
-        .in('id', userIds)
-      profiles?.forEach((p: any) => {
-        userMap[p.id] = p.full_name || p.email || 'Unknown'
-      })
+      const profRes = await fetch(
+        `${SURL}/rest/v1/profiles?id=in.(${userIds.join(',')})&select=id,full_name,email`,
+        { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}` }, cache: 'no-store' }
+      )
+      if (profRes.ok) {
+        const profiles = await profRes.json()
+        profiles?.forEach((p: any) => {
+          userMap[p.id] = p.full_name || p.email || 'Unknown'
+        })
+      }
     }
+
     activities = (acts ?? []).map((a: any) => ({
       ...a,
       user_name: a.user_id ? (userMap[a.user_id] || 'Unknown') : null
     }))
-  } catch {}
+  } catch (e) {
+    console.error('Activities fetch error:', e)
+  }
 
   // Add synthetic created activity
   if (lead?.created_at) {
@@ -61,11 +72,12 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
         <div className="text-center">
           <p className="text-2xl mb-2">😕</p>
           <p className="font-bold text-[#1C1712]">Lead not found</p>
-          <a href="/dashboard/industries/interior-design/new-leads" className="mt-4 text-sm text-[#B8860B] underline block">Go Back</a>
+          <a href="/dashboard/industries/interior-design/new-leads"
+            className="mt-4 text-sm text-[#B8860B] underline block">Go Back</a>
         </div>
       </div>
     )
   }
 
-  return <LeadDetailClient lead={lead} activities={activities} leadId={id} />
+  return <LeadDetailClient lead={lead} activities={activities} leadId={leadId} />
 }
