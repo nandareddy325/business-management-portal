@@ -59,14 +59,16 @@ export default async function InteriorDesignDashboard() {
   const leadMap: Record<string, any> = {}
   allLeads?.forEach((l: any) => { leadMap[l.id] = l })
 
-  // ✅ FIX 2: Use IST timezone for today/yesterday boundaries
+  // IST today/yesterday boundaries
   const now = new Date()
-  const istOffset = 5.5 * 60 * 60 * 1000
-  const istNow = new Date(now.getTime() + istOffset)
-  const istDateStr = istNow.toISOString().split('T')[0]
+  // IST = UTC+5:30
+  const IST_OFFSET = 5.5 * 60 * 60 * 1000
+  const istNow = new Date(now.getTime() + IST_OFFSET)
+  const istDateStr = istNow.toISOString().split('T')[0] // e.g. "2026-06-22"
 
-  const todayStart = new Date(`${istDateStr}T00:00:00+05:30`)
-  const todayEnd   = new Date(`${istDateStr}T23:59:59+05:30`)
+  // Today: 2026-06-22 00:00:00 IST → 2026-06-21 18:30:00 UTC
+  const todayStart = new Date(istNow.setHours(0,0,0,0) - IST_OFFSET)
+  const todayEnd   = new Date(todayStart.getTime() + 24*60*60*1000 - 1)
   const yestStart  = new Date(todayStart.getTime() - 24*60*60*1000)
   const yestEnd    = new Date(todayStart.getTime() - 1)
 
@@ -77,8 +79,7 @@ export default async function InteriorDesignDashboard() {
   const { data: currentProfile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   const isAdmin = currentProfile?.role === 'admin' || currentProfile?.role === 'super_admin'
 
-  if (leadIds.length > 0) {
-    try {
+  try {
       const { createClient } = await import('@supabase/supabase-js')
       const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -86,25 +87,34 @@ export default async function InteriorDesignDashboard() {
       const profileMap: Record<string, string> = {}
       allProfiles?.forEach((p: any) => { profileMap[p.id] = p.full_name || p.email || 'Unknown' })
 
-      // ✅ FIX 3: Fetch calls with IST-correct timestamps
+      // Fetch calls — use company leads, IST corrected timestamps
+      // Debug: log the date ranges
+      console.log('[Dashboard] todayStart:', todayStart.toISOString(), '| todayEnd:', todayEnd.toISOString())
+      console.log('[Dashboard] leadIds count:', leadIds.length)
+
       let todayQ = admin.from('lead_activities')
         .select('id, lead_id, title, description, created_at, user_id')
-        .in('lead_id', leadIds).eq('type', 'call')
+        .eq('type', 'call')
         .gte('created_at', todayStart.toISOString())
         .lte('created_at', todayEnd.toISOString())
         .order('created_at', { ascending: false })
+      // Filter by company leads only if we have them
+      if (leadIds.length > 0) todayQ = todayQ.in('lead_id', leadIds)
       if (!isAdmin) todayQ = todayQ.eq('user_id', user.id)
-      const { data: todayActs } = await todayQ
+      const { data: todayActs, error: todayErr } = await todayQ
+      console.log('[Dashboard] todayCalls fetched:', todayActs?.length ?? 0, 'error:', todayErr?.message)
       todayCalls = (todayActs ?? []).map((a: any) => ({ ...a, user_name: a.user_id ? (profileMap[a.user_id] || 'Unknown') : null }))
 
       let yestQ = admin.from('lead_activities')
         .select('id, lead_id, title, description, created_at, user_id')
-        .in('lead_id', leadIds).eq('type', 'call')
+        .eq('type', 'call')
         .gte('created_at', yestStart.toISOString())
         .lte('created_at', yestEnd.toISOString())
         .order('created_at', { ascending: false })
+      if (leadIds.length > 0) yestQ = yestQ.in('lead_id', leadIds)
       if (!isAdmin) yestQ = yestQ.eq('user_id', user.id)
-      const { data: yestActs } = await yestQ
+      const { data: yestActs, error: yestErr } = await yestQ
+      console.log('[Dashboard] yesterdayCalls fetched:', yestActs?.length ?? 0, 'error:', yestErr?.message)
       yesterdayCalls = (yestActs ?? []).map((a: any) => ({ ...a, user_name: a.user_id ? (profileMap[a.user_id] || 'Unknown') : null }))
 
       // CRM Team
@@ -135,8 +145,7 @@ export default async function InteriorDesignDashboard() {
           }
         }).sort((a: any, b: any) => b.todayCount - a.todayCount)
       }
-    } catch {}
-  }
+  } catch {}
 
   const LEAD_BASE = '/dashboard/industries/interior-design/leads'
 
