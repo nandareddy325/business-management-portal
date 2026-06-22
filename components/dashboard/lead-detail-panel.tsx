@@ -27,6 +27,7 @@ const ACTIVITY_ICONS: Record<string, { icon: string; color: string; bg: string }
   note:         { icon: '📝', color: '#64748B', bg: '#F1F5F9' },
   sitevisit:    { icon: '🏠', color: '#EA580C', bg: '#FFF7ED' },
   quotation:    { icon: '💰', color: '#2563EB', bg: '#EFF6FF' },
+  followup:     { icon: '🔔', color: '#D97706', bg: '#FEF3C7' },
 }
 
 const ini = (n: string) => n?.split(' ').map((x: string) => x[0]).join('').slice(0, 2).toUpperCase() || '?'
@@ -34,6 +35,14 @@ const ini = (n: string) => n?.split(' ').map((x: string) => x[0]).join('').slice
 const fmtDate = (ds: string) => {
   if (!ds) return '—'
   return new Date(ds).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+const fmtDateTime = (ds: string) => {
+  if (!ds) return '—'
+  return new Date(ds).toLocaleString('en-IN', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  })
 }
 
 const timeAgo = (ds: string) => {
@@ -45,6 +54,20 @@ const timeAgo = (ds: string) => {
   if (hrs > 0)  return `${hrs}h ago`
   if (mins > 0) return `${mins}m ago`
   return 'just now'
+}
+
+// Get tomorrow's date as default for follow up
+const getTomorrow = () => {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  return d.toISOString().split('T')[0]
+}
+
+// Get current time + 1hr as default
+const getNextHour = () => {
+  const d = new Date()
+  d.setHours(d.getHours() + 1, 0, 0, 0)
+  return `${String(d.getHours()).padStart(2, '0')}:00`
 }
 
 export function LeadDetailClient({ lead: initialLead, activities: initialActivities, leadId }: {
@@ -60,8 +83,14 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const [savingNote, setSavingNote] = useState(false)
   const [mounted, setMounted] = useState(false)
 
+  // ── FOLLOW UP POPUP STATE ──
+  const [showFollowUpPopup, setShowFollowUpPopup] = useState(false)
+  const [followUpDate, setFollowUpDate] = useState(getTomorrow())
+  const [followUpTime, setFollowUpTime] = useState(getNextHour())
+  const [followUpNote, setFollowUpNote] = useState('')
+  const [savingFollowUp, setSavingFollowUp] = useState(false)
+
   useEffect(() => {
-    // Trigger entrance animation
     setTimeout(() => setMounted(true), 50)
   }, [])
 
@@ -74,8 +103,19 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const g = GRADIENTS[lead.lead_name?.charCodeAt(0) % GRADIENTS.length] ?? GRADIENTS[0]
   const curIdx = PIPELINE_STAGES.findIndex(s => s.key === lead.pipeline_stage)
 
+  // ── NORMAL STAGE CHANGE ──
   const handleStageChange = async (stageKey: string) => {
     if (savingStage) return
+
+    // Follow Up clicked → open popup instead
+    if (stageKey === 'followup') {
+      setFollowUpDate(getTomorrow())
+      setFollowUpTime(getNextHour())
+      setFollowUpNote('')
+      setShowFollowUpPopup(true)
+      return
+    }
+
     setSavingStage(stageKey)
     const prev = lead.pipeline_stage
     const { data: { user } } = await supabase.auth.getUser()
@@ -91,6 +131,63 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       setActivities(acts ?? [])
     } catch {}
     setSavingStage(null)
+  }
+
+  // ── SAVE FOLLOW UP ──
+  const handleSaveFollowUp = async () => {
+    if (!followUpDate || !followUpTime) return
+    setSavingFollowUp(true)
+
+    const prev = lead.pipeline_stage
+    const { data: { user } } = await supabase.auth.getUser()
+
+    // Combine date + time into ISO datetime
+    const followUpDateTime = new Date(`${followUpDate}T${followUpTime}:00`).toISOString()
+    const formattedDT = fmtDateTime(followUpDateTime)
+
+    try {
+      // Update lead: stage + followup_date + followup_note
+      await supabase.from('leads').update({
+        pipeline_stage: 'followup',
+        followup_date: followUpDateTime,
+        followup_note: followUpNote.trim() || null,
+      }).eq('id', leadId)
+
+      setLead((l: any) => ({
+        ...l,
+        pipeline_stage: 'followup',
+        followup_date: followUpDateTime,
+        followup_note: followUpNote.trim() || null,
+      }))
+
+      // Log activity
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId,
+        type: 'followup',
+        title: '🔔 Follow Up Scheduled',
+        description: `📅 ${formattedDT}${followUpNote.trim() ? ` — ${followUpNote.trim()}` : ''}`,
+        stage_from: prev,
+        stage_to: 'followup',
+        user_id: user?.id,
+        created_at: new Date().toISOString(),
+      })
+
+      // Also log stage change if was different stage
+      if (prev !== 'followup') {
+        await supabase.from('lead_activities').insert({
+          lead_id: leadId, type: 'stage_change', title: 'Stage Updated',
+          description: `${prev} → followup`, stage_from: prev, stage_to: 'followup',
+          user_id: user?.id, created_at: new Date().toISOString(),
+        })
+      }
+
+      const { data: acts } = await supabase.from('lead_activities').select('*').eq('lead_id', leadId).order('created_at', { ascending: false })
+      setActivities(acts ?? [])
+      setShowFollowUpPopup(false)
+    } catch (e) {
+      console.error(e)
+    }
+    setSavingFollowUp(false)
   }
 
   const handleSaveNote = async () => {
@@ -121,21 +218,29 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
         @keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pulse   { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.92) translateY(16px); } to { opacity: 1; transform: scale(1) translateY(0); } }
         .slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
         .fade-in  { animation: fadeIn 0.4s ease both; }
+        .scale-in { animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
         .stage-btn:hover { transform: translateY(-2px); }
         .stage-btn { transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
         .activity-item { transition: background 0.15s ease; }
         .activity-item:hover { background: rgba(255,255,255,0.03); }
         .glass { background: rgba(255,255,255,0.04); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
         .glass-warm { background: rgba(184,134,11,0.06); backdrop-filter: blur(12px); border: 1px solid rgba(184,134,11,0.15); }
-        .shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent); }
+        input[type="date"], input[type="time"] {
+          color-scheme: dark;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator,
+        input[type="time"]::-webkit-calendar-picker-indicator {
+          filter: invert(0.7);
+          cursor: pointer;
+        }
       `}</style>
 
       {/* ── HERO HEADER ── */}
       <div style={{ background: `linear-gradient(160deg, ${g[0]}22 0%, #0F0F0F 60%)`, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0' }}>
 
-        {/* Top bar */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4">
           <button onClick={() => router.back()}
             className="flex items-center gap-2 text-sm font-medium transition-all hover:text-white"
@@ -156,7 +261,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
           </div>
         </div>
 
-        {/* Lead info */}
         <div className="px-5 pb-6 slide-up">
           <div className="flex items-start gap-4 mb-5">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-black text-white flex-shrink-0 relative"
@@ -176,12 +280,18 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
             </div>
           </div>
 
-          {/* Badges row */}
           <div className="flex items-center gap-2 flex-wrap mb-5">
             <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
               style={{ background: `${curStage.color}20`, color: curStage.color, border: `1px solid ${curStage.color}40` }}>
               {curStage.icon} {curStage.label}
             </span>
+            {/* Show scheduled follow up time if set */}
+            {lead.followup_date && lead.pipeline_stage === 'followup' && (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
+                style={{ background: 'rgba(217,119,6,0.15)', color: '#FCD34D', border: '1px solid rgba(217,119,6,0.35)' }}>
+                🔔 {fmtDateTime(lead.followup_date)}
+              </span>
+            )}
             {lead.budget && (
               <span className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold"
                 style={{ background: 'rgba(184,134,11,0.15)', color: '#F59E0B', border: '1px solid rgba(184,134,11,0.3)' }}>
@@ -252,7 +362,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       {/* ── BODY ── */}
       <div className="p-5 space-y-4 max-w-4xl mx-auto">
 
-        {/* Info grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 slide-up" style={{ animationDelay: '0.1s' }}>
           {[
             { icon: MapPin,      label: 'City',          value: lead.city },
@@ -270,7 +379,31 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
           ) : null)}
         </div>
 
-        {/* Requirement + Notes */}
+        {/* Follow Up scheduled card — show if set */}
+        {lead.followup_date && (
+          <div className="rounded-2xl p-4 slide-up"
+            style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.25)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color: '#F59E0B' }}>🔔 Follow Up Scheduled</p>
+              <button
+                onClick={() => {
+                  setFollowUpDate(lead.followup_date ? new Date(lead.followup_date).toISOString().split('T')[0] : getTomorrow())
+                  setFollowUpTime(lead.followup_date ? new Date(lead.followup_date).toTimeString().slice(0,5) : getNextHour())
+                  setFollowUpNote(lead.followup_note || '')
+                  setShowFollowUpPopup(true)
+                }}
+                className="text-[9px] font-bold px-2 py-1 rounded-lg"
+                style={{ background: 'rgba(217,119,6,0.2)', color: '#FCD34D' }}>
+                ✏️ Edit
+              </button>
+            </div>
+            <p className="text-base font-black" style={{ color: '#FCD34D' }}>{fmtDateTime(lead.followup_date)}</p>
+            {lead.followup_note && (
+              <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>{lead.followup_note}</p>
+            )}
+          </div>
+        )}
+
         {(lead.interest || lead.notes) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 slide-up" style={{ animationDelay: '0.15s' }}>
             {lead.interest && (
@@ -342,7 +475,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
             </div>
           ) : (
             <div className="relative">
-              {/* Timeline line */}
               <div className="absolute left-[42px] top-0 bottom-0 w-px" style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.08), transparent)' }} />
               {activities.map((act: any, i: number) => {
                 const cfg = ACTIVITY_ICONS[act.type] || ACTIVITY_ICONS.note
@@ -377,6 +509,160 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
         </div>
       </div>
 
+      {/* ══════════════════════════════════════
+          FOLLOW UP POPUP
+      ══════════════════════════════════════ */}
+      {showFollowUpPopup && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4"
+          style={{ animation: 'fadeIn 0.2s ease' }}>
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setShowFollowUpPopup(false)} />
+
+          <div className="relative w-full max-w-sm scale-in"
+            style={{
+              background: 'linear-gradient(160deg, #1C1612 0%, #171310 100%)',
+              border: '1px solid rgba(217,119,6,0.25)',
+              borderRadius: 24,
+              boxShadow: '0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(217,119,6,0.1)',
+            }}>
+
+            {/* Header */}
+            <div className="px-5 py-4 flex items-center justify-between"
+              style={{ borderBottom: '1px solid rgba(217,119,6,0.12)' }}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base"
+                  style={{ background: 'rgba(217,119,6,0.15)', border: '1px solid rgba(217,119,6,0.3)' }}>
+                  🔔
+                </div>
+                <div>
+                  <p className="text-sm font-black text-white">Schedule Follow Up</p>
+                  <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{lead.lead_name}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowFollowUpPopup(false)}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+                style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)' }}>✕</button>
+            </div>
+
+            <div className="p-5 space-y-4">
+
+              {/* Date + Time row */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Date */}
+                <div>
+                  <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5"
+                    style={{ color: 'rgba(255,255,255,0.35)' }}>📅 Date</label>
+                  <input
+                    type="date"
+                    value={followUpDate}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={e => setFollowUpDate(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none"
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(217,119,6,0.3)',
+                      color: '#FCD34D',
+                    }}
+                  />
+                </div>
+
+                {/* Time */}
+                <div>
+                  <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5"
+                    style={{ color: 'rgba(255,255,255,0.35)' }}>🕐 Time</label>
+                  <input
+                    type="time"
+                    value={followUpTime}
+                    onChange={e => setFollowUpTime(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none"
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(217,119,6,0.3)',
+                      color: '#FCD34D',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Quick time slots */}
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.25)' }}>Quick Pick</p>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { label: '9 AM',  time: '09:00' },
+                    { label: '11 AM', time: '11:00' },
+                    { label: '2 PM',  time: '14:00' },
+                    { label: '4 PM',  time: '16:00' },
+                    { label: '6 PM',  time: '18:00' },
+                  ].map(slot => (
+                    <button key={slot.time}
+                      onClick={() => setFollowUpTime(slot.time)}
+                      className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all"
+                      style={{
+                        background: followUpTime === slot.time ? 'rgba(217,119,6,0.25)' : 'rgba(255,255,255,0.05)',
+                        color: followUpTime === slot.time ? '#FCD34D' : 'rgba(255,255,255,0.35)',
+                        border: `1px solid ${followUpTime === slot.time ? 'rgba(217,119,6,0.4)' : 'rgba(255,255,255,0.06)'}`,
+                      }}>
+                      {slot.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Note */}
+              <div>
+                <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5"
+                  style={{ color: 'rgba(255,255,255,0.35)' }}>📝 Note (optional)</label>
+                <textarea
+                  rows={2}
+                  value={followUpNote}
+                  onChange={e => setFollowUpNote(e.target.value)}
+                  placeholder="E.g. Client busy, call after office hours..."
+                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: 'white',
+                    caretColor: '#F59E0B',
+                  }}
+                  onFocus={e => (e.target.style.borderColor = 'rgba(217,119,6,0.4)')}
+                  onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')}
+                />
+              </div>
+
+              {/* Preview */}
+              {followUpDate && followUpTime && (
+                <div className="px-3 py-2.5 rounded-xl"
+                  style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.2)' }}>
+                  <p className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color: 'rgba(217,119,6,0.6)' }}>Scheduled For</p>
+                  <p className="text-sm font-black" style={{ color: '#FCD34D' }}>
+                    {fmtDateTime(new Date(`${followUpDate}T${followUpTime}:00`).toISOString())}
+                  </p>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setShowFollowUpPopup(false)}
+                  className="flex-1 py-3 rounded-xl text-sm font-medium transition-all"
+                  style={{ background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveFollowUp}
+                  disabled={!followUpDate || !followUpTime || savingFollowUp}
+                  className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-30 transition-all hover:scale-[1.02]"
+                  style={{
+                    background: 'linear-gradient(135deg, #B45309, #D97706)',
+                    boxShadow: '0 8px 20px rgba(217,119,6,0.35)',
+                  }}>
+                  {savingFollowUp ? '⏳ Saving...' : '🔔 Schedule'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── LOG ACTIVITY MODAL ── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{ animation: 'fadeIn 0.2s ease' }}>
@@ -392,7 +678,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
             </div>
 
             <div className="p-5 space-y-4">
-              {/* Type selector */}
               <div className="grid grid-cols-4 gap-2">
                 {([
                   { id: 'call',      label: '📞 Call',      color: '#7C3AED' },
