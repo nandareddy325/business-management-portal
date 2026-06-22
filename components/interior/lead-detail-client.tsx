@@ -12,8 +12,8 @@ const GRADIENTS = [
 
 const PIPELINE_STAGES = [
   { key: 'new',       label: 'New',        icon: '🆕', color: '#7C3AED' },
-  { key: 'followup',  label: 'Follow Up',  icon: '🔄', color: '#D97706' },
   { key: 'rnr',       label: 'RNR',        icon: '📵', color: '#DC2626' },
+  { key: 'followup',  label: 'Follow Up',  icon: '🔄', color: '#D97706' },
   { key: 'sitevisit', label: 'Site Visit', icon: '🏠', color: '#0891B2' },
   { key: 'quotation', label: 'Quotation',  icon: '💰', color: '#DB2777' },
   { key: 'won',       label: 'Won',        icon: '🏆', color: '#059669' },
@@ -28,6 +28,7 @@ const ACTIVITY_ICONS: Record<string, { icon: string; color: string; bg: string }
   sitevisit:    { icon: '🏠', color: '#0891B2', bg: '#E0F2FE' },
   quotation:    { icon: '💰', color: '#DB2777', bg: '#FCE7F3' },
   followup:     { icon: '🔔', color: '#D97706', bg: '#FEF3C7' },
+  won:          { icon: '🏆', color: '#059669', bg: '#D1FAE5' },
 }
 
 const C = {
@@ -86,6 +87,12 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const [qtPdfProgress, setQtPdfProgress] = useState(0)
   const pdfInputRef = useRef<HTMLInputElement>(null)
 
+  // Won popup
+  const [showWonPopup, setShowWonPopup] = useState(false)
+  const [wonAmount, setWonAmount] = useState('')
+  const [wonNote, setWonNote] = useState('')
+  const [savingWon, setSavingWon] = useState(false)
+
   // Quotation revisions
   const [revisions, setRevisions] = useState<any[]>([])
   const [showRevisions, setShowRevisions] = useState(true)
@@ -98,7 +105,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
 
   const curStage = PIPELINE_STAGES.find(s => s.key === lead.pipeline_stage) ?? PIPELINE_STAGES[0]
   const g = GRADIENTS[lead.lead_name?.charCodeAt(0) % GRADIENTS.length] ?? GRADIENTS[0]
-  const curIdx = PIPELINE_STAGES.findIndex(s => s.key === lead.pipeline_stage)
 
   const refreshActivities = async () => {
     const { data: acts } = await supabase.from('lead_activities').select('*').eq('lead_id', leadId).order('created_at', { ascending: false })
@@ -126,6 +132,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     if (stageKey === 'followup') { setFollowUpDate(getTomorrow()); setFollowUpTime(getNextHour()); setFollowUpNote(''); setShowFollowUpPopup(true); return }
     if (stageKey === 'sitevisit') { setSvDate(getTomorrow()); setSvTime('10:00'); setSvType('before_quotation'); setSvNote(''); setShowSiteVisitPopup(true); return }
     if (stageKey === 'quotation') { setQtDate(getTomorrow()); setQtTime('11:00'); setQtType('after_sitevisit'); setQtAmount(''); setQtNote(''); setQtPdfFile(null); setShowQuotationPopup(true); return }
+    if (stageKey === 'won') { setWonAmount(lead.quotation_amount||''); setWonNote(''); setShowWonPopup(true); return }
     setSavingStage(stageKey)
     const prev = lead.pipeline_stage
     const { data: { user } } = await supabase.auth.getUser()
@@ -256,6 +263,43 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     setSavingNote(false)
   }
 
+  const handleSaveWon = async () => {
+    setSavingWon(true)
+    const prev = lead.pipeline_stage
+    const { data: { user } } = await supabase.auth.getUser()
+    try {
+      await supabase.from('leads').update({
+        pipeline_stage: 'won',
+        won_amount: wonAmount.trim() || null,
+        won_note: wonNote.trim() || null,
+        won_date: new Date().toISOString(),
+      }).eq('id', leadId)
+      setLead((l: any) => ({ ...l, pipeline_stage: 'won', won_amount: wonAmount.trim()||null, won_note: wonNote.trim()||null }))
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'won',
+        title: '🏆 Deal Won!',
+        description: `${wonAmount.trim()?`₹${Number(wonAmount).toLocaleString('en-IN')} · `:''}${wonNote.trim()||'Deal closed successfully'}`,
+        stage_from: prev, stage_to: 'won',
+        user_id: user?.id, created_at: new Date().toISOString(),
+      })
+      if (prev !== 'won') await supabase.from('lead_activities').insert({ lead_id: leadId, type: 'stage_change', title: 'Stage Updated', description: `${prev} → won`, stage_from: prev, stage_to: 'won', user_id: user?.id, created_at: new Date().toISOString() })
+      await refreshActivities()
+      setShowWonPopup(false)
+    } catch (e) { console.error(e) }
+    setSavingWon(false)
+  }
+
+  // Stage order — forward only logic
+  const STAGE_ORDER = ['new', 'rnr','followup', 'sitevisit', 'quotation', 'won', 'lost']
+  const currentStageIdx = STAGE_ORDER.indexOf(lead.pipeline_stage)
+  const isStageDisabled = (stageKey: string) => {
+    const targetIdx = STAGE_ORDER.indexOf(stageKey)
+    // Disable stages that are BEFORE current stage (can't go back)
+    // Exception: 'lost' is always available, 'rnr' is always available (can happen anytime)
+    if (stageKey === 'lost' || stageKey === 'rnr') return false
+    return targetIdx < currentStageIdx
+  }
+
   const QuickTimes = ({ value, onChange, color }: { value: string; onChange: (t: string) => void; color: string }) => (
     <div className="flex gap-2 flex-wrap">
       {[{l:'9 AM',t:'09:00'},{l:'11 AM',t:'11:00'},{l:'2 PM',t:'14:00'},{l:'4 PM',t:'16:00'},{l:'6 PM',t:'18:00'}].map(slot => (
@@ -327,30 +371,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
             <span className="text-xs ml-auto" style={{ color:C.textFaint }}>{fmtDate(lead.created_at)}</span>
           </div>
 
-          {/* Pipeline */}
-          <div>
-            <p className="text-[9px] font-bold uppercase tracking-[3px] mb-3" style={{ color:C.textFaint }}>Pipeline</p>
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth:'none' }}>
-              {PIPELINE_STAGES.filter(s=>s.key!=='lost').map((stage,idx) => {
-                const isActive=stage.key===lead.pipeline_stage,isPast=curIdx>idx&&lead.pipeline_stage!=='lost',isLoading=savingStage===stage.key
-                return (
-                  <button key={stage.key} onClick={()=>handleStageChange(stage.key)} disabled={!!savingStage}
-                    className="stage-btn flex-shrink-0 flex flex-col items-center gap-1.5" style={{ minWidth:56 }}>
-                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-base"
-                      style={{ background:isActive?`linear-gradient(135deg,${stage.color},${stage.color}cc)`:isPast?`${stage.color}20`:'rgba(184,134,11,0.08)',border:isActive?`2px solid ${stage.color}`:isPast?`1px solid ${stage.color}50`:`1px solid ${C.border}`,boxShadow:isActive?`0 6px 18px ${stage.color}45`:'none' }}>
-                      {isLoading?<div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"/>:stage.icon}
-                    </div>
-                    <p className="text-[8px] font-bold text-center" style={{ color:isActive?stage.color:isPast?stage.color:C.textFaint,maxWidth:52 }}>{stage.label}</p>
-                  </button>
-                )
-              })}
-              <div className="w-px h-8 flex-shrink-0" style={{ background:C.border }}/>
-              <button onClick={()=>handleStageChange('lost')} disabled={!!savingStage} className="stage-btn flex-shrink-0 flex flex-col items-center gap-1.5" style={{ minWidth:48 }}>
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-base" style={{ background:lead.pipeline_stage==='lost'?'linear-gradient(135deg,#DC2626,#B91C1C)':'rgba(220,38,38,0.08)',border:lead.pipeline_stage==='lost'?'2px solid #DC2626':'1px solid rgba(220,38,38,0.2)',boxShadow:lead.pipeline_stage==='lost'?'0 6px 18px rgba(220,38,38,0.35)':'none' }}>❌</div>
-                <p className="text-[8px] font-bold" style={{ color:lead.pipeline_stage==='lost'?'#DC2626':'rgba(220,38,38,0.4)' }}>Lost</p>
-              </button>
-            </div>
-          </div>
+
         </div>
       </div>
 
@@ -386,6 +407,23 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
             </div>
             <p className="text-base font-black" style={{ color:'#0369A1' }}>{fmtDateTime(lead.sitevisit_date)}</p>
             {lead.sitevisit_note&&<p className="text-xs mt-1" style={{ color:'#0891B2' }}>{lead.sitevisit_note}</p>}
+          </div>
+        )}
+
+        {/* Won card */}
+        {lead.pipeline_stage==='won'&&(
+          <div className="rounded-2xl p-5" style={{ background:'linear-gradient(135deg,#ECFDF5,#D1FAE5)',border:'2px solid #6EE7B7',boxShadow:'0 4px 16px rgba(5,150,105,0.15)' }}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ background:'linear-gradient(135deg,#059669,#047857)',boxShadow:'0 6px 18px rgba(5,150,105,0.35)' }}>🏆</div>
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:'#065F46' }}>Deal Won! 🎉</p>
+                {lead.won_amount&&<p className="text-2xl font-black" style={{ color:'#059669' }}>₹ {Number(lead.won_amount).toLocaleString('en-IN')}</p>}
+              </div>
+              <button onClick={()=>{setWonAmount(lead.won_amount||'');setWonNote(lead.won_note||'');setShowWonPopup(true)}}
+                className="ml-auto text-[9px] font-bold px-2.5 py-1 rounded-lg" style={{ background:'#A7F3D0',color:'#065F46',border:'1px solid #6EE7B7' }}>✏️ Edit</button>
+            </div>
+            {lead.won_note&&<p className="text-sm" style={{ color:'#047857' }}>{lead.won_note}</p>}
+            {lead.won_date&&<p className="text-[10px] mt-1" style={{ color:'#059669' }}>Closed on {fmtDate(lead.won_date)}</p>}
           </div>
         )}
 
@@ -524,8 +562,41 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
           <div className="px-4 py-3" style={{ borderBottom:`1px solid ${C.border}` }}><p className="text-[10px] font-black uppercase tracking-[3px]" style={{ color:C.textFaint }}>Move to Stage</p></div>
           <div className="p-4 flex flex-wrap gap-2">
             {PIPELINE_STAGES.map(stage=>{
-              const isActive=lead.pipeline_stage===stage.key,isLoading=savingStage===stage.key
-              return(<button key={stage.key} onClick={()=>handleStageChange(stage.key)} disabled={!!savingStage} className="stage-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold" style={{ background:isActive?`linear-gradient(135deg,${stage.color},${stage.color}cc)`:`${stage.color}12`,color:isActive?'#fff':stage.color,border:`1px solid ${isActive?stage.color:stage.color+'30'}`,boxShadow:isActive?`0 4px 14px ${stage.color}35`:'none' }}>{isLoading?<div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"/>:stage.icon}{stage.label}{isActive&&<span className="text-[10px] opacity-70">✓</span>}</button>)
+              const isActive = lead.pipeline_stage === stage.key
+              const isLoading = savingStage === stage.key
+              const disabled = !!savingStage || isStageDisabled(stage.key)
+              const isPast = isStageDisabled(stage.key) && !isActive
+              return(
+                <button key={stage.key}
+                  onClick={() => !disabled && handleStageChange(stage.key)}
+                  disabled={disabled}
+                  title={isPast ? 'Cannot go back to a previous stage' : ''}
+                  className="stage-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold relative"
+                  style={{
+                    background: isActive
+                      ? `linear-gradient(135deg,${stage.color},${stage.color}cc)`
+                      : isPast
+                      ? 'rgba(0,0,0,0.04)'
+                      : `${stage.color}12`,
+                    color: isActive ? '#fff' : isPast ? '#C4B89A' : stage.color,
+                    border: `1px solid ${isActive ? stage.color : isPast ? 'rgba(184,134,11,0.1)' : stage.color+'30'}`,
+                    boxShadow: isActive ? `0 4px 14px ${stage.color}35` : 'none',
+                    opacity: isPast ? 0.45 : 1,
+                    cursor: isPast ? 'not-allowed' : 'pointer',
+                  }}>
+                  {isLoading
+                    ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"/>
+                    : isPast
+                    ? <span style={{ filter:'grayscale(1)', opacity:0.5 }}>{stage.icon}</span>
+                    : stage.icon}
+                  {stage.label}
+                  {isActive && <span className="text-[10px] opacity-70">✓</span>}
+                  {isPast && (
+                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px]"
+                      style={{ background:'rgba(184,134,11,0.2)', color:'#A89880' }}>🔒</span>
+                  )}
+                </button>
+              )
             })}
           </div>
         </div>
@@ -655,6 +726,88 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
                 <button onClick={()=>setShowQuotationPopup(false)} className="flex-1 py-3 rounded-xl text-sm font-medium" style={{ background:'#FCE7F3',color:'#DB2777',border:'1px solid #FBCFE8' }}>Cancel</button>
                 <button onClick={handleSaveQuotation} disabled={!qtDate||!qtTime||savingQT||qtPdfUploading} className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#9D174D,#DB2777)',boxShadow:'0 6px 18px rgba(219,39,119,0.3)' }}>
                   {qtPdfUploading?`⬆️ ${qtPdfProgress}%...`:savingQT?'⏳ Saving...':revisions.length>0?`💰 Save v${revisions[0]?.version+1}`:'💰 Save v1'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WON POPUP */}
+      {showWonPopup&&(
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{ animation:'fadeIn 0.2s ease' }}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowWonPopup(false)}/>
+          <div className="relative w-full max-w-sm scale-in" style={{ background:'linear-gradient(160deg,#ECFDF5,#F0FDF4)',border:'2px solid #6EE7B7',borderRadius:24,boxShadow:'0 24px 60px rgba(5,150,105,0.2)' }}>
+
+            {/* Header */}
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #A7F3D0' }}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background:'linear-gradient(135deg,#059669,#047857)',boxShadow:'0 4px 12px rgba(5,150,105,0.35)' }}>🏆</div>
+                <div>
+                  <p className="text-sm font-black" style={{ color:'#064E3B' }}>Mark as Won</p>
+                  <p className="text-[10px]" style={{ color:'#059669' }}>{lead.lead_name}</p>
+                </div>
+              </div>
+              <button onClick={()=>setShowWonPopup(false)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:'#A7F3D0',color:'#059669' }}>✕</button>
+            </div>
+
+            <div className="p-5 space-y-4">
+
+              {/* Confetti banner */}
+              <div className="rounded-xl py-3 text-center" style={{ background:'linear-gradient(135deg,#059669,#047857)',boxShadow:'0 4px 14px rgba(5,150,105,0.3)' }}>
+                <p className="text-white font-black text-base">🎉 Congratulations! 🎉</p>
+                <p className="text-green-200 text-xs mt-0.5">Deal Closed Successfully</p>
+              </div>
+
+              {/* Final Deal Amount */}
+              <div>
+                <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#059669' }}>₹ Final Deal Amount</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-black" style={{ color:'#059669' }}>₹</span>
+                  <input type="number" value={wonAmount} onChange={e=>setWonAmount(e.target.value)}
+                    placeholder={lead.quotation_amount||'Enter final amount'}
+                    className="w-full pl-7 pr-3 py-3 rounded-xl text-base font-black outline-none"
+                    style={{ background:'#D1FAE5',border:'2px solid #6EE7B7',color:'#064E3B' }}
+                    onFocus={e=>(e.target.style.borderColor='#059669')} onBlur={e=>(e.target.style.borderColor='#6EE7B7')}/>
+                </div>
+                {/* Show vs quotation amount */}
+                {wonAmount && lead.quotation_amount && wonAmount !== lead.quotation_amount && (
+                  <p className="text-[10px] mt-1 font-bold" style={{ color: Number(wonAmount) < Number(lead.quotation_amount) ? '#DC2626' : '#059669' }}>
+                    {Number(wonAmount) < Number(lead.quotation_amount)
+                      ? `↓ ₹${(Number(lead.quotation_amount)-Number(wonAmount)).toLocaleString('en-IN')} less than quoted`
+                      : `↑ ₹${(Number(wonAmount)-Number(lead.quotation_amount)).toLocaleString('en-IN')} more than quoted`}
+                  </p>
+                )}
+              </div>
+
+              {/* Note */}
+              <div>
+                <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#059669' }}>📝 Closing Note (optional)</label>
+                <textarea rows={3} value={wonNote} onChange={e=>setWonNote(e.target.value)}
+                  placeholder="E.g. Client happy with design, signed agreement on 22 Jun..."
+                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
+                  style={{ background:'#D1FAE5',border:'1px solid #A7F3D0',color:'#064E3B' }}
+                  onFocus={e=>(e.target.style.borderColor='#059669')} onBlur={e=>(e.target.style.borderColor='#A7F3D0')}/>
+              </div>
+
+              {/* Summary preview */}
+              {wonAmount&&(
+                <div className="px-4 py-3 rounded-xl" style={{ background:'#D1FAE5',border:'1px solid #6EE7B7' }}>
+                  <p className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color:'#059669' }}>Deal Summary</p>
+                  <p className="text-lg font-black" style={{ color:'#064E3B' }}>₹ {Number(wonAmount).toLocaleString('en-IN')}</p>
+                  {lead.quotation_amount&&<p className="text-[10px]" style={{ color:'#059669' }}>Quoted: ₹{Number(lead.quotation_amount).toLocaleString('en-IN')}</p>}
+                  {wonNote&&<p className="text-xs mt-1" style={{ color:'#047857' }}>{wonNote}</p>}
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-1">
+                <button onClick={()=>setShowWonPopup(false)} className="flex-1 py-3 rounded-xl text-sm font-medium"
+                  style={{ background:'#D1FAE5',color:'#059669',border:'1px solid #A7F3D0' }}>Cancel</button>
+                <button onClick={handleSaveWon} disabled={savingWon}
+                  className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40"
+                  style={{ background:'linear-gradient(135deg,#047857,#059669)',boxShadow:'0 6px 18px rgba(5,150,105,0.35)' }}>
+                  {savingWon?'⏳ Saving...':'🏆 Mark as Won!'}
                 </button>
               </div>
             </div>
