@@ -44,8 +44,8 @@ export function TodayCallsSection({
   const [historyCres, setHistoryCres] = useState<CRE[]>([])
 
   const selectedName = selectedCRE === 'all'
-    ? 'Total CRM'
-    : cres.find(c => c.id === selectedCRE)?.name || 'Total CRM'
+    ? 'Total CRE'
+    : cres.find(c => c.id === selectedCRE)?.name || 'Total CRE'
 
   // Filter by CRE
   const filtered = (activeTab === 'today' ? todayCalls : historyCalls).filter(c =>
@@ -167,7 +167,7 @@ export function TodayCallsSection({
                 <button onClick={() => { setSelectedCRE('all'); setDropdownOpen(false) }}
                   className="w-full px-4 py-2.5 text-left text-xs font-bold flex items-center justify-between hover:bg-green-50"
                   style={{ color: selectedCRE === 'all' ? '#16A34A' : '#1C1712', borderBottom:'1px solid #F0EBE0', background: selectedCRE === 'all' ? '#F0FDF4' : 'transparent' }}>
-                  <span>Total CRM</span>
+                  <span>Total CRE</span>
                   <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full" style={{ background:'#ECFDF5', color:'#16A34A' }}>
                     {activeTab === 'today' ? todayCalls.length : historyCalls.length}
                   </span>
