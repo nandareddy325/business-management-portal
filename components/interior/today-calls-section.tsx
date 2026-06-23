@@ -40,6 +40,8 @@ export function TodayCallsSection({
   const [toDate, setToDate] = useState(istDateStr)
   const [historyCalls, setHistoryCalls] = useState<Call[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [histLeadMap, setHistLeadMap] = useState<Record<string, string>>({})
+  const [historyCres, setHistoryCres] = useState<CRE[]>([])
 
   const selectedName = selectedCRE === 'all'
     ? 'Total CRM'
@@ -58,15 +60,44 @@ export function TodayCallsSection({
       const SKEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       const from = new Date(`${fromDate}T00:00:00+05:30`).toISOString()
       const to   = new Date(`${toDate}T23:59:59+05:30`).toISOString()
-      const url  = `${SURL}/rest/v1/lead_activities?select=id,lead_id,description,created_at,user_id&type=eq.call&created_at=gte.${encodeURIComponent(from)}&created_at=lte.${encodeURIComponent(to)}&order=created_at.desc&limit=200`
-      const res  = await fetch(url, { headers:{ apikey:SKEY, Authorization:`Bearer ${SKEY}` } })
-      if (res.ok) {
-        const data = await res.json()
-        // Attach user names from cres
-        const creMap: Record<string, string> = {}
-        cres.forEach(c => { creMap[c.id] = c.name })
-        setHistoryCalls(data.map((a: any) => ({ ...a, user_name: creMap[a.user_id] || null })))
+
+      // Fetch calls
+      const url = `${SURL}/rest/v1/lead_activities?select=id,lead_id,description,created_at,user_id&type=eq.call&created_at=gte.${encodeURIComponent(from)}&created_at=lte.${encodeURIComponent(to)}&order=created_at.desc&limit=500`
+      const res = await fetch(url, { headers:{ apikey:SKEY, Authorization:`Bearer ${SKEY}` } })
+      if (!res.ok) return
+
+      const data = await res.json()
+
+      // Fetch lead names for history calls
+      const leadIds = [...new Set(data.map((a: any) => a.lead_id).filter(Boolean))]
+      const histLeadMap: Record<string, string> = {}
+      if (leadIds.length > 0) {
+        const leadsUrl = `${SURL}/rest/v1/leads?id=in.(${leadIds.join(',')})&select=id,lead_name`
+        const leadsRes = await fetch(leadsUrl, { headers:{ apikey:SKEY, Authorization:`Bearer ${SKEY}` } })
+        if (leadsRes.ok) {
+          const leads = await leadsRes.json()
+          leads.forEach((l: any) => { histLeadMap[l.id] = l.lead_name })
+        }
       }
+
+      // CRE name map
+      const creMap: Record<string, string> = {}
+      cres.forEach(c => { creMap[c.id] = c.name })
+
+      const calls = data.map((a: any) => ({
+        ...a,
+        user_name: creMap[a.user_id] || null,
+        lead_name_override: histLeadMap[a.lead_id] || null,
+      }))
+      setHistoryCalls(calls)
+      setHistLeadMap(histLeadMap)
+
+      // Build CRE list from history calls (includes CREs not in today)
+      const histCreMap: Record<string, string> = {}
+      calls.forEach((a: any) => {
+        if (a.user_id && a.user_name) histCreMap[a.user_id] = a.user_name
+      })
+      setHistoryCres(Object.entries(histCreMap).map(([id, name]) => ({ id, name })))
     } catch (e) { console.error(e) }
     finally { setHistoryLoading(false) }
   }
@@ -137,10 +168,13 @@ export function TodayCallsSection({
                   className="w-full px-4 py-2.5 text-left text-xs font-bold flex items-center justify-between hover:bg-green-50"
                   style={{ color: selectedCRE === 'all' ? '#16A34A' : '#1C1712', borderBottom:'1px solid #F0EBE0', background: selectedCRE === 'all' ? '#F0FDF4' : 'transparent' }}>
                   <span>Total CRM</span>
-                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full" style={{ background:'#ECFDF5', color:'#16A34A' }}>{todayCalls.length}</span>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full" style={{ background:'#ECFDF5', color:'#16A34A' }}>
+                    {activeTab === 'today' ? todayCalls.length : historyCalls.length}
+                  </span>
                 </button>
-                {cres.map((cre, i) => {
-                  const cnt = todayCalls.filter(c => c.user_id === cre.id).length
+                {(activeTab === 'today' ? cres : historyCres).map((cre, i) => {
+                  const sourceCalls = activeTab === 'today' ? todayCalls : historyCalls
+                  const cnt = sourceCalls.filter(c => c.user_id === cre.id).length
                   return (
                     <button key={cre.id} onClick={() => { setSelectedCRE(cre.id); setDropdownOpen(false) }}
                       className="w-full px-4 py-2.5 text-left text-xs font-bold flex items-center justify-between hover:bg-green-50"
@@ -157,7 +191,7 @@ export function TodayCallsSection({
 
           <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base font-black text-white"
             style={{ background:'linear-gradient(135deg,#16A34A,#047857)', boxShadow:'0 3px 10px rgba(22,163,74,0.35)' }}>
-            {filtered.length}
+            {activeTab === 'today' ? todayCalls.length : historyCalls.length}
           </div>
         </div>
       </div>
@@ -253,7 +287,9 @@ export function TodayCallsSection({
                       {ini(lead?.lead_name || '?')}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold truncate" style={{ color:'#1C1712' }}>{lead?.lead_name ?? 'Unknown'}</p>
+                      <p className="text-xs font-bold truncate" style={{ color:'#1C1712' }}>
+                        {(act as any).lead_name_override || lead?.lead_name || histLeadMap[act.lead_id] || 'Unknown'}
+                      </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
                           style={{ background:badge.bg, color:badge.color }}>
