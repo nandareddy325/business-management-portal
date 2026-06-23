@@ -85,15 +85,15 @@ export function TodayCallsSection({
       const creMap: Record<string, string> = {}
       cres.forEach(c => { creMap[c.id] = c.name })
 
-      // ✅ FIX: Fetch ALL unique user_ids from history calls → employees table
+      // ✅ FIX: user_id column తో match చేయాలి, id తో కాదు! full_name use చేయాలి
       const userIds = [...new Set(data.map((a: any) => a.user_id).filter(Boolean))]
       if (userIds.length > 0) {
-        const empUrl = `${SURL}/rest/v1/employees?id=in.(${userIds.join(',')})&select=id,name`
+        const empUrl = `${SURL}/rest/v1/employees?user_id=in.(${userIds.join(',')})&select=user_id,full_name`
         const empRes = await fetch(empUrl, { headers:{ apikey:SKEY, Authorization:`Bearer ${SKEY}` } })
         if (empRes.ok) {
           const emps = await empRes.json()
-          // ✅ employees table se names override — today's cres missing ones also cover avutayi
-          emps.forEach((e: any) => { creMap[e.id] = e.name })
+          // user_id → full_name mapping
+          emps.forEach((e: any) => { creMap[e.user_id] = e.full_name })
         }
       }
 
