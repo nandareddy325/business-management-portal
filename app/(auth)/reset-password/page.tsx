@@ -21,6 +21,10 @@ export default function ResetPasswordPage() {
   )
 
   useEffect(() => {
+    const hash = window.location.hash
+  if (hash && hash.includes('access_token')) {
+    setReady(true)
+  }
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setReady(true)
