@@ -43,9 +43,10 @@ export function TodayCallsSection({
   const [histLeadMap, setHistLeadMap] = useState<Record<string, string>>({})
   const [historyCres, setHistoryCres] = useState<CRE[]>([])
 
+  // ✅ FIX: selectedName history tab లో కూడా historyCres నుండి lookup చేస్తుంది
   const selectedName = selectedCRE === 'all'
     ? 'Total CRE'
-    : cres.find(c => c.id === selectedCRE)?.name || 'Total CRE'
+    : (activeTab === 'today' ? cres : historyCres).find(c => c.id === selectedCRE)?.name || 'Total CRE'
 
   // Filter by CRE
   const filtered = (activeTab === 'today' ? todayCalls : historyCalls).filter(c =>
@@ -70,34 +71,53 @@ export function TodayCallsSection({
 
       // Fetch lead names for history calls
       const leadIds = [...new Set(data.map((a: any) => a.lead_id).filter(Boolean))]
-      const histLeadMap: Record<string, string> = {}
+      const newHistLeadMap: Record<string, string> = {}
       if (leadIds.length > 0) {
         const leadsUrl = `${SURL}/rest/v1/leads?id=in.(${leadIds.join(',')})&select=id,lead_name`
         const leadsRes = await fetch(leadsUrl, { headers:{ apikey:SKEY, Authorization:`Bearer ${SKEY}` } })
         if (leadsRes.ok) {
           const leads = await leadsRes.json()
-          leads.forEach((l: any) => { histLeadMap[l.id] = l.lead_name })
+          leads.forEach((l: any) => { newHistLeadMap[l.id] = l.lead_name })
         }
       }
 
-      // CRE name map
+      // ✅ FIX: First build creMap from existing `cres` prop
       const creMap: Record<string, string> = {}
       cres.forEach(c => { creMap[c.id] = c.name })
 
+      // ✅ FIX: Fetch ALL unique user_ids from history calls → employees table
+      const userIds = [...new Set(data.map((a: any) => a.user_id).filter(Boolean))]
+      if (userIds.length > 0) {
+        const empUrl = `${SURL}/rest/v1/employees?id=in.(${userIds.join(',')})&select=id,name`
+        const empRes = await fetch(empUrl, { headers:{ apikey:SKEY, Authorization:`Bearer ${SKEY}` } })
+        if (empRes.ok) {
+          const emps = await empRes.json()
+          // ✅ employees table se names override — today's cres missing ones also cover avutayi
+          emps.forEach((e: any) => { creMap[e.id] = e.name })
+        }
+      }
+
+      // Map user_name using complete creMap
       const calls = data.map((a: any) => ({
         ...a,
         user_name: creMap[a.user_id] || null,
-        lead_name_override: histLeadMap[a.lead_id] || null,
+        lead_name_override: newHistLeadMap[a.lead_id] || null,
       }))
       setHistoryCalls(calls)
-      setHistLeadMap(histLeadMap)
+      setHistLeadMap(newHistLeadMap)
 
-      // Build CRE list from history calls (includes CREs not in today)
+      // ✅ FIX: Build historyCres from complete creMap (not just calls with user_name)
       const histCreMap: Record<string, string> = {}
       calls.forEach((a: any) => {
-        if (a.user_id && a.user_name) histCreMap[a.user_id] = a.user_name
+        if (a.user_id && creMap[a.user_id]) {
+          histCreMap[a.user_id] = creMap[a.user_id]
+        }
       })
-      setHistoryCres(Object.entries(histCreMap).map(([id, name]) => ({ id, name })))
+      setHistoryCres(Object.entries(histCreMap).map(([id, name]) => ({ id, name: name as string })))
+
+      // ✅ Reset CRE selection to 'all' when new history is loaded
+      setSelectedCRE('all')
+
     } catch (e) { console.error(e) }
     finally { setHistoryLoading(false) }
   }
@@ -139,6 +159,9 @@ export function TodayCallsSection({
 
   const activeCats = getCats(filtered)
 
+  // ✅ Active CRE list based on tab
+  const activeCres = activeTab === 'today' ? cres : historyCres
+
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background:'#fff', border:'1px solid #E8E2D8', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
 
@@ -172,13 +195,14 @@ export function TodayCallsSection({
                     {activeTab === 'today' ? todayCalls.length : historyCalls.length}
                   </span>
                 </button>
-                {(activeTab === 'today' ? cres : historyCres).map((cre, i) => {
+                {/* ✅ FIX: activeCres use చేస్తున్నాం — tab బట్టి correct list వస్తుంది */}
+                {activeCres.map((cre, i) => {
                   const sourceCalls = activeTab === 'today' ? todayCalls : historyCalls
                   const cnt = sourceCalls.filter(c => c.user_id === cre.id).length
                   return (
                     <button key={cre.id} onClick={() => { setSelectedCRE(cre.id); setDropdownOpen(false) }}
                       className="w-full px-4 py-2.5 text-left text-xs font-bold flex items-center justify-between hover:bg-green-50"
-                      style={{ color: selectedCRE === cre.id ? '#16A34A' : '#1C1712', borderBottom: i < cres.length-1 ? '1px solid #F0EBE0' : 'none', background: selectedCRE === cre.id ? '#F0FDF4' : 'transparent' }}>
+                      style={{ color: selectedCRE === cre.id ? '#16A34A' : '#1C1712', borderBottom: i < activeCres.length-1 ? '1px solid #F0EBE0' : 'none', background: selectedCRE === cre.id ? '#F0FDF4' : 'transparent' }}>
                       <span className="truncate max-w-[110px]">{cre.name}</span>
                       <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full ml-2"
                         style={{ background: cnt > 0 ? '#ECFDF5' : '#F5F0E8', color: cnt > 0 ? '#16A34A' : '#9A8F82' }}>{cnt}</span>
@@ -200,12 +224,12 @@ export function TodayCallsSection({
 
       {/* Tabs */}
       <div className="flex border-b" style={{ borderColor:'#F0EBE0' }}>
-        <button onClick={() => setActiveTab('today')}
+        <button onClick={() => { setActiveTab('today'); setSelectedCRE('all') }}
           className="flex-1 py-2.5 text-xs font-black transition-all"
           style={{ color: activeTab === 'today' ? '#16A34A' : '#9A8F82', borderBottom: activeTab === 'today' ? '2px solid #16A34A' : '2px solid transparent' }}>
           📅 Today
         </button>
-        <button onClick={() => setActiveTab('history')}
+        <button onClick={() => { setActiveTab('history'); setSelectedCRE('all') }}
           className="flex-1 py-2.5 text-xs font-black transition-all"
           style={{ color: activeTab === 'history' ? '#16A34A' : '#9A8F82', borderBottom: activeTab === 'history' ? '2px solid #16A34A' : '2px solid transparent' }}>
           📋 History
