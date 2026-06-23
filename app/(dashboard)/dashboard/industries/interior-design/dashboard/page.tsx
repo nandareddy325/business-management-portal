@@ -267,11 +267,12 @@ export default async function InteriorDesignDashboard() {
         {/* TODAY CALLS */}
         <div className="fade-up">
           <TodayCallsSection
-            todayCalls={todayCalls}
-            leadMap={leadMap}
-            cres={cres}
-            istDateStr={istDateStr}
-            leadBase={LEAD_BASE}
+          todayCalls={todayCalls}
+          leadMap={leadMap}
+          cres={cres}
+          istDateStr={istDateStr}
+          leadBase={LEAD_BASE}
+          companyId={profile.company_id}
           />
         </div>
 

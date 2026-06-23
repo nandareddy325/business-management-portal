@@ -26,12 +26,14 @@ export function TodayCallsSection({
   cres,
   istDateStr,
   leadBase,
+  companyId,
 }: {
   todayCalls: Call[]
   leadMap: Record<string, any>
   cres: CRE[]
   istDateStr: string
   leadBase: string
+  companyId: string
 }) {
   const [selectedCRE, setSelectedCRE] = useState<string>('all')
   const [dropdownOpen, setDropdownOpen] = useState(false)
@@ -62,38 +64,48 @@ export function TodayCallsSection({
       const from = new Date(`${fromDate}T00:00:00+05:30`).toISOString()
       const to   = new Date(`${toDate}T23:59:59+05:30`).toISOString()
 
-      // Fetch calls
+      // ✅ SECURITY FIX: company_id filter తో leads fetch చేసి, ఆ leadIds తో calls filter చేయి
+      // Step 1: ఈ company leads తో leadIds తీసుకో
+      const leadsUrl = `${SURL}/rest/v1/leads?company_id=eq.${companyId}&industry=eq.interior-design&select=id,lead_name`
+      const leadsRes = await fetch(leadsUrl, { headers:{ apikey:SKEY, Authorization:`Bearer ${SKEY}` } })
+      if (!leadsRes.ok) return
+      const companyLeads = await leadsRes.json()
+      const companyLeadIds = new Set(companyLeads.map((l: any) => l.id))
+      const newHistLeadMap: Record<string, string> = {}
+      companyLeads.forEach((l: any) => { newHistLeadMap[l.id] = l.lead_name })
+
+      // Step 2: date range లో calls fetch చేసి company leadIds తో filter చేయి
       const url = `${SURL}/rest/v1/lead_activities?select=id,lead_id,description,created_at,user_id&type=eq.call&created_at=gte.${encodeURIComponent(from)}&created_at=lte.${encodeURIComponent(to)}&order=created_at.desc&limit=500`
       const res = await fetch(url, { headers:{ apikey:SKEY, Authorization:`Bearer ${SKEY}` } })
       if (!res.ok) return
 
-      const data = await res.json()
-
-      // Fetch lead names for history calls
-      const leadIds = [...new Set(data.map((a: any) => a.lead_id).filter(Boolean))]
-      const newHistLeadMap: Record<string, string> = {}
-      if (leadIds.length > 0) {
-        const leadsUrl = `${SURL}/rest/v1/leads?id=in.(${leadIds.join(',')})&select=id,lead_name`
-        const leadsRes = await fetch(leadsUrl, { headers:{ apikey:SKEY, Authorization:`Bearer ${SKEY}` } })
-        if (leadsRes.ok) {
-          const leads = await leadsRes.json()
-          leads.forEach((l: any) => { newHistLeadMap[l.id] = l.lead_name })
-        }
-      }
+      const allData = await res.json()
+      // ✅ Only this company's leads calls — cross-company data leak fix
+      const data = (allData ?? []).filter((a: any) => companyLeadIds.has(a.lead_id))
 
       // ✅ FIX: First build creMap from existing `cres` prop
       const creMap: Record<string, string> = {}
       cres.forEach(c => { creMap[c.id] = c.name })
 
-      // ✅ FIX: user_id column తో match చేయాలి, id తో కాదు! full_name use చేయాలి
+      // Step 1: employees table నుండి fetch (user_id + full_name)
       const userIds = [...new Set(data.map((a: any) => a.user_id).filter(Boolean))]
       if (userIds.length > 0) {
         const empUrl = `${SURL}/rest/v1/employees?user_id=in.(${userIds.join(',')})&select=user_id,full_name`
         const empRes = await fetch(empUrl, { headers:{ apikey:SKEY, Authorization:`Bearer ${SKEY}` } })
         if (empRes.ok) {
           const emps = await empRes.json()
-          // user_id → full_name mapping
           emps.forEach((e: any) => { creMap[e.user_id] = e.full_name })
+        }
+
+        // Step 2: employees లో లేని user_ids → profiles table fallback
+        const missingIds = userIds.filter((uid: string) => !creMap[uid])
+        if (missingIds.length > 0) {
+          const profUrl = `${SURL}/rest/v1/profiles?id=in.(${missingIds.join(',')})&select=id,full_name`
+          const profRes = await fetch(profUrl, { headers:{ apikey:SKEY, Authorization:`Bearer ${SKEY}` } })
+          if (profRes.ok) {
+            const profs = await profRes.json()
+            profs.forEach((p: any) => { creMap[p.id] = p.full_name })
+          }
         }
       }
 
