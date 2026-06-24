@@ -30,21 +30,21 @@ export default function AdminSidebar() {
   }
 
   return (
-    <aside className={`flex flex-col h-screen bg-gray-900 border-r border-white/10 transition-all duration-300 flex-shrink-0 ${collapsed ? 'w-16' : 'w-56'}`}>
+    <aside className={`flex flex-col h-screen bg-[#1C1712] border-r border-white/10 transition-all duration-300 flex-shrink-0 ${collapsed ? 'w-16' : 'w-56'}`}>
 
       {/* Logo */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-white/10">
         {!collapsed && (
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-sm font-bold text-white">G</div>
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-sm font-bold text-white shadow-md">G</div>
             <div>
               <p className="font-serif text-sm text-white leading-tight">GK · CRM</p>
-              <p className="text-[9px] text-amber-400 font-bold uppercase tracking-widest">Super Admin</p>
+              <p className="text-[9px] text-[#B8860B] font-bold uppercase tracking-widest">Super Admin</p>
             </div>
           </div>
         )}
         {collapsed && (
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-sm font-bold text-white mx-auto">G</div>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-sm font-bold text-white mx-auto shadow-md">G</div>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
@@ -56,10 +56,11 @@ export default function AdminSidebar() {
 
       {/* Super Admin Badge */}
       {!collapsed && (
-        <div className="mx-3 mt-3 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
+        <div className="mx-3 mt-3 px-3 py-2 rounded-xl border"
+          style={{ background: 'rgba(184,134,11,0.12)', borderColor: 'rgba(184,134,11,0.25)' }}>
           <div className="flex items-center gap-2">
-            <Shield size={12} className="text-amber-400 flex-shrink-0" />
-            <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Super Admin</p>
+            <Shield size={12} className="text-[#B8860B] flex-shrink-0" />
+            <p className="text-[10px] font-bold text-[#B8860B] uppercase tracking-widest">Super Admin</p>
           </div>
         </div>
       )}
@@ -73,11 +74,15 @@ export default function AdminSidebar() {
             <a
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 border ${
                 isActive
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/20'
-                  : 'text-white/50 hover:text-white hover:bg-white/10'
+                  ? 'text-[#B8860B]'
+                  : 'text-white/40 hover:text-white border-transparent hover:bg-white/5'
               }`}
+              style={isActive ? {
+                background: 'rgba(184,134,11,0.15)',
+                borderColor: 'rgba(184,134,11,0.3)',
+              } : {}}
             >
               <Icon size={16} className="flex-shrink-0" />
               {!collapsed && (
@@ -92,14 +97,22 @@ export default function AdminSidebar() {
       <div className="px-2 py-3 border-t border-white/10 space-y-1">
         <a
           href="/admin/settings"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-all"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all border ${
+            pathname === '/admin/settings'
+              ? 'text-[#B8860B]'
+              : 'text-white/40 hover:text-white border-transparent hover:bg-white/5'
+          }`}
+          style={pathname === '/admin/settings' ? {
+            background: 'rgba(184,134,11,0.15)',
+            borderColor: 'rgba(184,134,11,0.3)',
+          } : {}}
         >
           <Settings size={16} className="flex-shrink-0" />
           {!collapsed && <span className="text-sm font-medium">Settings</span>}
         </a>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-all"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all border border-transparent"
         >
           <LogOut size={16} className="flex-shrink-0" />
           {!collapsed && <span className="text-sm font-medium">Logout</span>}

@@ -35,7 +35,7 @@ export default function TenantActions({ tenantId, isActive, tenantName }: Tenant
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center text-gray-400 hover:text-white transition-all"
+        className="w-8 h-8 rounded-lg bg-[#F5F0E8] border border-[#E8E2D8] hover:bg-[#EDE8DC] hover:border-[#B8860B] flex items-center justify-center text-[#9A8F82] hover:text-[#B8860B] transition-all"
       >
         <MoreVertical size={14} />
       </button>
@@ -43,21 +43,23 @@ export default function TenantActions({ tenantId, isActive, tenantName }: Tenant
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-9 z-20 w-44 bg-gray-900 border border-gray-700 rounded-xl overflow-hidden shadow-xl">
+          <div className="absolute right-0 top-9 z-20 w-44 bg-white border border-[#E8E2D8] rounded-xl overflow-hidden shadow-xl"
+            style={{ boxShadow: '0 12px 40px rgba(28,23,18,0.15)' }}>
             <a
               href={`/admin/tenants/${tenantId}`}
-              className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-gray-300 hover:bg-gray-800 hover:text-white transition-colors"
+              className="flex items-center gap-2.5 px-3 py-2.5 text-sm text-[#1C1712] hover:bg-[#F5F0E8] transition-colors"
             >
-              <ExternalLink size={13} />
+              <ExternalLink size={13} className="text-[#B8860B]" />
               View Details
             </a>
+            <div className="border-t border-[#F0EBE0]" />
             <button
               onClick={handleToggle}
               disabled={loading}
               className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm transition-colors ${
                 isActive
-                  ? 'text-red-400 hover:bg-red-500/10'
-                  : 'text-emerald-400 hover:bg-emerald-500/10'
+                  ? 'text-red-500 hover:bg-red-50'
+                  : 'text-emerald-600 hover:bg-emerald-50'
               }`}
             >
               {isActive ? <PowerOff size={13} /> : <Power size={13} />}
