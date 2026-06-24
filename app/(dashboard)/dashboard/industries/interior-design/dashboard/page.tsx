@@ -125,7 +125,7 @@ export default async function InteriorDesignDashboard() {
         .row-hover:hover { background: #FDFAF6; }
       `}</style>
 
-      <div className="px-4 md:px-6 pt-5 pb-10 space-y-6 max-w-7xl mx-auto">
+      <div className="px-2 md:px-4 pt-3 pb-10 space-y-4 max-w-7xl mx-auto">
 
         {/* HEADER */}
         <div className="fade-up">
