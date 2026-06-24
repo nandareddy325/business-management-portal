@@ -24,15 +24,20 @@ const tabs = [
 ]
 
 const planColors: Record<string, string> = {
-  starter: 'text-blue-600 bg-blue-50',
+  starter:      'text-blue-600 bg-blue-50',
   professional: 'text-violet-600 bg-violet-50',
-  business: 'text-[#B8860B] bg-amber-50',
-  enterprise: 'text-emerald-600 bg-emerald-50',
+  business:     'text-[#B8860B] bg-amber-50',
+  enterprise:   'text-emerald-600 bg-emerald-50',
 }
 
-export default async function AdminSubscriptionsPage({ searchParams }: { searchParams: { tab?: string } }) {
-  const grouped = await getSubscriptionData()
-  const activeTab = (searchParams.tab ?? 'active') as keyof typeof grouped
+export default async function AdminSubscriptionsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  // ✅ FIX: await both together for efficiency
+  const [grouped, resolvedParams] = await Promise.all([
+    getSubscriptionData(),
+    searchParams,
+  ])
+
+  const activeTab = (resolvedParams.tab ?? 'active') as keyof typeof grouped
 
   return (
     <div className="min-h-screen bg-[#F5F0E8]">

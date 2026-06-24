@@ -8,15 +8,18 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export default async function TenantDetailPage({ params }: { params: { id: string } }) {
+export default async function TenantDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // ✅ FIX: await params before accessing .id
+  const { id } = await params
+
   const { data: company } = await supabaseAdmin
     .from('companies')
     .select('*, plan:plans(name, price_monthly)')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (!company) redirect('/admin/tenants')
@@ -26,9 +29,9 @@ export default async function TenantDetailPage({ params }: { params: { id: strin
     { count: totalUsers },
     { data: recentLeads },
   ] = await Promise.all([
-    supabaseAdmin.from('leads').select('*', { count: 'exact', head: true }).eq('company_id', params.id),
-    supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('company_id', params.id),
-    supabaseAdmin.from('leads').select('lead_name, status, created_at').eq('company_id', params.id).order('created_at', { ascending: false }).limit(5),
+    supabaseAdmin.from('leads').select('*', { count: 'exact', head: true }).eq('company_id', id),
+    supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('company_id', id),
+    supabaseAdmin.from('leads').select('lead_name, status, created_at').eq('company_id', id).order('created_at', { ascending: false }).limit(5),
   ])
 
   return (

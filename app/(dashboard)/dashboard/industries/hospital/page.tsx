@@ -79,6 +79,8 @@ export default function HospitalDashboard() {
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('Overview')
+  const [userEmail, setUserEmail] = useState('')
+    const [userRole, setUserRole] = useState('user')
   const [userName, setUserName] = useState('User')
   const [search, setSearch] = useState('')
   const [patientFilter, setPatientFilter] = useState('All')
@@ -107,7 +109,13 @@ export default function HospitalDashboard() {
     <div className="min-h-screen bg-[#F5F0E8] flex">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 lg:ml-[220px] flex flex-col min-w-0">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <Header onMenuClick={() => setSidebarOpen(true)}
+        userName={userName}
+          userEmail={userEmail}
+          userRole={userRole}
+          title="Hospital"
+          subtitle="CRM Portal"
+           />
         <main className="flex-1 p-5 md:p-6">
 
           {/* Header */}

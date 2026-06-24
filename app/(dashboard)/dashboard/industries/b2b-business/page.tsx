@@ -47,18 +47,6 @@ const pipeline = [
   { stage: 'Closed Won', count: 2, value: '₹34.5L', color: 'bg-emerald-500', hex: '#34D399', pct: 100 },
 ]
 
-// ─── PREMIUM DARK THEME TOKENS ───────────────────────────────────────────────
-// bg-[#0A0F1E]  = page background (deep navy)
-// bg-[#0D1425]  = sidebar / topbar / card inner
-// bg-[#111827]  = panel / stat card surface
-// text-[#C9A84C] = gold accent (active, highlights)
-// text-[#F1F5F9] = primary text
-// text-[#CBD5E1] = secondary text
-// text-[#94A3B8] = muted text
-// text-[#475569] = faint / labels
-// text-[#334155] = very faint / timestamps
-// border-[rgba(255,255,255,0.07)] = subtle borders
-
 const statusBadge: Record<string, string> = {
   active:       'bg-emerald-500/10 text-emerald-400',
   negotiation:  'bg-amber-500/10 text-amber-400',
@@ -105,6 +93,8 @@ export default function B2BDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('Overview')
   const [userName, setUserName] = useState('User')
+  const [userEmail, setUserEmail] = useState('')
+  const [userRole, setUserRole] = useState('user')
   const [search, setSearch] = useState('')
   const [dealFilter, setDealFilter] = useState('All')
   const [clientFilter, setClientFilter] = useState('All')
@@ -113,8 +103,18 @@ export default function B2BDashboard() {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login?industry=b2b-business'); return }
-      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
+
+      // Set email from auth
+      setUserEmail(user.email ?? '')
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, role')
+        .eq('id', user.id)
+        .single()
+
       if (profile?.full_name) setUserName(profile.full_name.split(' ')[0])
+      if (profile?.role)      setUserRole(profile.role)
     }
     getUser()
   }, [router])
@@ -145,7 +145,15 @@ export default function B2BDashboard() {
     <div className="min-h-screen bg-[#0A0F1E] flex">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 lg:ml-[220px] flex flex-col min-w-0">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
+        {/* ✅ FIX: All three required props now passed */}
+        <Header
+          onMenuClick={() => setSidebarOpen(true)}
+          userName={userName}
+          userEmail={userEmail}
+          userRole={userRole}
+          title="B2B Business"
+          subtitle="CRM Portal"
+        />
         <main className="flex-1 p-5 md:p-6">
 
           {/* Page Header */}
@@ -176,12 +184,12 @@ export default function B2BDashboard() {
           {/* Stats Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5 mb-6">
             {[
-              { label: 'Total Clients',  value: `${clients.length}`,       change: `${activeClients.length} active`,    icon: '🏢', iconBg: 'bg-blue-500/10',    valColor: 'text-blue-400',    tab: 'Clients' },
-              { label: 'Open Deals',     value: `${openDeals.length}`,     change: 'In progress',                       icon: '🎯', iconBg: 'bg-amber-500/10',   valColor: 'text-amber-400',   tab: 'Deals' },
-              { label: 'Closed Deals',   value: `${closedDeals.length}`,   change: 'This month',                        icon: '✅', iconBg: 'bg-emerald-500/10', valColor: 'text-emerald-400', tab: 'Deals' },
-              { label: 'Pipeline',       value: '₹21L',                    change: 'Total open value',                  icon: '📊', iconBg: 'bg-purple-500/10',  valColor: 'text-purple-400',  tab: 'Pipeline' },
-              { label: 'Overdue',        value: `${overdueInvoices.length}`,change: 'Invoice overdue',                  icon: '⚠️', iconBg: 'bg-red-500/10',     valColor: 'text-red-400',     tab: 'Invoices' },
-              { label: 'Revenue',        value: '₹15.6L',                  change: '+28% this month',                   icon: '₹',  iconBg: 'bg-[#C9A84C]/10',   valColor: 'text-[#C9A84C]',  tab: 'Invoices' },
+              { label: 'Total Clients',  value: `${clients.length}`,        change: `${activeClients.length} active`,  icon: '🏢', iconBg: 'bg-blue-500/10',    valColor: 'text-blue-400',    tab: 'Clients' },
+              { label: 'Open Deals',     value: `${openDeals.length}`,      change: 'In progress',                     icon: '🎯', iconBg: 'bg-amber-500/10',   valColor: 'text-amber-400',   tab: 'Deals' },
+              { label: 'Closed Deals',   value: `${closedDeals.length}`,    change: 'This month',                      icon: '✅', iconBg: 'bg-emerald-500/10', valColor: 'text-emerald-400', tab: 'Deals' },
+              { label: 'Pipeline',       value: '₹21L',                     change: 'Total open value',                icon: '📊', iconBg: 'bg-purple-500/10',  valColor: 'text-purple-400',  tab: 'Pipeline' },
+              { label: 'Overdue',        value: `${overdueInvoices.length}`,change: 'Invoice overdue',                 icon: '⚠️', iconBg: 'bg-red-500/10',     valColor: 'text-red-400',     tab: 'Invoices' },
+              { label: 'Revenue',        value: '₹15.6L',                   change: '+28% this month',                 icon: '₹',  iconBg: 'bg-[#C9A84C]/10',   valColor: 'text-[#C9A84C]',  tab: 'Invoices' },
             ].map((stat) => (
               <div
                 key={stat.label}
