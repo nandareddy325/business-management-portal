@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckSquare, X } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { createClientSupabaseClient } from '@/lib/supabase/client'
 
 interface Employee { id: string; full_name: string; designation?: string; department?: string }
 interface Props {
@@ -20,7 +20,19 @@ const STATUS_OPTIONS = [
   { value: 'leave',    label: 'Leave',    color: 'bg-blue-50 text-blue-700 border-blue-200' },
 ]
 
+// Convert IST HH:MM + date to UTC ISO string
+function istToUTC(date: string, timeHHMM: string): string {
+  const [hours, minutes] = timeHHMM.split(':').map(Number)
+  // Create date in IST — subtract 5h30m to get UTC
+  const utcMs = new Date(`${date}T00:00:00Z`).getTime()
+    + hours * 60 * 60 * 1000
+    + minutes * 60 * 1000
+    - 5.5 * 60 * 60 * 1000  // subtract IST offset
+  return new Date(utcMs).toISOString()
+}
+
 export function MarkAttendanceButton({ companyId, date, employees, attendanceMap }: Props) {
+  const supabase = createClientSupabaseClient()
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -38,10 +50,15 @@ export function MarkAttendanceButton({ companyId, date, employees, attendanceMap
   const [checkIns, setCheckIns] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {}
     employees.forEach(emp => {
-      // extract HH:MM from existing timestamptz or default
       const existing = attendanceMap[emp.id]?.check_in
       if (existing) {
-        init[emp.id] = existing.length >= 5 ? existing.slice(0, 5) : '09:00'
+        // Convert existing UTC to IST for display
+        const istTime = new Date(existing).toLocaleTimeString('en-IN', {
+          hour: '2-digit', minute: '2-digit',
+          hour12: false,
+          timeZone: 'Asia/Kolkata'
+        })
+        init[emp.id] = istTime.slice(0, 5)
       } else {
         init[emp.id] = '09:00'
       }
@@ -55,47 +72,48 @@ export function MarkAttendanceButton({ companyId, date, employees, attendanceMap
     setStatuses(updated)
   }
 
-const handleSubmit = async () => {
-  if (!employees.length) return
-  setLoading(true)
-  setError('')
+  const handleSubmit = async () => {
+    if (!employees.length) return
+    setLoading(true)
+    setError('')
 
-  for (const emp of employees) {
-    const existing = attendanceMap[emp.id]
-    const record = {
-      company_id: companyId,
-      employee_id: emp.id,
-      attendance_date: date,
-      status: statuses[emp.id] ?? 'present',
-      check_in: (statuses[emp.id] === 'present' || statuses[emp.id] === 'half_day')
-        ? `${date}T${checkIns[emp.id]}:00`
-        : null,
+    for (const emp of employees) {
+      const existing = attendanceMap[emp.id]
+      const showCheckIn = statuses[emp.id] === 'present' || statuses[emp.id] === 'half_day'
+
+      const record = {
+        company_id: companyId,
+        employee_id: emp.id,
+        attendance_date: date,
+        status: statuses[emp.id] ?? 'present',
+        check_in: showCheckIn
+          ? istToUTC(date, checkIns[emp.id] ?? '09:00')
+          : null,
+      }
+
+      if (existing?.id) {
+        const { error: err } = await supabase
+          .from('attendance')
+          .update(record)
+          .eq('id', existing.id)
+        if (err) { setError(err.message); setLoading(false); return }
+      } else {
+        const { error: err } = await supabase
+          .from('attendance')
+          .insert(record)
+        if (err) { setError(err.message); setLoading(false); return }
+      }
     }
 
-    if (existing?.id) {
-      // update
-      const { error: err } = await supabase
-        .from('attendance')
-        .update(record)
-        .eq('id', existing.id)
-      if (err) { setError(err.message); setLoading(false); return }
-    } else {
-      // insert
-      const { error: err } = await supabase
-        .from('attendance')
-        .insert(record)
-      if (err) { setError(err.message); setLoading(false); return }
-    }
+    setLoading(false)
+    setSaved(true)
+    setTimeout(() => {
+      setSaved(false)
+      setOpen(false)
+      router.refresh()
+    }, 800)
   }
 
-  setLoading(false)
-  setSaved(true)
-  setTimeout(() => {
-    setSaved(false)
-    setOpen(false)
-    router.refresh()
-  }, 800)
-}
   const presentCount = Object.values(statuses).filter(s => s === 'present').length
 
   return (
@@ -115,7 +133,9 @@ const handleSubmit = async () => {
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2D9C8] flex-shrink-0">
               <div>
                 <h2 className="text-base font-semibold text-[#1C1712]">Mark Attendance</h2>
-                <p className="text-xs text-[#7A6E60] mt-0.5">{new Date(date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                <p className="text-xs text-[#7A6E60] mt-0.5">
+                  {new Date(date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </p>
               </div>
               <button onClick={() => setOpen(false)} className="text-[#9A8F82] hover:text-[#1C1712] transition-colors">
                 <X className="w-5 h-5" />
@@ -146,15 +166,20 @@ const handleSubmit = async () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-[#1C1712] truncate">{emp.full_name}</p>
-                        <p className="text-[10px] text-[#9A8F82]">{emp.department ?? ''}{emp.designation ? ` · ${emp.designation}` : ''}</p>
+                        <p className="text-[10px] text-[#9A8F82]">
+                          {emp.department ?? ''}{emp.designation ? ` · ${emp.designation}` : ''}
+                        </p>
                       </div>
                       {showCheckIn && (
-                        <input
-                          type="time"
-                          value={checkIns[emp.id] ?? '09:00'}
-                          onChange={e => setCheckIns(prev => ({ ...prev, [emp.id]: e.target.value }))}
-                          className="text-xs bg-[#F5F0E8] border border-[#DDD5C4] rounded-lg px-2 py-1 text-[#1C1712] outline-none focus:border-[#B8860B] w-24 flex-shrink-0"
-                        />
+                        <div className="flex-shrink-0">
+                          <p className="text-[9px] text-[#9A8F82] mb-0.5 text-right">IST Time</p>
+                          <input
+                            type="time"
+                            value={checkIns[emp.id] ?? '09:00'}
+                            onChange={e => setCheckIns(prev => ({ ...prev, [emp.id]: e.target.value }))}
+                            className="text-xs bg-[#F5F0E8] border border-[#DDD5C4] rounded-lg px-2 py-1 text-[#1C1712] outline-none focus:border-[#B8860B] w-24"
+                          />
+                        </div>
                       )}
                     </div>
                     <div className="flex gap-1.5">
