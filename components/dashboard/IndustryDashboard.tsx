@@ -15,6 +15,8 @@ interface Props {
 export function IndustryDashboard({ industry }: Props) {
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+    const [userRole, setUserRole] = useState('user')
   const [userName, setUserName] = useState('User')
   const config = getIndustry(industry.id)
 
@@ -32,7 +34,13 @@ export function IndustryDashboard({ industry }: Props) {
     <div className="min-h-screen bg-[#F7F5F2] flex">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 lg:ml-[220px] flex flex-col min-w-0">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
+         <Header onMenuClick={() => setSidebarOpen(true)}
+        userName={userName}
+          userEmail={userEmail}
+          userRole={userRole}
+          title="Real Estate"
+          subtitle="CRM Portal"
+           />
         <main className="flex-1 p-5 md:p-6">
 
           {/* Welcome */}

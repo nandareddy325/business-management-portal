@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/dashboard/sidebar'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createServerSupabaseClient()
+  
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -43,6 +44,9 @@ import { useState } from 'react'
 
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+    const [userRole, setUserRole] = useState('user')
+  const [userName, setUserName] = useState('User')
 
   return (
     <div className="flex h-screen bg-[#F7F5F1] overflow-hidden">
@@ -50,7 +54,13 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content — offset for sidebar on desktop */}
       <div className="flex-1 flex flex-col min-w-0 lg:ml-[220px]">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
+         <Header onMenuClick={() => setSidebarOpen(true)}
+        userName={userName}
+          userEmail={userEmail}
+          userRole={userRole}
+          title="Real Estate"
+          subtitle="CRM Portal"
+           />
         <main className="flex-1 overflow-y-auto p-5">
           {children}
         </main>
