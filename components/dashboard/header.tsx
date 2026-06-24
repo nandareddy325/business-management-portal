@@ -16,9 +16,19 @@ interface HeaderProps {
   onMenuClick: () => void
   title?: string
   subtitle?: string
+  userName: string
+  userEmail: string
+  userRole: string
 }
 
-export function Header({ onMenuClick, title = 'Dashboard', subtitle = 'Overview' }: HeaderProps) {
+export function Header({
+  onMenuClick,
+  title = 'Dashboard',
+  subtitle = 'Overview',
+  userName,
+  userEmail,
+  userRole: userRoleProp,
+}: HeaderProps) {
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -26,54 +36,27 @@ export function Header({ onMenuClick, title = 'Dashboard', subtitle = 'Overview'
 
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const [userInitials, setUserInitials] = useState('')
-  const [userName, setUserName] = useState('')
-  const [userEmail, setUserEmail] = useState('')
-  const [userRole, setUserRole] = useState<'admin' | 'user'>('user')
-  const [userLoading, setUserLoading] = useState(true)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [realtimeStatus, setRealtimeStatus] = useState<string>('connecting')
   const notifRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
 
+  // Derive initials from prop — no useEffect needed, no flash
+  const userInitials = (() => {
+    const parts = (userName || '').trim().split(' ')
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    return parts[0]?.slice(0, 2).toUpperCase() || 'GK'
+  })()
+
+  const userRole: 'admin' | 'user' = ['admin', 'tenant_admin', 'manager'].includes(userRoleProp)
+    ? 'admin'
+    : 'user'
+
   const today = new Date().toLocaleDateString('en-IN', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
   })
 
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        setUserEmail(user.email || '')
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name, role')
-          .eq('id', user.id)
-          .single()
-
-        if (profile?.full_name) {
-          setUserName(profile.full_name)
-          const parts = profile.full_name.trim().split(' ')
-          setUserInitials(parts.length >= 2
-            ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-            : parts[0].slice(0, 2).toUpperCase())
-        }
-
-        setUserRole(
-          ['admin', 'tenant_admin', 'manager'].includes(profile?.role)
-            ? 'admin' : 'user'
-        )
-      } catch (err) {
-        console.error('Profile fetch error:', err)
-      } finally {
-        setUserLoading(false)
-      }
-    }
-    getUser()
-  }, [])
-
+  // Realtime notifications only
   useEffect(() => {
     const channel = supabase
       .channel(`leads-notifications-${Date.now()}`)
@@ -111,7 +94,7 @@ export function Header({ onMenuClick, title = 'Dashboard', subtitle = 'Overview'
   const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = '/login' }
 
   const getGradient = (initials: string) => {
-    const g = ['from-violet-500 to-purple-700','from-blue-500 to-cyan-700','from-emerald-500 to-teal-700','from-amber-500 to-orange-600','from-pink-500 to-rose-700','from-indigo-500 to-blue-700']
+    const g = ['from-violet-500 to-purple-700', 'from-blue-500 to-cyan-700', 'from-emerald-500 to-teal-700', 'from-amber-500 to-orange-600', 'from-pink-500 to-rose-700', 'from-indigo-500 to-blue-700']
     return g[(initials || 'GK').charCodeAt(0) % g.length]
   }
 
@@ -124,7 +107,7 @@ export function Header({ onMenuClick, title = 'Dashboard', subtitle = 'Overview'
 
   const menuItems = userRole === 'admin'
     ? [
-        { icon: '👤', label: 'My Profile',    href: '/dashboard/settings' },
+        { icon: '👤', label: 'My Profile', href: '/dashboard/settings' },
         { icon: '🏢', label: 'Company Setup', href: '/dashboard/settings/company' },
       ]
     : [
@@ -236,33 +219,14 @@ export function Header({ onMenuClick, title = 'Dashboard', subtitle = 'Overview'
       <div className="relative" ref={profileRef}>
         <button onClick={() => { setProfileOpen(!profileOpen); setNotifOpen(false) }}
           className="flex items-center gap-2.5 hover:opacity-80 transition-opacity flex-shrink-0">
-
-          {/* Avatar */}
-          <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${getGradient(userInitials || 'GK')} flex items-center justify-center text-sm font-bold text-white shadow-sm`}>
-            {userLoading ? (
-              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-            ) : (
-              userInitials || 'GK'
-            )}
+          <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${getGradient(userInitials)} flex items-center justify-center text-sm font-bold text-white shadow-sm`}>
+            {userInitials}
           </div>
-
-          {/* Name + Role */}
           <div className="hidden md:block text-left">
-            {userLoading ? (
-              <div className="space-y-1">
-                <div className="w-16 h-2.5 bg-gray-200 animate-pulse rounded" />
-                <div className="w-10 h-2 bg-gray-100 animate-pulse rounded" />
-              </div>
-            ) : (
-              <>
-                <p className="text-xs font-semibold text-[#1C1712] leading-tight">
-                  {userName.split(' ')[0]}
-                </p>
-                <p className={`text-[10px] leading-tight font-semibold ${userRole === 'admin' ? 'text-[#B8860B]' : 'text-blue-600'}`}>
-                  {userRole === 'admin' ? '✦ Admin' : '👤 User'}
-                </p>
-              </>
-            )}
+            <p className="text-xs font-semibold text-[#1C1712] leading-tight">{userName.split(' ')[0]}</p>
+            <p className={`text-[10px] leading-tight font-semibold ${userRole === 'admin' ? 'text-[#B8860B]' : 'text-blue-600'}`}>
+              {userRole === 'admin' ? '✦ Admin' : '👤 User'}
+            </p>
           </div>
         </button>
 
@@ -275,9 +239,9 @@ export function Header({ onMenuClick, title = 'Dashboard', subtitle = 'Overview'
               <div className="absolute inset-0 opacity-25 pointer-events-none"
                 style={{ backgroundImage: 'radial-gradient(circle at 25% 75%, #B8860B, transparent 60%)' }} />
               <div className="relative flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${getGradient(userInitials || 'GK')} flex items-center justify-center text-lg font-bold text-white flex-shrink-0`}
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${getGradient(userInitials)} flex items-center justify-center text-lg font-bold text-white flex-shrink-0`}
                   style={{ boxShadow: '0 6px 16px rgba(0,0,0,0.35)' }}>
-                  {userInitials || 'GK'}
+                  {userInitials}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white truncate">{userName}</p>

@@ -16,5 +16,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!profile) redirect('/login')
 
-  return <DashboardShell>{children}</DashboardShell>
+  // ✅ profile data pass cheyyi
+  return (
+    <DashboardShell
+      userName={profile.full_name as string ?? ''}
+      userEmail={user.email || ''}
+      userRole={profile.role || 'user'}
+    >
+      {children}
+    </DashboardShell>
+  )
 }
