@@ -38,10 +38,10 @@ export function Header({
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [realtimeStatus, setRealtimeStatus] = useState<string>('connecting')
+  const [today, setToday] = useState('')
   const notifRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
 
-  // Derive initials from prop — no useEffect needed, no flash
   const userInitials = (() => {
     const parts = (userName || '').trim().split(' ')
     if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
@@ -52,11 +52,13 @@ export function Header({
     ? 'admin'
     : 'user'
 
-  const today = new Date().toLocaleDateString('en-IN', {
-    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
-  })
+  // ✅ Fix: useEffect lo set cheyyi — hydration mismatch avoid avutundi
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString('en-IN', {
+      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+    }))
+  }, [])
 
-  // Realtime notifications only
   useEffect(() => {
     const channel = supabase
       .channel(`leads-notifications-${Date.now()}`)
@@ -127,7 +129,7 @@ export function Header({
         </h1>
       </div>
 
-      <span className="hidden lg:block text-xs text-[#9A8F82] whitespace-nowrap">{today}</span>
+      {today && <span className="hidden lg:block text-xs text-[#9A8F82] whitespace-nowrap">{today}</span>}
 
       <div title={`Realtime: ${realtimeStatus}`}
         className={`hidden lg:block w-2 h-2 rounded-full flex-shrink-0 ${

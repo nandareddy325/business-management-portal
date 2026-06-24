@@ -65,9 +65,11 @@ function buildNavGroups(industrySlug: string) {
     {
       section: 'FINANCE', icon: '💳',
       items: [
-        { label: 'Invoices', icon: '🧾', href: '/billing/invoices' },
-        { label: 'Payments', icon: '💳', href: '/billing/payments' },
-        { label: 'Reports',  icon: '📊', href: '/reports'          },
+        { label: 'Overview',    icon: '📊', href: `${IND}/finance`              },
+        { label: 'Quotations',  icon: '📋', href: `${IND}/finance/quotations`   },
+        { label: 'Invoices',    icon: '🧾', href: `${IND}/finance/invoices`     },
+        { label: 'Payments',    icon: '💳', href: `${IND}/finance/payments`     },
+        { label: 'Expenses',    icon: '💸', href: `${IND}/finance/expenses`     },
       ],
     },
     {
@@ -109,8 +111,9 @@ function buildNavGroups(industrySlug: string) {
     {
       section: 'FINANCE', icon: '💳',
       items: [
-        { label: 'Invoices', icon: '🧾', href: '/billing/invoices' },
-        { label: 'Payments', icon: '💳', href: '/billing/payments' },
+        { label: 'Overview',   icon: '📊', href: `${IND}/finance`            },
+        { label: 'Invoices',   icon: '🧾', href: `${IND}/finance/invoices`   },
+        { label: 'Payments',   icon: '💳', href: `${IND}/finance/payments`   },
       ],
     },
     {
