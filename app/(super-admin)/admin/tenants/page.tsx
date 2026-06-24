@@ -2,7 +2,6 @@ import { createClient } from '@supabase/supabase-js'
 import { Search, Building2 } from 'lucide-react'
 import TenantActions from '@/components/super-admin/TenantActions'
 
-// Service role client — bypasses RLS
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -30,9 +29,15 @@ const statusBadge: Record<string, string> = {
   cancelled: 'bg-[#F5F0E8] text-[#9A8F82]',
 }
 
-export default async function AdminTenantsPage({ searchParams }: { searchParams: { search?: string; page?: string } }) {
-  const page = Number(searchParams.page ?? 1)
-  const { tenants, total } = await getTenants(searchParams.search, page)
+export default async function AdminTenantsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string; page?: string }>
+}) {
+  // ✅ Next.js 16 — await searchParams
+  const { search, page: pageParam } = await searchParams
+  const page = Number(pageParam ?? 1)
+  const { tenants, total } = await getTenants(search, page)
   const totalPages = Math.ceil(total / 15)
 
   return (
@@ -49,7 +54,7 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
 
         <form method="GET" className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9A8F82]" />
-          <input name="search" defaultValue={searchParams.search} placeholder="Search companies..."
+          <input name="search" defaultValue={search} placeholder="Search companies..."
             className="w-full bg-white border border-[#E8E2D8] rounded-xl pl-9 pr-4 py-2.5 text-sm text-[#1C1712] placeholder-[#B8B0A0] focus:outline-none focus:border-[#B8860B] transition-colors" />
         </form>
 
@@ -113,8 +118,8 @@ export default async function AdminTenantsPage({ searchParams }: { searchParams:
           <div className="flex items-center justify-between">
             <p className="text-xs text-[#9A8F82]">Page {page} of {totalPages}</p>
             <div className="flex gap-2">
-              {page > 1 && <a href={`?page=${page - 1}&search=${searchParams.search ?? ''}`} className="px-3 py-1.5 text-xs bg-white border border-[#E8E2D8] text-[#1C1712] rounded-lg hover:border-[#B8860B] transition-colors">← Prev</a>}
-              {page < totalPages && <a href={`?page=${page + 1}&search=${searchParams.search ?? ''}`} className="px-3 py-1.5 text-xs bg-white border border-[#E8E2D8] text-[#1C1712] rounded-lg hover:border-[#B8860B] transition-colors">Next →</a>}
+              {page > 1 && <a href={`?page=${page - 1}&search=${search ?? ''}`} className="px-3 py-1.5 text-xs bg-white border border-[#E8E2D8] text-[#1C1712] rounded-lg hover:border-[#B8860B] transition-colors">← Prev</a>}
+              {page < totalPages && <a href={`?page=${page + 1}&search=${search ?? ''}`} className="px-3 py-1.5 text-xs bg-white border border-[#E8E2D8] text-[#1C1712] rounded-lg hover:border-[#B8860B] transition-colors">Next →</a>}
             </div>
           </div>
         )}
