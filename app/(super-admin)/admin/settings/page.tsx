@@ -52,7 +52,7 @@ export default async function AdminSettingsPage() {
 
   return (
     <div className="min-h-screen bg-[#F5F0E8]">
-      <div className="p-6 space-y-6 max-w-4xl mx-auto">
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
 
         {/* Header */}
         <div>
@@ -84,40 +84,60 @@ export default async function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* Settings Sections */}
-        {settingsSections.map((section) => {
-          const Icon = section.icon
-          return (
-            <div key={section.title} className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
-              <div className="flex items-center gap-2.5 px-6 py-4 border-b border-[#F0EBE0]"
-                style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
-                <div className="w-7 h-7 rounded-lg bg-[#F5F0E8] flex items-center justify-center">
-                  <Icon size={14} className="text-[#B8860B]" />
-                </div>
-                <h2 className="font-serif text-base text-[#1C1712]">{section.title}</h2>
-              </div>
-              <div className="divide-y divide-[#F0EBE0]">
-                {section.items.map((item) => (
-                  <div key={item.label} className="flex items-center justify-between px-6 py-4 hover:bg-[#FFFBEF] transition-colors group cursor-pointer">
-                    <p className="text-sm font-medium text-[#1C1712]">{item.label}</p>
-                    <div className="flex items-center gap-2">
-                      {item.type === 'badge-green' && (
-                        <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{item.value}</span>
-                      )}
-                      {item.type === 'badge-gray' && (
-                        <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#F5F0E8] text-[#9A8F82]">{item.value}</span>
-                      )}
-                      {(item.type === 'text' || item.type === 'number') && (
-                        <span className="text-sm text-[#9A8F82]">{item.value}</span>
-                      )}
-                      <ChevronRight size={14} className="text-[#D3CBBB] group-hover:text-[#B8860B] transition-colors" />
-                    </div>
+        {/* Settings Sections — 4 cards horizontal */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {settingsSections.map((section) => {
+            const Icon = section.icon
+            return (
+              <div
+                key={section.title}
+                className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden flex flex-col"
+              >
+                {/* Card Header */}
+                <div
+                  className="flex items-center gap-2.5 px-5 py-4 border-b border-[#F0EBE0]"
+                  style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}
+                >
+                  <div className="w-7 h-7 rounded-lg bg-[#F5F0E8] flex items-center justify-center shrink-0">
+                    <Icon size={14} className="text-[#B8860B]" />
                   </div>
-                ))}
+                  <h2 className="font-serif text-sm text-[#1C1712] leading-tight">{section.title}</h2>
+                </div>
+
+                {/* Card Items */}
+                <div className="divide-y divide-[#F0EBE0] flex-1">
+                  {section.items.map((item) => (
+                    <div
+                      key={item.label}
+                      className="flex items-center justify-between px-5 py-3.5 hover:bg-[#FFFBEF] transition-colors group cursor-pointer gap-2"
+                    >
+                      <p className="text-xs font-medium text-[#1C1712] leading-snug shrink-0">{item.label}</p>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {item.type === 'badge-green' && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 whitespace-nowrap">
+                            {item.value}
+                          </span>
+                        )}
+                        {item.type === 'badge-gray' && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#F5F0E8] text-[#9A8F82] whitespace-nowrap">
+                            {item.value}
+                          </span>
+                        )}
+                        {(item.type === 'text' || item.type === 'number') && (
+                          <span className="text-xs text-[#9A8F82] truncate text-right">{item.value}</span>
+                        )}
+                        <ChevronRight
+                          size={12}
+                          className="text-[#D3CBBB] group-hover:text-[#B8860B] transition-colors shrink-0"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
 
         {/* Danger Zone */}
         <div className="bg-white rounded-2xl border border-red-200 shadow-sm overflow-hidden">
