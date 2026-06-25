@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -31,10 +31,10 @@ export default function NewInvoicePage() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
+      const { data: profile } = await supabase.from('employees').select('company_id').eq('user_id', user.id).single()
       if (profile?.company_id) {
         setCompanyId(profile.company_id)
-        const { data: clientList } = await supabase.from('id_clients').select('id, name').eq('company_id', profile.company_id).order('name')
+        const { data: clientList } = await supabase.from('clients').select('id, client_name').eq('company_id', profile.company_id).order('name')
         setClients(clientList ?? [])
       }
     }
@@ -99,7 +99,7 @@ export default function NewInvoicePage() {
                 <select value={form.client_id} onChange={e => setForm(f => ({ ...f, client_id: e.target.value }))}
                   className="w-full bg-[#F7F5F1] border border-[#E8E2D8] rounded-xl px-4 py-2.5 text-sm text-[#1C1712] focus:outline-none focus:border-[#B8860B]">
                   <option value="">Select Client</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.client_name}</option>)}
                 </select>
               ) : (
                 <input value={form.client_name} onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))}
@@ -109,14 +109,14 @@ export default function NewInvoicePage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-[#9A8F82] uppercase tracking-wider block mb-1.5">Total Amount (₹) *</label>
+              <label className="text-xs font-bold text-[#9A8F82] uppercase tracking-wider block mb-1.5">Total Amount (â‚¹) *</label>
               <input type="number" min="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                 placeholder="0"
                 className="w-full bg-[#F7F5F1] border border-[#E8E2D8] rounded-xl px-4 py-2.5 text-sm text-[#1C1712] focus:outline-none focus:border-[#B8860B]" />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-[#9A8F82] uppercase tracking-wider block mb-1.5">Amount Paid (₹)</label>
+              <label className="text-xs font-bold text-[#9A8F82] uppercase tracking-wider block mb-1.5">Amount Paid (â‚¹)</label>
               <input type="number" min="0" value={form.paid_amount} onChange={e => setForm(f => ({ ...f, paid_amount: e.target.value }))}
                 placeholder="0"
                 className="w-full bg-[#F7F5F1] border border-[#E8E2D8] rounded-xl px-4 py-2.5 text-sm text-[#1C1712] focus:outline-none focus:border-[#B8860B]" />
@@ -152,15 +152,15 @@ export default function NewInvoicePage() {
             <div className="rounded-xl bg-[#F7F5F1] p-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-[#9A8F82]">Total Amount</span>
-                <span className="font-semibold text-[#1C1712]">₹{Number(form.amount).toLocaleString('en-IN')}</span>
+                <span className="font-semibold text-[#1C1712]">â‚¹{Number(form.amount).toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-[#9A8F82]">Paid</span>
-                <span className="font-semibold text-emerald-600">₹{Number(form.paid_amount || 0).toLocaleString('en-IN')}</span>
+                <span className="font-semibold text-emerald-600">â‚¹{Number(form.paid_amount || 0).toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between text-sm font-bold border-t border-[#E8E2D8] pt-2">
                 <span className="text-[#1C1712]">Pending</span>
-                <span className={pending > 0 ? 'text-amber-600' : 'text-emerald-600'}>₹{pending.toLocaleString('en-IN')}</span>
+                <span className={pending > 0 ? 'text-amber-600' : 'text-emerald-600'}>â‚¹{pending.toLocaleString('en-IN')}</span>
               </div>
             </div>
           )}
@@ -182,3 +182,4 @@ export default function NewInvoicePage() {
     </div>
   )
 }
+
