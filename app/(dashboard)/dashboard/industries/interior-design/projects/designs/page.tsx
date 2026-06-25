@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Palette } from 'lucide-react'
 import { AddDesignButton } from '@/components/interior/add-design-button'
+import ProjectsTabs from '@/components/interior/projects-tabs'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,7 +63,7 @@ export default async function DesignsPage() {
         </div>
         <AddDesignButton companyId={profile.company_id} projects={projects ?? []} />
       </div>
-
+<ProjectsTabs />
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         {[

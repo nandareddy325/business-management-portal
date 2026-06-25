@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Package } from 'lucide-react'
 import { AddMaterialButton } from '@/components/interior/add-material-button'
+import ProjectsTabs from '@/components/interior/projects-tabs'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,7 +64,7 @@ export default async function MaterialsPage() {
         </div>
         <AddMaterialButton companyId={profile.company_id} projects={projects ?? []} />
       </div>
-
+<ProjectsTabs />
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[

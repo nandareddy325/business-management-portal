@@ -49,9 +49,9 @@ function buildNavGroups(industrySlug: string) {
       section: 'PROJECTS', icon: '🏗️',
       items: [
         { label: 'All Projects', icon: '🏗️', href: `${IND}/projects`  },
-        { label: 'Clients',      icon: '👥', href: `${IND}/clients`   },
-        { label: 'Designs',      icon: '🎨', href: `${IND}/designs`   },
-        { label: 'Materials',    icon: '📦', href: `${IND}/materials` },
+        { label: 'Clients',   icon: '👥', href: `${IND}/projects/clients`   },
+        { label: 'Designs',   icon: '🎨', href: `${IND}/projects/designs`   },
+        { label: 'Materials', icon: '📦', href: `${IND}/projects/materials` },
       ],
     },
     {
@@ -98,7 +98,7 @@ function buildNavGroups(industrySlug: string) {
       section: 'PROJECTS', icon: '🏗️',
       items: [
         { label: 'My Projects', icon: '🏗️', href: `${IND}/projects` },
-        { label: 'Clients',     icon: '👥', href: `${IND}/clients`  },
+        { label: 'Clients', icon: '👥', href: `${IND}/projects/clients` },
       ],
     },
     {

@@ -2,6 +2,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Users } from 'lucide-react'
 import { AddClientButton } from '@/components/interior/add-client-button'
+import ProjectsTabs from '@/components/interior/projects-tabs'
+//<ProjectsTabs />
 
 export const dynamic = 'force-dynamic'
 
@@ -55,7 +57,7 @@ export default async function IDClientsPage() {
         </div>
         <AddClientButton companyId={profile.company_id} projects={projects ?? []} />
       </div>
-
+<ProjectsTabs />
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         {[

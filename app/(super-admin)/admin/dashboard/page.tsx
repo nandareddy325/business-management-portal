@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server'
+﻿import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Building2, Users, Activity, TrendingUp, AlertCircle, ArrowUpRight, ArrowDownRight, Shield, Zap } from 'lucide-react'
 
@@ -8,20 +8,31 @@ async function getSystemStats(supabase: Awaited<ReturnType<typeof createServerSu
     { count: totalUsers },
     { count: totalLeads },
     { count: activeCompanies },
+    { count: quotationLeads },
+    { count: wonLeads },
     { data: recentCompanies },
   ] = await Promise.all([
     supabase.from('companies').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('leads').select('*', { count: 'exact', head: true }),
     supabase.from('companies').select('*', { count: 'exact', head: true }).eq('is_active', true),
+    supabase.from('leads').select('*', { count: 'exact', head: true }).eq('pipeline_stage', 'quotation'),
+    supabase.from('leads').select('*', { count: 'exact', head: true }).eq('pipeline_stage', 'won'),
     supabase.from('companies').select('id, name, created_at, is_active').order('created_at', { ascending: false }).limit(5),
   ])
+
+  const tl = totalLeads || 0
+  const ql = quotationLeads || 0
+  const wl = wonLeads || 0
+  const conversionLeads = ql + wl
+  const conversionRate = tl > 0 ? ((conversionLeads / tl) * 100).toFixed(1) + '%' : '0%'
 
   return {
     totalCompanies: totalCompanies || 0,
     totalUsers: totalUsers || 0,
-    totalLeads: totalLeads || 0,
+    totalLeads: tl,
     activeCompanies: activeCompanies || 0,
+    conversionRate,
     recentCompanies: recentCompanies || [],
   }
 }
@@ -38,7 +49,7 @@ export default async function SuperAdminDashboard() {
       label: 'Total Companies',
       value: stats.totalCompanies,
       icon: Building2,
-      trend: '+2 this month',
+      trend: 'All tenants',
       up: true,
       gradient: 'from-blue-500/20 to-blue-600/5',
       iconBg: 'bg-blue-500/15',
@@ -49,7 +60,7 @@ export default async function SuperAdminDashboard() {
       label: 'Total Users',
       value: stats.totalUsers,
       icon: Users,
-      trend: '+5 this week',
+      trend: 'Across all companies',
       up: true,
       gradient: 'from-emerald-500/20 to-emerald-600/5',
       iconBg: 'bg-emerald-500/15',
@@ -60,7 +71,7 @@ export default async function SuperAdminDashboard() {
       label: 'Total Leads',
       value: stats.totalLeads,
       icon: TrendingUp,
-      trend: '+24% this month',
+      trend: 'All pipeline',
       up: true,
       gradient: 'from-amber-500/20 to-amber-600/5',
       iconBg: 'bg-amber-500/15',
@@ -84,7 +95,6 @@ export default async function SuperAdminDashboard() {
     <div className="min-h-screen bg-[#F5F0E8]">
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
 
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -100,7 +110,6 @@ export default async function SuperAdminDashboard() {
           </div>
         </div>
 
-        {/* Stat Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {statCards.map((card) => {
             const Icon = card.icon
@@ -126,10 +135,8 @@ export default async function SuperAdminDashboard() {
           })}
         </div>
 
-        {/* Middle Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-          {/* System Health */}
           <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-7 h-7 rounded-lg bg-[#F5F0E8] flex items-center justify-center">
@@ -158,7 +165,6 @@ export default async function SuperAdminDashboard() {
             </div>
           </div>
 
-          {/* Quick Actions */}
           <div className="bg-white rounded-2xl border border-[#E8E2D8] p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-7 h-7 rounded-lg bg-[#F5F0E8] flex items-center justify-center">
@@ -182,7 +188,6 @@ export default async function SuperAdminDashboard() {
             </div>
           </div>
 
-          {/* Platform Stats */}
           <div className="bg-[#1C1712] rounded-2xl p-5 shadow-sm relative overflow-hidden">
             <div className="absolute inset-0 opacity-10"
               style={{ backgroundImage: 'radial-gradient(circle at 20% 80%, #B8860B, transparent 60%)' }} />
@@ -190,7 +195,7 @@ export default async function SuperAdminDashboard() {
               <p className="text-[10px] font-bold text-[#B8860B] uppercase tracking-widest mb-4">Platform Overview</p>
               <div className="space-y-4">
                 {[
-                  { label: 'Conversion Rate', value: stats.totalLeads > 0 ? '18.4%' : '0%', sub: 'avg across tenants' },
+                  { label: 'Conversion Rate', value: stats.conversionRate, sub: 'quotation + won / total' },
                   { label: 'Avg Leads/Company', value: stats.totalCompanies > 0 ? Math.round(stats.totalLeads / stats.totalCompanies).toString() : '0', sub: 'leads per tenant' },
                   { label: 'Users/Company', value: stats.totalCompanies > 0 ? Math.round(stats.totalUsers / stats.totalCompanies).toString() : '0', sub: 'avg team size' },
                 ].map(item => (
@@ -207,7 +212,6 @@ export default async function SuperAdminDashboard() {
           </div>
         </div>
 
-        {/* Recent Companies */}
         <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-6 py-4 border-b border-[#F0EBE0]"
             style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
