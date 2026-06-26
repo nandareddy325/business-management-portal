@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Phone } from 'lucide-react'
-import { LeadTable } from '@/components/interior/lead-table'
+import { RnrClient } from '@/components/interior/rnr-client'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +12,6 @@ export default async function RNRPage() {
   const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
   if (!profile?.company_id) redirect('/login')
 
-  // RNR = followup stage + notes starting with [RNR]
   const { data: rnrLeads } = await supabase
     .from('leads').select('*')
     .eq('company_id', profile.company_id)
@@ -39,12 +38,11 @@ export default async function RNRPage() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Total RNR',    value: String(count), color: '#DC2626' },
-          { label: 'With Budget',  value: String(leads.filter((l: any) => l.budget).length), color: '#B8860B' },
-          { label: 'High Interest',value: String(leads.filter((l: any) => l.interest === 'High').length), color: '#059669' },
+          { label: 'Total RNR',     value: count,                                              color: '#DC2626' },
+          { label: 'With Budget',   value: leads.filter((l: any) => l.budget).length,          color: '#B8860B' },
+          { label: 'High Interest', value: leads.filter((l: any) => l.interest === 'High').length, color: '#059669' },
         ].map((s, i) => (
           <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
             <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
@@ -53,26 +51,15 @@ export default async function RNRPage() {
         ))}
       </div>
 
-      {/* Warning banner */}
       {count > 0 && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
           style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
           <Phone className="w-4 h-4 text-red-600 flex-shrink-0" />
-          <p className="text-sm font-bold text-red-700">
-            {count} leads not responding — retry calling them!
-          </p>
+          <p className="text-sm font-bold text-red-700">{count} leads not responding — retry calling them!</p>
         </div>
       )}
 
-      <LeadTable
-        leads={leads}
-        count={count}
-        footerText="RNR leads"
-        emptyIcon="📵"
-        emptyText="No RNR leads — great work!"
-        showCall={true}
-        columns={['#', 'Lead', 'Phone', 'Source', 'Budget', 'City', 'Notes', 'Date']}
-      />
+      <RnrClient leads={leads} count={count} />
     </div>
   )
 }

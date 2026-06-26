@@ -1,6 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useState, useMemo } from 'react'
+import { Search, X, Calendar } from 'lucide-react'
 
 const GRADIENTS = [
   ['#7C3AED', '#4F46E5'], ['#0891B2', '#0E7490'], ['#059669', '#047857'],
@@ -12,8 +14,6 @@ const SOURCE_CONFIG: Record<string, { bg: string; color: string; icon: string }>
   Facebook:   { bg: '#EFF6FF', color: '#2563EB', icon: '📘' },
   WhatsApp:   { bg: '#F0FDF4', color: '#16A34A', icon: '💬' },
   Referral:   { bg: '#FFFBEB', color: '#D97706', icon: '🤝' },
-  'Walk-in':  { bg: '#F5F3FF', color: '#7C3AED', icon: '🚶' },
-  Google:     { bg: '#FEF2F2', color: '#DC2626', icon: '🔍' },
   Other:      { bg: '#F5F0E8', color: '#7A6E60', icon: '📌' },
 }
 
@@ -24,18 +24,122 @@ const LEAD_BASE = '/dashboard/industries/interior-design/leads'
 
 interface Lead { id: string; lead_name: string; phone?: string; email?: string; source?: string; budget?: string; city?: string; interest?: string; created_at: string }
 
+function todayIST() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+}
+
+function applyPreset(days: number) {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
+  const to = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+  const from = new Date(now)
+  from.setDate(from.getDate() - (days - 1))
+  return { from: from.toLocaleDateString('en-CA'), to }
+}
+
 export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }) {
   const router = useRouter()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const [dateActive, setDateActive] = useState(false)
+
+  const clearDate = () => { setFromDate(''); setToDate(''); setDateActive(false) }
+
+  const filteredLeads = useMemo(() => {
+    return leads.filter(l => {
+      // Search filter
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase()
+        const matchName = l.lead_name?.toLowerCase().includes(q)
+        const matchPhone = l.phone?.toLowerCase().includes(q)
+        if (!matchName && !matchPhone) return false
+      }
+      // Date filter
+      if (dateActive && (fromDate || toDate)) {
+        const leadDate = new Date(l.created_at).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+        if (fromDate && leadDate < fromDate) return false
+        if (toDate && leadDate > toDate) return false
+      }
+      return true
+    })
+  }, [leads, searchQuery, fromDate, toDate, dateActive])
 
   return (
     <>
-      {!leads?.length ? (
+      {/* Search + Date Filter Bar */}
+      <div className="bg-white border border-[#E8E2D8] rounded-2xl p-3 shadow-sm space-y-3">
+        <div className="flex items-center gap-3 flex-wrap justify-between">
+
+          {/* LEFT — Search */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E2D9C8] bg-[#FAFAF8] focus-within:border-[#B8860B] transition-colors w-64 flex-shrink-0">
+            <Search size={14} className="text-[#9A8F82] flex-shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search by name or phone..."
+              className="flex-1 text-sm bg-transparent outline-none text-[#1C1712] placeholder:text-[#B8B0A0]"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')}
+                className="w-5 h-5 rounded-full bg-[#E2D9C8] flex items-center justify-center flex-shrink-0 hover:bg-[#D0C8B8] transition-colors">
+                <X size={10} className="text-[#7A6E60]" />
+              </button>
+            )}
+          </div>
+
+          {/* RIGHT — Date */}
+          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+            <Calendar size={13} className="text-[#9A8F82] flex-shrink-0" />
+            <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setDateActive(true) }}
+              className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
+            <span className="text-xs text-[#9A8F82] font-semibold">to</span>
+            <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setDateActive(true) }}
+              className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
+
+            {/* Presets */}
+
+            {dateActive && (
+              <button onClick={clearDate}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
+                <X size={10} /> Clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Filter summary */}
+        {(searchQuery || dateActive) && (
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-[10px] font-bold text-[#9A8F82]">Showing</span>
+            <span className="text-[10px] font-black text-[#1C1712]">{filteredLeads.length}</span>
+            <span className="text-[10px] text-[#9A8F82]">of {count} leads</span>
+            {searchQuery && (
+              <span className="text-[10px] bg-[#F5F0E8] text-[#7A6E60] px-2 py-0.5 rounded-full border border-[#E2D9C8]">
+                🔍 "{searchQuery}"
+              </span>
+            )}
+            {dateActive && fromDate && (
+              <span className="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
+                📅 {fromDate} → {toDate || 'today'}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Table */}
+      {!filteredLeads?.length ? (
         <div className="bg-white border border-[#E8E2D8] rounded-2xl py-20 text-center shadow-sm">
           <div className="w-16 h-16 bg-[#F5F0E8] border border-[#E2D9C8] rounded-2xl flex items-center justify-center mx-auto mb-4">
             <span className="text-3xl">👤</span>
           </div>
-          <p className="text-[#1C1712] font-bold text-base">No new leads yet</p>
-          <p className="text-[#9A8F82] text-sm mt-1">Add your first lead to get started</p>
+          <p className="text-[#1C1712] font-bold text-base">
+            {searchQuery || dateActive ? 'No leads match your filter' : 'No new leads yet'}
+          </p>
+          <p className="text-[#9A8F82] text-sm mt-1">
+            {searchQuery || dateActive ? 'Try adjusting your search or date range' : 'Add your first lead to get started'}
+          </p>
         </div>
       ) : (
         <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
@@ -51,7 +155,7 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
                 </tr>
               </thead>
               <tbody>
-                {leads.map((l: any, i: number) => {
+                {filteredLeads.map((l: any, i: number) => {
                   const g = GRADIENTS[i % GRADIENTS.length]
                   const src = SOURCE_CONFIG[l.source] ?? SOURCE_CONFIG['Other']
                   return (
@@ -114,7 +218,7 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
 
           {/* Mobile Cards */}
           <div className="md:hidden divide-y divide-[#F0EBE0]">
-            {leads.map((l: any, i: number) => {
+            {filteredLeads.map((l: any, i: number) => {
               const g = GRADIENTS[i % GRADIENTS.length]
               const src = SOURCE_CONFIG[l.source] ?? SOURCE_CONFIG['Other']
               return (
@@ -146,7 +250,10 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
           </div>
 
           <div className="px-5 py-3 border-t border-[#F0EBE0] flex items-center justify-between" style={{ background: '#FAFAF8' }}>
-            <p className="text-[10px] text-[#9A8F82]"><span className="font-bold text-[#1C1712]">{count ?? 0}</span> new leads</p>
+            <p className="text-[10px] text-[#9A8F82]">
+              <span className="font-bold text-[#1C1712]">{filteredLeads.length}</span>
+              {(searchQuery || dateActive) ? ` of ${count} leads` : ' new leads'}
+            </p>
             <p className="text-[10px] text-[#B8B0A0]">Interior Design · GK CRM</p>
           </div>
         </div>

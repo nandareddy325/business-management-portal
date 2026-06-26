@@ -200,92 +200,44 @@ export default function AllLeadsPage() {
 
       {/* ── Search + Date Range Bar ── */}
       <div className="bg-white border border-[#E8E2D8] rounded-2xl p-3 shadow-sm space-y-3">
+  <div className="flex items-center gap-3 flex-wrap justify-between">
 
-        {/* Search input */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E2D9C8] bg-[#FAFAF8] focus-within:border-[#B8860B] transition-colors">
-          <Search size={14} className="text-[#9A8F82] flex-shrink-0" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search by name or phone number..."
-            className="flex-1 text-sm bg-transparent outline-none text-[#1C1712] placeholder:text-[#B8B0A0]"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')}
-              className="w-5 h-5 rounded-full bg-[#E2D9C8] flex items-center justify-center flex-shrink-0 hover:bg-[#D0C8B8] transition-colors">
-              <X size={10} className="text-[#7A6E60]" />
-            </button>
-          )}
-        </div>
+    {/* LEFT — Search */}
+    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E2D9C8] bg-[#FAFAF8] focus-within:border-[#B8860B] transition-colors w-64 flex-shrink-0">
+      <Search size={14} className="text-[#9A8F82] flex-shrink-0" />
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={e => setSearchQuery(e.target.value)}
+        placeholder="Search by name or phone..."
+        className="flex-1 text-sm bg-transparent outline-none text-[#1C1712] placeholder:text-[#B8B0A0]"
+      />
+      {searchQuery && (
+        <button onClick={() => setSearchQuery('')}
+          className="w-5 h-5 rounded-full bg-[#E2D9C8] flex items-center justify-center flex-shrink-0 hover:bg-[#D0C8B8] transition-colors">
+          <X size={10} className="text-[#7A6E60]" />
+        </button>
+      )}
+    </div>
 
-        {/* Date range */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Calendar size={13} className="text-[#9A8F82] flex-shrink-0" />
-          <input
-            type="date"
-            value={fromDate}
-            onChange={e => { setFromDate(e.target.value); setDateActive(true) }}
-            className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold"
-          />
-          <span className="text-xs text-[#9A8F82] font-semibold">to</span>
-          <input
-            type="date"
-            value={toDate}
-            onChange={e => { setToDate(e.target.value); setDateActive(true) }}
-            className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold"
-          />
+    {/* RIGHT — Date */}
+    <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+      <Calendar size={13} className="text-[#9A8F82] flex-shrink-0" />
+      <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setDateActive(true) }}
+        className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
+      <span className="text-xs text-[#9A8F82] font-semibold">to</span>
+      <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setDateActive(true) }}
+        className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
+      {dateActive && (
+        <button onClick={clearDate}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
+          <X size={10} /> Clear
+        </button>
+      )}
+    </div>
 
-          {/* Quick presets */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {[
-              { label: 'Today',     days: 0  },
-              { label: 'Yesterday', days: 1  },
-              { label: '7 Days',    days: 7  },
-              { label: '30 Days',   days: 30 },
-            ].map(q => (
-              <button key={q.label} onClick={() => {
-                if (q.days === 0) {
-                  const t = todayIST()
-                  setFromDate(t); setToDate(t); setDateActive(true)
-                } else {
-                  applyDatePreset(q.days)
-                }
-              }}
-                className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all hover:bg-amber-50 active:scale-95"
-                style={{ background: '#F5F0E8', color: '#7A6E60', border: '1px solid #E2D9C8' }}>
-                {q.label}
-              </button>
-            ))}
-          </div>
-
-          {dateActive && (
-            <button onClick={clearDate}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
-              <X size={10} /> Clear
-            </button>
-          )}
-        </div>
-
-        {/* Active filter summary */}
-        {(searchQuery || dateActive) && (
-          <div className="flex items-center gap-2 pt-1">
-            <span className="text-[10px] font-bold text-[#9A8F82]">Showing</span>
-            <span className="text-[10px] font-black text-[#1C1712]">{filteredLeads.length}</span>
-            <span className="text-[10px] text-[#9A8F82]">of {totalLeads} leads</span>
-            {searchQuery && (
-              <span className="text-[10px] bg-[#F5F0E8] text-[#7A6E60] px-2 py-0.5 rounded-full border border-[#E2D9C8]">
-                🔍 "{searchQuery}"
-              </span>
-            )}
-            {dateActive && fromDate && (
-              <span className="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
-                📅 {fromDate} → {toDate || 'today'}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+  </div>
+</div>
 
       {/* Stage Filter Chips */}
       <div className="flex flex-wrap gap-2">

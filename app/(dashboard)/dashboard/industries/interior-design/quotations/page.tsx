@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { FileText } from 'lucide-react'
-import { LeadTable } from '@/components/interior/lead-table'
+import { QuotationsClient } from '@/components/interior/quotations-client'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,14 +30,15 @@ export default async function QuotationsPage() {
           <h1 className="text-2xl font-bold text-[#1C1712]">Quotations</h1>
           <p className="text-sm text-[#9A8F82] mt-0.5"><span className="font-bold text-[#1C1712]">{count ?? 0}</span> leads</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold" style={{ background: '#FDF2F8', color: '#DB2777', border: '1px solid #FBCFE8' }}>
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
+          style={{ background: '#FDF2F8', color: '#DB2777', border: '1px solid #FBCFE8' }}>
           <FileText className="w-4 h-4" />Quotation Stage
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Total Quotes',   value: String(count ?? 0), color: '#DB2777' },
-          { label: 'High Interest',  value: String(highInterest), color: '#059669' },
+          { label: 'Total Quotes',   value: count ?? 0,    color: '#DB2777' },
+          { label: 'High Interest',  value: highInterest,  color: '#059669' },
           { label: 'Total Pipeline', value: totalBudget >= 100000 ? '₹' + (totalBudget / 100000).toFixed(1) + 'L' : totalBudget > 0 ? '₹' + totalBudget.toLocaleString('en-IN') : '—', color: '#B8860B' },
         ].map((s, i) => (
           <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
@@ -46,7 +47,7 @@ export default async function QuotationsPage() {
           </div>
         ))}
       </div>
-      <LeadTable leads={leads ?? []} count={count ?? 0} footerText="quotations" emptyIcon="💰" emptyText="No quotations yet" columns={['#', 'Lead', 'Phone', 'Source', 'Interest', 'Budget', 'City', 'Notes', 'Date']} />
+      <QuotationsClient leads={leads ?? []} count={count ?? 0} />
     </div>
   )
 }

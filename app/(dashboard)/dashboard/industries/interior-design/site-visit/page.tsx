@@ -1,7 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { MapPin } from 'lucide-react'
-import { LeadTable } from '@/components/interior/lead-table'
+import { SiteVisitClient } from '@/components/interior/site-visit-client'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,15 +30,16 @@ export default async function SiteVisitPage() {
           <h1 className="text-2xl font-bold text-[#1C1712]">Site Visit</h1>
           <p className="text-sm text-[#9A8F82] mt-0.5"><span className="font-bold text-[#1C1712]">{count ?? 0}</span> leads</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold" style={{ background: '#ECFEFF', color: '#0891B2', border: '1px solid #A5F3FC' }}>
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
+          style={{ background: '#ECFEFF', color: '#0891B2', border: '1px solid #A5F3FC' }}>
           <MapPin className="w-4 h-4" />Site Visit Stage
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Total Visits',   value: String(count ?? 0), color: '#0891B2' },
-          { label: 'High Interest',  value: String(highInterest), color: '#059669' },
-          { label: 'Total Budget',   value: totalBudget >= 100000 ? '₹' + (totalBudget / 100000).toFixed(1) + 'L' : totalBudget > 0 ? '₹' + totalBudget.toLocaleString('en-IN') : '—', color: '#B8860B' },
+          { label: 'Total Visits',  value: count ?? 0,       color: '#0891B2' },
+          { label: 'High Interest', value: highInterest,      color: '#059669' },
+          { label: 'Total Budget',  value: totalBudget >= 100000 ? '₹' + (totalBudget / 100000).toFixed(1) + 'L' : totalBudget > 0 ? '₹' + totalBudget.toLocaleString('en-IN') : '—', color: '#B8860B' },
         ].map((s, i) => (
           <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
             <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
@@ -46,7 +47,7 @@ export default async function SiteVisitPage() {
           </div>
         ))}
       </div>
-      <LeadTable leads={leads ?? []} count={count ?? 0} footerText="site visits" emptyIcon="🏠" emptyText="No site visits yet" columns={['#', 'Lead', 'Phone', 'Source', 'Interest', 'Budget', 'City', 'Notes', 'Date']} />
+      <SiteVisitClient leads={leads ?? []} count={count ?? 0} />
     </div>
   )
 }
