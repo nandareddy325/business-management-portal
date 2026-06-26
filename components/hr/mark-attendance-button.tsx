@@ -23,11 +23,10 @@ const STATUS_OPTIONS = [
 // Convert IST HH:MM + date to UTC ISO string
 function istToUTC(date: string, timeHHMM: string): string {
   const [hours, minutes] = timeHHMM.split(':').map(Number)
-  // Create date in IST — subtract 5h30m to get UTC
   const utcMs = new Date(`${date}T00:00:00Z`).getTime()
     + hours * 60 * 60 * 1000
     + minutes * 60 * 1000
-    - 5.5 * 60 * 60 * 1000  // subtract IST offset
+    - 5.5 * 60 * 60 * 1000
   return new Date(utcMs).toISOString()
 }
 
@@ -52,7 +51,6 @@ export function MarkAttendanceButton({ companyId, date, employees, attendanceMap
     employees.forEach(emp => {
       const existing = attendanceMap[emp.id]?.check_in
       if (existing) {
-        // Convert existing UTC to IST for display
         const istTime = new Date(existing).toLocaleTimeString('en-IN', {
           hour: '2-digit', minute: '2-digit',
           hour12: false,
@@ -84,7 +82,8 @@ export function MarkAttendanceButton({ companyId, date, employees, attendanceMap
       const record = {
         company_id: companyId,
         employee_id: emp.id,
-        attendance_date: date,
+        attendance_date: date,  // ✅ primary date column
+        date: date,             // ✅ fix: page filter uses this column too
         status: statuses[emp.id] ?? 'present',
         check_in: showCheckIn
           ? istToUTC(date, checkIns[emp.id] ?? '09:00')
@@ -130,6 +129,7 @@ export function MarkAttendanceButton({ companyId, date, employees, attendanceMap
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
           <div className="bg-[#FEFCF8] border border-[#DDD5C4] rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
 
+            {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2D9C8] flex-shrink-0">
               <div>
                 <h2 className="text-base font-semibold text-[#1C1712]">Mark Attendance</h2>
@@ -142,6 +142,7 @@ export function MarkAttendanceButton({ companyId, date, employees, attendanceMap
               </button>
             </div>
 
+            {/* Mark All */}
             <div className="px-5 py-3 border-b border-[#F0EBE0] flex-shrink-0">
               <p className="text-xs text-[#7A6E60] mb-2 font-medium">Mark all as:</p>
               <div className="flex gap-2 flex-wrap">
@@ -154,6 +155,7 @@ export function MarkAttendanceButton({ companyId, date, employees, attendanceMap
               </div>
             </div>
 
+            {/* Employee List */}
             <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
               {employees.map(emp => {
                 const currentStatus = statuses[emp.id] ?? 'present'
@@ -207,8 +209,13 @@ export function MarkAttendanceButton({ companyId, date, employees, attendanceMap
               )}
             </div>
 
+            {/* Footer */}
             <div className="px-5 py-4 border-t border-[#E2D9C8] flex-shrink-0">
-              {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+              {error && (
+                <p className="text-xs text-red-500 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
+                  {error}
+                </p>
+              )}
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-[#7A6E60]">
                   <span className="font-semibold text-emerald-600">{presentCount}</span> present ·{' '}
@@ -226,6 +233,7 @@ export function MarkAttendanceButton({ companyId, date, employees, attendanceMap
                 </button>
               </div>
             </div>
+
           </div>
         </div>
       )}

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import { Users } from 'lucide-react'
+import { Users, Search, X, Calendar } from 'lucide-react'
 
 const GRADIENTS = [
   ['#7C3AED', '#4F46E5'], ['#0891B2', '#0E7490'], ['#059669', '#047857'],
@@ -63,11 +63,22 @@ const UNIQUE_STAGES = [
   { key: 'lost',      label: '❌ Lost' },
 ]
 
+// Today in IST as YYYY-MM-DD
+const todayIST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+
 export default function AllLeadsPage() {
   const router = useRouter()
   const [leads, setLeads] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<string | null>(null)
+
+  // ── Search ──
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // ── Date range ──
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const [dateActive, setDateActive] = useState(false)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -102,7 +113,51 @@ export default function AllLeadsPage() {
     return lead.pipeline_stage === key
   }
 
-  const filteredLeads = activeFilter ? leads.filter(l => matchStage(l, activeFilter)) : leads
+  // ── Quick date presets ──
+  const applyDatePreset = (days: number) => {
+    const to = todayIST()
+    const from = new Date()
+    from.setDate(from.getDate() - days)
+    const fromStr = from.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
+    setFromDate(fromStr)
+    setToDate(to)
+    setDateActive(true)
+  }
+
+  const clearDate = () => {
+    setFromDate('')
+    setToDate('')
+    setDateActive(false)
+  }
+
+  // ── Combined filter ──
+  const filteredLeads = useMemo(() => {
+    let result = activeFilter ? leads.filter(l => matchStage(l, activeFilter)) : leads
+
+    // Date range filter
+    if (dateActive && (fromDate || toDate)) {
+      result = result.filter(l => {
+        const leadDate = l.created_at?.split('T')[0] ?? ''
+        if (fromDate && leadDate < fromDate) return false
+        if (toDate && leadDate > toDate) return false
+        return true
+      })
+    }
+
+    // Search filter — name + phone
+    const q = searchQuery.trim().toLowerCase()
+    if (q) {
+      result = result.filter(l => {
+        const name  = (l.lead_name || '').toLowerCase()
+        const phone = (l.phone || '').replace(/\D/g, '')
+        const qDigits = q.replace(/\D/g, '')
+        return name.includes(q) || (qDigits.length >= 3 && phone.includes(qDigits))
+      })
+    }
+
+    return result
+  }, [leads, activeFilter, searchQuery, fromDate, toDate, dateActive])
+
   const getCount = (key: string) => leads.filter(l => matchStage(l, key)).length
 
   const totalLeads  = leads.length
@@ -111,7 +166,7 @@ export default function AllLeadsPage() {
   const convRate    = totalLeads > 0 ? ((wonCount / totalLeads) * 100).toFixed(1) : '0'
 
   return (
-    <div className="space-y-5 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
+    <div className="space-y-4 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
 
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
@@ -141,6 +196,95 @@ export default function AllLeadsPage() {
             <p className="text-2xl font-black" style={{ color: s.color }}>{s.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── Search + Date Range Bar ── */}
+      <div className="bg-white border border-[#E8E2D8] rounded-2xl p-3 shadow-sm space-y-3">
+
+        {/* Search input */}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E2D9C8] bg-[#FAFAF8] focus-within:border-[#B8860B] transition-colors">
+          <Search size={14} className="text-[#9A8F82] flex-shrink-0" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search by name or phone number..."
+            className="flex-1 text-sm bg-transparent outline-none text-[#1C1712] placeholder:text-[#B8B0A0]"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')}
+              className="w-5 h-5 rounded-full bg-[#E2D9C8] flex items-center justify-center flex-shrink-0 hover:bg-[#D0C8B8] transition-colors">
+              <X size={10} className="text-[#7A6E60]" />
+            </button>
+          )}
+        </div>
+
+        {/* Date range */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Calendar size={13} className="text-[#9A8F82] flex-shrink-0" />
+          <input
+            type="date"
+            value={fromDate}
+            onChange={e => { setFromDate(e.target.value); setDateActive(true) }}
+            className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold"
+          />
+          <span className="text-xs text-[#9A8F82] font-semibold">to</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={e => { setToDate(e.target.value); setDateActive(true) }}
+            className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold"
+          />
+
+          {/* Quick presets */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {[
+              { label: 'Today',     days: 0  },
+              { label: 'Yesterday', days: 1  },
+              { label: '7 Days',    days: 7  },
+              { label: '30 Days',   days: 30 },
+            ].map(q => (
+              <button key={q.label} onClick={() => {
+                if (q.days === 0) {
+                  const t = todayIST()
+                  setFromDate(t); setToDate(t); setDateActive(true)
+                } else {
+                  applyDatePreset(q.days)
+                }
+              }}
+                className="px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all hover:bg-amber-50 active:scale-95"
+                style={{ background: '#F5F0E8', color: '#7A6E60', border: '1px solid #E2D9C8' }}>
+                {q.label}
+              </button>
+            ))}
+          </div>
+
+          {dateActive && (
+            <button onClick={clearDate}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
+              <X size={10} /> Clear
+            </button>
+          )}
+        </div>
+
+        {/* Active filter summary */}
+        {(searchQuery || dateActive) && (
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-[10px] font-bold text-[#9A8F82]">Showing</span>
+            <span className="text-[10px] font-black text-[#1C1712]">{filteredLeads.length}</span>
+            <span className="text-[10px] text-[#9A8F82]">of {totalLeads} leads</span>
+            {searchQuery && (
+              <span className="text-[10px] bg-[#F5F0E8] text-[#7A6E60] px-2 py-0.5 rounded-full border border-[#E2D9C8]">
+                🔍 "{searchQuery}"
+              </span>
+            )}
+            {dateActive && fromDate && (
+              <span className="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
+                📅 {fromDate} → {toDate || 'today'}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stage Filter Chips */}
@@ -176,15 +320,24 @@ export default function AllLeadsPage() {
       {/* Table */}
       {loading ? (
         <div className="bg-white border border-[#E8E2D8] rounded-2xl py-20 text-center shadow-sm">
+          <div className="w-8 h-8 border-2 border-[#B8860B] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-[#9A8F82] text-sm">Loading leads...</p>
         </div>
       ) : !filteredLeads.length ? (
         <div className="bg-white border border-[#E8E2D8] rounded-2xl py-20 text-center shadow-sm">
-          <Users className="w-8 h-8 text-[#B8860B] mx-auto mb-3" />
-          <p className="text-[#1C1712] font-bold">No leads found</p>
+          <div className="w-16 h-16 bg-[#F5F0E8] border border-[#E2D9C8] rounded-2xl flex items-center justify-center mx-auto mb-4">
+            {searchQuery ? <Search className="w-7 h-7 text-[#B8860B]" /> : <Users className="w-7 h-7 text-[#B8860B]" />}
+          </div>
+          <p className="text-[#1C1712] font-bold">
+            {searchQuery ? `No results for "${searchQuery}"` : 'No leads found'}
+          </p>
+          <p className="text-[#9A8F82] text-xs mt-1">
+            {searchQuery ? 'Try a different name or phone number' : dateActive ? 'Try a different date range' : 'Add leads to get started'}
+          </p>
         </div>
       ) : (
         <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
+          {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -224,15 +377,17 @@ export default function AllLeadsPage() {
                           style={{ background: stg.bg, color: stg.color, border: `1px solid ${stg.color}30` }}>{stg.label}</span>
                       </td>
                       <td className="px-4 py-3.5">
-                        {l.source ? <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
-                          style={{ background: src.bg, color: src.color, border: `1px solid ${src.color}30` }}>{src.icon} {l.source}</span>
-                        : <span className="text-[#C4BAB0]">—</span>}
+                        {l.source
+                          ? <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
+                              style={{ background: src.bg, color: src.color, border: `1px solid ${src.color}30` }}>{src.icon} {l.source}</span>
+                          : <span className="text-[#C4BAB0]">—</span>}
                       </td>
                       <td className="px-4 py-3.5">
-                        {l.interest ? <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
-                          style={{ background: int.bg, color: int.color, border: `1px solid ${int.color}30` }}>
-                          {l.interest === 'High' ? '🔥' : l.interest === 'Medium' ? '⚡' : '❄️'} {l.interest}</span>
-                        : <span className="text-[#C4BAB0]">—</span>}
+                        {l.interest
+                          ? <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
+                              style={{ background: int.bg, color: int.color, border: `1px solid ${int.color}30` }}>
+                              {l.interest === 'High' ? '🔥' : l.interest === 'Medium' ? '⚡' : '❄️'} {l.interest}</span>
+                          : <span className="text-[#C4BAB0]">—</span>}
                       </td>
                       <td className="px-4 py-3.5">
                         {budget ? <p className="text-sm font-bold" style={{ color: '#B8860B' }}>{budget}</p> : <span className="text-[#C4BAB0]">—</span>}
@@ -252,7 +407,7 @@ export default function AllLeadsPage() {
             </table>
           </div>
 
-          {/* Mobile */}
+          {/* Mobile Cards */}
           <div className="md:hidden divide-y divide-[#F0EBE0]">
             {filteredLeads.map((l: any, i: number) => {
               const g   = GRADIENTS[i % GRADIENTS.length]
@@ -281,6 +436,9 @@ export default function AllLeadsPage() {
                         {l.source && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: src.bg, color: src.color }}>{src.icon} {l.source}</span>}
                         {l.city && <span className="text-[10px] text-[#7A6E60]">📍 {l.city}</span>}
                       </div>
+                      <p className="text-[9px] text-[#B8B0A0] mt-1">
+                        {new Date(l.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
                     </div>
                   </div>
                 </div>

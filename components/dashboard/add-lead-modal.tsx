@@ -37,7 +37,7 @@ const emptyLead: SingleLead = {
   city: '', manualCity: '', interest: '',
   status: 'new', notes: '',
 }
-const data = allCalls.filter((a: any) => validLeadIds.has(a.lead_id))
+
 const sources = [
   'Instagram', 'Facebook', 'WhatsApp', 'Google Ads', 'YouTube',
   'LinkedIn', 'Justdial', 'IndiaMART', 'UrbanClap', 'Housing.com',

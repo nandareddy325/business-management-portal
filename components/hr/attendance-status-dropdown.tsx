@@ -47,19 +47,25 @@ export function AttendanceStatusDropdown({ employeeId, companyId, date, currentS
     setLoading(true)
     setError(null)
 
-    // Keep check_in consistent with status on both insert AND update,
-    // so switching away from "present" clears any stale check-in time.
-    const checkIn = value === 'present' ? `${date}T09:00:00` : null
+    // ✅ IST 09:00 → UTC ISO string (subtract 5h30m)
+    const checkIn = value === 'present'
+      ? new Date(`${date}T09:00:00+05:30`).toISOString()
+      : null
 
     const { error: dbError } = recordId
       ? await supabase
           .from('attendance')
-          .update({ status: value, check_in: checkIn })
+          .update({
+            status: value,
+            check_in: checkIn,
+            date: date,           // ✅ fix: keeps date column in sync
+          })
           .eq('id', recordId)
       : await supabase.from('attendance').insert({
           company_id: companyId,
           employee_id: employeeId,
-          attendance_date: date,
+          attendance_date: date,  // ✅ primary date column
+          date: date,             // ✅ fix: page filter uses this too
           status: value,
           check_in: checkIn,
         })
