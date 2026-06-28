@@ -52,6 +52,18 @@ export async function middleware(request: NextRequest) {
     path.startsWith('/reports') || path.startsWith('/settings')
 
   if (isDashboardPath && companyId) {
+    // ✅ Check companies.plan first — lifetime = no payment wall ever
+    const { data: company } = await supabase
+      .from('companies')
+      .select('plan')
+      .eq('id', companyId)
+      .single()
+
+    if (company?.plan === 'lifetime') {
+      // Lifetime users — skip all trial checks, allow through
+      return response
+    }
+
     const { data: subscription } = await supabase
       .from('company_subscriptions')
       .select('status, trial_ends_at')

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 declare global { interface Window { Razorpay: any } }
@@ -9,6 +10,7 @@ const PLAN_PRICE = 10000
 function fmt(n: number) { return '₹' + n.toLocaleString('en-IN') }
 
 export default function SubscriptionRenewPage() {
+  const router = useRouter()
   const [companyName, setCompanyName] = useState('')
   const [companyId, setCompanyId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -26,14 +28,24 @@ export default function SubscriptionRenewPage() {
     async function loadCompany() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+
       const { data: profile } = await supabase
         .from('profiles')
-        .select('company_id, companies(name)')
+        .select('company_id, companies(name, plan)')
         .eq('id', user.id)
         .single()
+
       if (profile?.company_id) {
         setCompanyId(profile.company_id)
         setCompanyName((profile as any).companies?.name || '')
+
+        // ✅ Lifetime plan check — payment page bypass
+        const plan = (profile as any).companies?.plan
+        if (plan === 'lifetime') {
+          router.replace('/dashboard/industries/interior-design')
+          return
+        }
+
         const { data: sub } = await supabase
           .from('company_subscriptions')
           .select('trial_ends_at')
@@ -166,10 +178,8 @@ export default function SubscriptionRenewPage() {
                 </div>
               </div>
 
-              {/* Divider */}
               <div style={{ height: 1, background: '#F0EBE1', marginBottom: 16 }} />
 
-              {/* Features */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {features.map(f => (
                   <span key={f} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#B8860B', background: '#FEF9EE', border: '1px solid #FDE68A', padding: '5px 12px', borderRadius: 20 }}>
@@ -181,7 +191,6 @@ export default function SubscriptionRenewPage() {
 
             {/* Payment card */}
             <div className="slide-up" style={{ background: '#1C1712', borderRadius: 20, padding: 24, boxShadow: '0 8px 40px rgba(28,23,18,0.15)' }}>
-              {/* Total */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)' }}>Due today</span>
                 <span style={{ fontSize: 32, fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>{fmt(PLAN_PRICE)}</span>
@@ -215,7 +224,6 @@ export default function SubscriptionRenewPage() {
               </div>
             </div>
 
-            {/* Help */}
             <p style={{ textAlign: 'center', fontSize: 12, color: '#9A8F82', marginTop: 20 }}>
               Need help? Contact{' '}
               <a href="mailto:support@gkcrm.in" style={{ color: '#B8860B', fontWeight: 600, textDecoration: 'none' }}>support@gkcrm.in</a>

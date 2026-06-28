@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import {
   Building2, Users, TrendingUp, ArrowLeft,
   Mail, Calendar, Activity, ChevronRight,
-  CreditCard, Hash, CheckCircle2, XCircle
+  CreditCard, Hash, CheckCircle2, XCircle, Crown
 } from 'lucide-react'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
@@ -19,9 +19,10 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
 
   const { id } = await params
 
+  // ✅ Fixed: No plans table join — use direct columns
   const { data: company } = await supabaseAdmin
     .from('companies')
-    .select('*, plan:plans(name, price_monthly)')
+    .select('*')
     .eq('id', id)
     .single()
 
@@ -36,6 +37,14 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
     supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).eq('company_id', id),
     supabaseAdmin.from('leads').select('lead_name, status, created_at').eq('company_id', id).order('created_at', { ascending: false }).limit(5),
   ])
+
+  const isLifetime = company.plan === 'lifetime'
+
+  const planBadge = isLifetime
+    ? 'bg-amber-500/15 text-amber-300 ring-amber-500/30'
+    : company.plan === 'trial'
+    ? 'bg-blue-500/10 text-blue-400 ring-blue-500/20'
+    : 'bg-violet-500/10 text-violet-400 ring-violet-500/20'
 
   const statCards = [
     {
@@ -58,25 +67,20 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
     },
     {
       label: 'Plan',
-      value: company.plan?.name ?? 'No Plan',
-      icon: CreditCard,
-      iconBg: 'bg-violet-500/10',
-      iconColor: 'text-violet-400',
-      valueColor: 'text-violet-300',
-      ring: 'ring-violet-500/15',
+      value: company.plan ? company.plan.charAt(0).toUpperCase() + company.plan.slice(1) : 'No Plan',
+      icon: isLifetime ? Crown : CreditCard,
+      iconBg: isLifetime ? 'bg-amber-500/10' : 'bg-violet-500/10',
+      iconColor: isLifetime ? 'text-amber-400' : 'text-violet-400',
+      valueColor: isLifetime ? 'text-amber-300' : 'text-violet-300',
+      ring: isLifetime ? 'ring-amber-500/15' : 'ring-violet-500/15',
     },
   ]
 
   const detailRows = [
-    { label: 'Company ID',       value: company.id,                    icon: Hash },
-    { label: 'Email',            value: company.email ?? '—',          icon: Mail },
-    { label: 'Plan',             value: company.plan?.name ?? '—',     icon: CreditCard },
-    { label: 'Plan Status',      value: company.plan_status ?? '—',    icon: Activity },
-    {
-      label: 'Monthly Revenue',
-      value: company.plan?.price_monthly ? `₹${company.plan.price_monthly}/mo` : '—',
-      icon: TrendingUp,
-    },
+    { label: 'Company ID',   value: company.id,                    icon: Hash },
+    { label: 'Industry',     value: company.industry ?? '—',       icon: Building2 },
+    { label: 'Plan',         value: company.plan ?? '—',           icon: CreditCard },
+    { label: 'Status',       value: company.is_active ? 'Active' : 'Inactive', icon: Activity },
     {
       label: 'Joined',
       value: new Date(company.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
@@ -105,16 +109,24 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
           >
             <ArrowLeft size={13} /> Back to Tenants
           </a>
-          <span className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full ring-1 ${
-            company.is_active
-              ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20'
-              : 'bg-red-500/10 text-red-400 ring-red-500/20'
-          }`}>
-            {company.is_active
-              ? <><CheckCircle2 size={10} /> Active</>
-              : <><XCircle size={10} /> Inactive</>
-            }
-          </span>
+          <div className="flex items-center gap-2">
+            {/* Lifetime badge */}
+            {isLifetime && (
+              <span className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full ring-1 bg-amber-500/15 text-amber-300 ring-amber-500/30">
+                <Crown size={10} /> Lifetime
+              </span>
+            )}
+            <span className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full ring-1 ${
+              company.is_active
+                ? 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20'
+                : 'bg-red-500/10 text-red-400 ring-red-500/20'
+            }`}>
+              {company.is_active
+                ? <><CheckCircle2 size={10} /> Active</>
+                : <><XCircle size={10} /> Inactive</>
+              }
+            </span>
+          </div>
         </div>
       </div>
 
@@ -122,15 +134,37 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
 
         {/* ── Hero header ── */}
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/[0.04] ring-1 ring-white/10 flex items-center justify-center flex-shrink-0">
-            <Building2 size={24} className="text-amber-400" />
+          <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+            isLifetime
+              ? 'bg-amber-500/10 ring-1 ring-amber-500/30'
+              : 'bg-white/[0.04] ring-1 ring-white/10'
+          }`}>
+            {isLifetime
+              ? <Crown size={24} className="text-amber-400" />
+              : <Building2 size={24} className="text-amber-400" />
+            }
           </div>
           <div className="min-w-0">
             <p className="text-[9px] font-bold tracking-widest uppercase text-amber-400/60 mb-1">Tenant</p>
             <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate">{company.name}</h1>
-            <p className="text-xs text-white/30 mt-0.5 truncate">{company.email}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ring-1 capitalize ${planBadge}`}>
+                {company.plan ?? 'No Plan'}
+              </span>
+              <span className="text-xs text-white/30">{company.industry ?? ''}</span>
+            </div>
           </div>
         </div>
+
+        {/* ── Lifetime banner ── */}
+        {isLifetime && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/5 ring-1 ring-amber-500/20">
+            <Crown size={16} className="text-amber-400 flex-shrink-0" />
+            <p className="text-xs text-amber-300/80">
+              This tenant has <span className="font-bold text-amber-300">Lifetime Free Access</span> — no payment required, never expires.
+            </p>
+          </div>
+        )}
 
         {/* ── Stat cards ── */}
         <div className="grid grid-cols-3 gap-3 sm:gap-4">
@@ -175,7 +209,9 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
                     <Icon size={13} className="text-white/20" />
                     <p className="text-xs text-white/40">{item.label}</p>
                   </div>
-                  <p className="text-xs sm:text-sm font-semibold text-white/70 font-mono text-right truncate max-w-[55%]">
+                  <p className={`text-xs sm:text-sm font-semibold font-mono text-right truncate max-w-[55%] ${
+                    item.label === 'Plan' && isLifetime ? 'text-amber-300' : 'text-white/70'
+                  }`}>
                     {item.value}
                   </p>
                 </div>
