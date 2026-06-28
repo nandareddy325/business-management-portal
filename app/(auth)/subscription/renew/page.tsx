@@ -17,7 +17,7 @@ export default async function SubscriptionRenewPage() {
       .from('companies').select('plan').eq('id', profile.company_id).single()
     
     if (company?.plan === 'lifetime') {
-      redirect('/dashboard/industries/interior-design')
+      redirect('/dashboard/industries/interior-design/dashboard')
     }
   }
   
