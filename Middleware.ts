@@ -20,9 +20,12 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // ── Public pages — no auth needed ──────────────────────────
-  const publicPaths = ['/login', '/signup', '/onboarding', '/subscription/renew']
+  // ✅ /subscription/renew removed — logged-in users need lifetime check
+  const publicPaths = ['/login', '/signup', '/onboarding']
   if (!user) {
     if (publicPaths.some(p => path.startsWith(p))) return response
+    // Not logged in trying to access /subscription/renew → login
+    if (path.startsWith('/subscription/renew')) return response
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
@@ -46,13 +49,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin/dashboard', request.url))
   }
 
-  // ── Trial expiry check — dashboard pages only ───────────────
-  const isDashboardPath = path.startsWith('/dashboard') || path.startsWith('/crm') ||
-    path.startsWith('/billing') || path.startsWith('/hr') ||
-    path.startsWith('/reports') || path.startsWith('/settings')
-
-  if (isDashboardPath && companyId) {
-    // ✅ Check companies.plan first — lifetime = no payment wall ever
+  // ✅ Lifetime check — /subscription/* ki vasthe dashboard ki redirect
+  if (path.startsWith('/subscription') && companyId) {
     const { data: company } = await supabase
       .from('companies')
       .select('plan')
@@ -60,7 +58,24 @@ export async function middleware(request: NextRequest) {
       .single()
 
     if (company?.plan === 'lifetime') {
-      // Lifetime users — skip all trial checks, allow through
+      return NextResponse.redirect(new URL('/dashboard/industries/interior-design', request.url))
+    }
+  }
+
+  // ── Trial expiry check — dashboard pages only ───────────────
+  const isDashboardPath = path.startsWith('/dashboard') || path.startsWith('/crm') ||
+    path.startsWith('/billing') || path.startsWith('/hr') ||
+    path.startsWith('/reports') || path.startsWith('/settings')
+
+  if (isDashboardPath && companyId) {
+    const { data: company } = await supabase
+      .from('companies')
+      .select('plan')
+      .eq('id', companyId)
+      .single()
+
+    // ✅ Lifetime — no trial check, allow through
+    if (company?.plan === 'lifetime') {
       return response
     }
 
@@ -78,7 +93,6 @@ export async function middleware(request: NextRequest) {
         ? new Date(subscription.trial_ends_at) < new Date()
         : false
 
-      // Trial expired → block & redirect to renew page
       if (isTrial && trialEnded) {
         return NextResponse.redirect(new URL('/subscription/renew', request.url))
       }
