@@ -11,30 +11,39 @@ const GK_HOME_COMPANY_ID = '04e560cc-3bf4-4273-af1a-e4bfcd3902fe'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-
     console.log('Webhook body received:', JSON.stringify(body))
 
-    const {
-      full_name,
-      phone_number,
-      location,
-      service_required,
-      your_message
-    } = body
+    // WP Webhooks sends data inside form_data
+    const formData = body.form_data || body
+
+    const leadName = formData?.names?.first_name || 
+                     formData?.full_name || 
+                     'Website Lead'
+    
+    const leadPhone = formData?.numeric_field || 
+                      formData?.phone_number || ''
+    
+    const leadCity = formData?.dropdown_1 || 
+                     formData?.location || 'Hyderabad'
+    
+    const leadInterest = formData?.input_text || 
+                         formData?.service_required || ''
+    
+    const leadNotes = formData?.message || 
+                      formData?.your_message || ''
 
     const { data: lead, error } = await supabaseAdmin
       .from('leads')
       .insert({
         company_id: GK_HOME_COMPANY_ID,
-        full_name: typeof full_name === 'object' 
-  ? `${full_name?.first_name || ''} ${full_name?.last_name || ''}`.trim()
-  : (full_name || 'Website Lead'),
-        phone: phone_number || '',
-        location: location || 'Hyderabad',
-        requirement: service_required || '',
-        notes: your_message || '',
-        lead_source: 'Website Form',
-        stage: 'New Leads',
+        lead_name: leadName,
+        phone: leadPhone,
+        city: leadCity,
+        interest: leadInterest,
+        notes: leadNotes,
+        source: 'Website Form',
+        pipeline_stage: 'new',
+        industry: 'interior-design',
         created_at: new Date().toISOString()
       })
       .select()
@@ -55,6 +64,8 @@ export async function POST(req: NextRequest) {
     console.error('Webhook error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
-} export async function GET() {
+}
+
+export async function GET() {
   return NextResponse.json({ status: 'GK Webhook Active ✅' })
 }
