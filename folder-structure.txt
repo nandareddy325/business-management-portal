@@ -1,0 +1,483 @@
+BUSINESS-MANAGEMENT-PORTAL/
+├── # GK CRM — Full Project Structure.txt
+├── .agents/
+├── .codex/
+├── .env.local
+├── .gitignore
+├── AGENTS.md
+├── android/
+│   ├── .gitignore
+│   ├── .gradle/
+│   │   ├── 8.14.3/
+│   │   │   ├── checksums/
+│   │   │   │   ├── checksums.lock
+│   │   │   │   ├── md5-checksums.bin
+│   │   │   │   └── sha1-checksums.bin
+│   │   │   ├── executionHistory/
+│   │   │   │   ├── executionHistory.bin
+│   │   │   │   └── executionHistory.lock
+│   │   │   ├── expanded/
+│   │   │   ├── fileChanges/
+│   │   │   │   └── last-build.bin
+│   │   │   ├── fileHashes/
+│   │   │   │   ├── fileHashes.bin
+│   │   │   │   ├── fileHashes.lock
+│   │   │   │   └── resourceHashesCache.bin
+│   │   │   ├── gc.properties
+│   │   │   └── vcsMetadata/
+│   │   ├── buildOutputCleanup/
+│   │   │   ├── buildOutputCleanup.lock
+│   │   │   ├── cache.properties
+│   │   │   └── outputFiles.bin
+│   │   ├── config.properties
+│   │   ├── file-system.probe
+│   │   └── vcs-1/
+│   │       └── gc.properties
+│   ├── .idea/
+│   │   ├── .gitignore
+│   │   ├── AndroidProjectSystem.xml
+│   │   ├── caches/
+│   │   │   └── deviceStreaming.xml
+│   │   ├── compiler.xml
+│   │   ├── deploymentTargetSelector.xml
+│   │   ├── gradle.xml
+│   │   ├── migrations.xml
+│   │   ├── misc.xml
+│   │   ├── runConfigurations.xml
+│   │   ├── vcs.xml
+│   │   └── workspace.xml
+│   ├── app/
+│   │   ├── .gitignore
+│   │   ├── build.gradle
+│   │   ├── capacitor.build.gradle
+│   │   ├── proguard-rules.pro
+│   │   └── src/
+│   │       ├── androidTest/
+│   │       │   └── java/
+│   │       │       └── com/
+│   │       │           └── getcapacitor/
+│   │       │               └── myapp/
+│   │       │                   └── ExampleInstrumentedTest.java
+│   │       ├── main/
+│   │       │   ├── AndroidManifest.xml
+│   │       │   ├── assets/
+│   │       │   │   ├── capacitor.config.json
+│   │       │   │   ├── capacitor.plugins.json
+│   │       │   │   └── public/
+│   │       │   │       ├── cordova.js
+│   │       │   │       └── cordova_plugins.js
+│   │       │   ├── java/
+│   │       │   │   └── com/
+│   │       │   │       └── gkcrm/
+│   │       │   │           └── app/
+│   │       │   │               └── MainActivity.java
+│   │       │   └── res/
+│   │       │       ├── drawable/
+│   │       │       │   ├── ic_launcher_background.xml
+│   │       │       │   └── splash.png
+│   │       │       ├── drawable-land-hdpi/
+│   │       │       │   └── splash.png
+│   │       │       ├── drawable-land-mdpi/
+│   │       │       │   └── splash.png
+│   │       │       ├── drawable-land-xhdpi/
+│   │       │       │   └── splash.png
+│   │       │       ├── drawable-land-xxhdpi/
+│   │       │       │   └── splash.png
+│   │       │       ├── drawable-land-xxxhdpi/
+│   │       │       │   └── splash.png
+│   │       │       ├── drawable-port-hdpi/
+│   │       │       │   └── splash.png
+│   │       │       ├── drawable-port-mdpi/
+│   │       │       │   └── splash.png
+│   │       │       ├── drawable-port-xhdpi/
+│   │       │       │   └── splash.png
+│   │       │       ├── drawable-port-xxhdpi/
+│   │       │       │   └── splash.png
+│   │       │       ├── drawable-port-xxxhdpi/
+│   │       │       │   └── splash.png
+│   │       │       ├── drawable-v24/
+│   │       │       │   └── ic_launcher_foreground.xml
+│   │       │       ├── layout/
+│   │       │       │   └── activity_main.xml
+│   │       │       ├── mipmap-anydpi-v26/
+│   │       │       │   ├── ic_launcher.xml
+│   │       │       │   └── ic_launcher_round.xml
+│   │       │       ├── mipmap-hdpi/
+│   │       │       │   ├── ic_launcher.png
+│   │       │       │   ├── ic_launcher_foreground.png
+│   │       │       │   └── ic_launcher_round.png
+│   │       │       ├── mipmap-mdpi/
+│   │       │       │   ├── ic_launcher.png
+│   │       │       │   ├── ic_launcher_foreground.png
+│   │       │       │   └── ic_launcher_round.png
+│   │       │       ├── mipmap-xhdpi/
+│   │       │       │   ├── ic_launcher.png
+│   │       │       │   ├── ic_launcher_foreground.png
+│   │       │       │   └── ic_launcher_round.png
+│   │       │       ├── mipmap-xxhdpi/
+│   │       │       │   ├── ic_launcher.png
+│   │       │       │   ├── ic_launcher_foreground.png
+│   │       │       │   └── ic_launcher_round.png
+│   │       │       ├── mipmap-xxxhdpi/
+│   │       │       │   ├── ic_launcher.png
+│   │       │       │   ├── ic_launcher_foreground.png
+│   │       │       │   └── ic_launcher_round.png
+│   │       │       ├── values/
+│   │       │       │   ├── ic_launcher_background.xml
+│   │       │       │   ├── strings.xml
+│   │       │       │   └── styles.xml
+│   │       │       └── xml/
+│   │       │           ├── config.xml
+│   │       │           └── file_paths.xml
+│   │       └── test/
+│   │           └── java/
+│   │               └── com/
+│   │                   └── getcapacitor/
+│   │                       └── myapp/
+│   │                           └── ExampleUnitTest.java
+│   ├── build.gradle
+│   ├── capacitor-cordova-android-plugins/
+│   │   ├── build.gradle
+│   │   ├── cordova.variables.gradle
+│   │   └── src/
+│   │       └── main/
+│   │           ├── AndroidManifest.xml
+│   │           ├── java/
+│   │           │   └── .gitkeep
+│   │           └── res/
+│   │               └── .gitkeep
+│   ├── capacitor.settings.gradle
+│   ├── gradle/
+│   │   └── wrapper/
+│   │       ├── gradle-wrapper.jar
+│   │       └── gradle-wrapper.properties
+│   ├── gradle.properties
+│   ├── gradlew
+│   ├── gradlew.bat
+│   ├── local.properties
+│   ├── settings.gradle
+│   └── variables.gradle
+├── app/
+│   ├── (auth)/
+│   │   ├── forgot-password/
+│   │   │   └── page.tsx
+│   │   ├── layout.tsx
+│   │   ├── login/
+│   │   │   └── page.tsx
+│   │   ├── onboarding/
+│   │   │   └── page.tsx
+│   │   ├── reset-password/
+│   │   │   └── page.tsx
+│   │   ├── signup/
+│   │   │   └── page.tsx
+│   │   └── subscription/
+│   │       └── renew/
+│   │           ├── page.tsx
+│   │           └── renew-client.tsx
+│   ├── (dashboard)/
+│   │   ├── billing/
+│   │   │   ├── invoices/
+│   │   │   │   └── page.tsx
+│   │   │   └── payments/
+│   │   │       └── page.tsx
+│   │   ├── crm/
+│   │   │   └── leads/
+│   │   │       └── page.tsx
+│   │   ├── dashboard/
+│   │   │   ├── industries/
+│   │   │   │   ├── b2b-business/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── clinics/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── hospital/
+│   │   │   │   │   └── page.tsx
+│   │   │   │   ├── interior-design/
+│   │   │   │   │   ├── all-leads/
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   ├── analytics/
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   ├── cre/
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   ├── dashboard/
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   ├── finance/
+│   │   │   │   │   │   ├── expenses/
+│   │   │   │   │   │   │   ├── new/
+│   │   │   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   │   ├── invoices/
+│   │   │   │   │   │   │   ├── new/
+│   │   │   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   │   │   ├── page.tsx
+│   │   │   │   │   │   │   └── [id]/
+│   │   │   │   │   │   │       └── page.tsx
+│   │   │   │   │   │   ├── page.tsx
+│   │   │   │   │   │   ├── payments/
+│   │   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   │   └── quotations/
+│   │   │   │   │   │       ├── new/
+│   │   │   │   │   │       │   └── page.tsx
+│   │   │   │   │   │       └── page.tsx
+│   │   │   │   │   ├── follow-up/
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   ├── leads/
+│   │   │   │   │   │   └── [id]/
+│   │   │   │   │   │       └── page.tsx
+│   │   │   │   │   ├── lost/
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   ├── new-leads/
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   ├── page.tsx
+│   │   │   │   │   ├── projects/
+│   │   │   │   │   │   ├── clients/
+│   │   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   │   ├── designs/
+│   │   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   │   ├── materials/
+│   │   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   │   ├── page.tsx
+│   │   │   │   │   │   └── [id]/
+│   │   │   │   │   │       └── page.tsx
+│   │   │   │   │   ├── quotations/
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   ├── rnr/
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   ├── site-visit/
+│   │   │   │   │   │   └── page.tsx
+│   │   │   │   │   └── won/
+│   │   │   │   │       └── page.tsx
+│   │   │   │   └── real-estate/
+│   │   │   │       └── page.tsx
+│   │   │   ├── page.tsx
+│   │   │   └── settings/
+│   │   │       ├── company/
+│   │   │       │   └── page.tsx
+│   │   │       ├── page.tsx
+│   │   │       └── users/
+│   │   ├── employee/
+│   │   │   ├── leave/
+│   │   │   └── reports/
+│   │   ├── hr/
+│   │   │   ├── attendance/
+│   │   │   │   └── page.tsx
+│   │   │   ├── employees/
+│   │   │   │   └── page.tsx
+│   │   │   └── work-reports/
+│   │   │       └── page.tsx
+│   │   ├── layout.tsx
+│   │   ├── reports/
+│   │   │   └── page.tsx
+│   │   ├── settings/
+│   │   │   ├── company/
+│   │   │   │   └── page.tsx
+│   │   │   ├── page.tsx
+│   │   │   └── users/
+│   │   │       └── page.tsx
+│   │   └── TrialBanner.tsx
+│   ├── (employee)/
+│   │   ├── employee/
+│   │   │   ├── attendance/
+│   │   │   │   └── page.tsx
+│   │   │   ├── leave/
+│   │   │   │   └── page.tsx
+│   │   │   ├── page.tsx
+│   │   │   ├── profile/
+│   │   │   │   └── page.tsx
+│   │   │   └── reports/
+│   │   │       └── page.tsx
+│   │   └── layout.tsx
+│   ├── (super-admin)/
+│   │   ├── admin/
+│   │   │   ├── dashboard/
+│   │   │   │   └── page.tsx
+│   │   │   ├── revenue/
+│   │   │   │   └── page.tsx
+│   │   │   ├── settings/
+│   │   │   │   └── page.tsx
+│   │   │   ├── subscriptions/
+│   │   │   │   └── page.tsx
+│   │   │   └── tenants/
+│   │   │       ├── page.tsx
+│   │   │       └── [id]/
+│   │   │           └── page.tsx
+│   │   ├── AdminSidebar.tsx
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── api/
+│   │   ├── auth/
+│   │   │   ├── route.ts
+│   │   │   └── signout/
+│   │   │       └── route.ts
+│   │   ├── change-password/
+│   │   │   └── route.ts
+│   │   ├── cre-performance/
+│   │   │   └── route.ts
+│   │   ├── generate-quotation-pdf/
+│   │   │   └── route.ts
+│   │   ├── hr/
+│   │   │   └── create-employee/
+│   │   │       └── route.ts
+│   │   ├── industries/
+│   │   │   ├── add/
+│   │   │   │   └── route.ts
+│   │   │   └── dds/
+│   │   ├── razorpay/
+│   │   │   ├── create-order/
+│   │   │   │   └── route.ts
+│   │   │   └── verify/
+│   │   │       └── route.ts
+│   │   └── subscription/
+│   │       └── status/
+│   │           └── route.ts
+│   ├── globals.css
+│   ├── layout.tsx
+│   ├── page.tsx
+│   ├── pricing/
+│   │   └── page.tsx
+│   ├── privacy/
+│   │   └── page.tsx
+│   └── terms/
+│       └── page.tsx
+├── build-errors.txt
+├── capacitor.config.ts
+├── CLAUDE.md
+├── components/
+│   ├── AddIndustryModal.tsx
+│   ├── billing/
+│   │   ├── create-invoice-button.tsx
+│   │   └── record-payment-button.tsx
+│   ├── dashboard/
+│   │   ├── add-lead-modal.tsx
+│   │   ├── attendance-mini.tsx
+│   │   ├── CallLogModal.tsx
+│   │   ├── charts.tsx
+│   │   ├── CREWorkReportModal.tsx
+│   │   ├── DashboardShell.tsx
+│   │   ├── header.tsx
+│   │   ├── IndustryDashboard.tsx
+│   │   ├── layout-dashboard.tsx
+│   │   ├── lead-detail-panel.tsx
+│   │   ├── leads-table.tsx
+│   │   ├── project-progress.tsx
+│   │   ├── recent-activities.tsx
+│   │   ├── sidebar.tsx
+│   │   └── stats-cards.tsx
+│   ├── employee/
+│   │   ├── apply-leave-button.tsx
+│   │   ├── attendance-mark-button.tsx
+│   │   └── submit-report-button.tsx
+│   ├── hr/
+│   │   ├── add-employee-button.tsx
+│   │   ├── attendance-status-dropdown.tsx
+│   │   ├── create-employee/
+│   │   │   └── route.ts
+│   │   ├── date-picker.tsx
+│   │   └── mark-attendance-button.tsx
+│   ├── interior/
+│   │   ├── add-client-button.tsx
+│   │   ├── add-design-button.tsx
+│   │   ├── add-lead-button.tsx
+│   │   ├── add-material-button.tsx
+│   │   ├── add-project-button.tsx
+│   │   ├── analytics-charts.tsx
+│   │   ├── crm-team-section.tsx
+│   │   ├── followup-client.tsx
+│   │   ├── lead-detail-client.tsx
+│   │   ├── lead-table.tsx
+│   │   ├── new-leads-table.tsx
+│   │   ├── projects-tabs.tsx
+│   │   ├── quotations-client.tsx
+│   │   ├── rnr-client.tsx
+│   │   ├── site-visit-client.tsx
+│   │   └── today-calls-section.tsx
+│   ├── settings/
+│   │   └── ChangePasswordCard.tsx
+│   ├── super-admin/
+│   │   ├── AdminSidebar.tsx
+│   │   └── TenantActions.tsx
+│   └── ui/
+│       ├── avatar.tsx
+│       ├── badge.tsx
+│       ├── button.tsx
+│       ├── calendar.tsx
+│       ├── card.tsx
+│       ├── dialog.tsx
+│       ├── dropdown-menu.tsx
+│       ├── input.tsx
+│       ├── select.tsx
+│       ├── sheet.tsx
+│       ├── table.tsx
+│       ├── tabs.tsx
+│       └── textarea.tsx
+├── components.json
+├── config/
+│   ├── industries.config.ts
+│   └── plans.config.ts
+├── dev-log.txt
+├── errors.txt
+├── eslint.config.mjs
+├── generate-tree.js
+├── hooks/
+│   ├── use-auth.ts
+│   └── use-industry.ts
+├── lib/
+│   ├── downloadQuotationPdf.ts
+│   ├── industries.ts
+│   ├── mock-data.ts
+│   ├── supabase/
+│   │   ├── admin.ts
+│   │   ├── client.ts
+│   │   └── server.ts
+│   ├── supabase-helpers.ts
+│   ├── supabase.ts
+│   └── utils.ts
+├── Middleware.ts
+├── modules/
+│   ├── auth/
+│   │   ├── repository.ts
+│   │   └── service.ts
+│   ├── billing/
+│   │   ├── repository.ts
+│   │   └── service.ts
+│   ├── crm/
+│   │   ├── repository.ts
+│   │   └── service.ts
+│   ├── hr/
+│   │   ├── repository.ts
+│   │   └── service.ts
+│   ├── rbac/
+│   │   ├── guard.tsx
+│   │   └── permissions.ts
+│   ├── subscription/
+│   │   └── service.ts
+│   └── tenant/
+│       ├── repository.ts
+│       └── service.ts
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── public/
+│   ├── icon-192.png
+│   ├── icon-512.png
+│   └── manifest.json
+├── README.md
+├── renew-client.tsx
+├── services/
+│   ├── admin.service.ts
+│   ├── api-client.ts
+│   ├── auth.service.ts
+│   ├── billing.service.ts
+│   ├── crm.service.ts
+│   ├── hr.service.ts
+│   ├── index.ts
+│   └── tenant.service.ts
+├── store/
+│   └── auth.store.ts
+├── tailwind.config.ts
+├── tsconfig.json
+├── tsconfig.tsbuildinfo
+└── types/
+    ├── database.ts
+    └── index.ts
