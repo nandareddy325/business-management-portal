@@ -116,93 +116,54 @@ function OutcomePills({ outcomes, bg, border, color }: {
   )
 }
 
-/* ── OPTION B HEADER ── */
 function PerfHeader({
-  name, perf, perfLoading, expandedCRE,
+  name, perf, perfLoading,
   onClose, onRefresh,
 }: {
   name: string
   perf: PerfData | null
   perfLoading: boolean
-  expandedCRE: string | null
   onClose: () => void
   onRefresh: () => void
 }) {
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #E2E8F0', background: '#fff' }}>
-      {/* Top row — avatar + name + actions */}
       <div className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: '1px solid #F1F5F9' }}>
-        <button
-          onClick={onClose}
-          className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-xs"
-          style={{ border: '1px solid #E2E8F0', color: '#94A3B8', background: 'transparent', cursor: 'pointer' }}
-        >✕</button>
-
-        <div
-          className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-white"
-          style={{ background: '#1C1712' }}
-        >{ini(name)}</div>
-
+        <button onClick={onClose} className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-xs"
+          style={{ border: '1px solid #E2E8F0', color: '#94A3B8', background: 'transparent', cursor: 'pointer' }}>✕</button>
+        <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-white"
+          style={{ background: '#1C1712' }}>{ini(name)}</div>
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-semibold truncate" style={{ color: '#0F172A' }}>{name}</p>
           <p className="text-[10px] mt-0.5" style={{ color: '#94A3B8' }}>
-            {perf
-              ? `${perf.freshCalls + perf.followupCalls} calls · Uncalled: ${perf.uncalledFresh}`
-              : perfLoading ? 'Loading...' : '—'}
+            {perf ? `${perf.freshCalls + perf.followupCalls} calls · Uncalled: ${perf.uncalledFresh}` : perfLoading ? 'Loading...' : '—'}
           </p>
         </div>
-
-        <button
-          onClick={onRefresh}
-          className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center"
-          style={{ border: '1px solid #E2E8F0', background: 'transparent', cursor: 'pointer' }}
-        >
+        <button onClick={onRefresh} className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center"
+          style={{ border: '1px solid #E2E8F0', background: 'transparent', cursor: 'pointer' }}>
           <RefreshCw size={11} style={{ color: '#94A3B8' }} className={perfLoading ? 'animate-spin' : ''} />
         </button>
       </div>
 
-      {/* Badge pills row */}
       <div className="px-4 py-3 flex flex-wrap gap-2">
-        {/* Fresh */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-full"
-          style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
-          <span className="text-base font-bold leading-none" style={{ color: '#16A34A' }}>
-            {perfLoading ? '—' : (perf?.freshTotal ?? '—')}
-          </span>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+          <span className="text-base font-bold leading-none" style={{ color: '#16A34A' }}>{perfLoading ? '—' : (perf?.freshTotal ?? '—')}</span>
           <span className="text-[10px]" style={{ color: '#15803D' }}>Fresh</span>
         </div>
-
-        {/* FU */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-full"
-          style={{ background: '#F5F3FF', border: '1px solid #DDD6FE' }}>
-          <span className="text-base font-bold leading-none" style={{ color: '#7C3AED' }}>
-            {perfLoading ? '—' : (perf?.followupTotal ?? '—')}
-          </span>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ background: '#F5F3FF', border: '1px solid #DDD6FE' }}>
+          <span className="text-base font-bold leading-none" style={{ color: '#7C3AED' }}>{perfLoading ? '—' : (perf?.followupTotal ?? '—')}</span>
           <span className="text-[10px]" style={{ color: '#6D28D9' }}>Follow-up</span>
         </div>
-
-        {/* Verified */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-full"
-          style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-          <span className="text-base font-bold leading-none" style={{ color: '#0F172A' }}>
-            {perfLoading ? '—' : (perf?.verified ?? '—')}
-          </span>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+          <span className="text-base font-bold leading-none" style={{ color: '#0F172A' }}>{perfLoading ? '—' : (perf?.verified ?? '—')}</span>
           <span className="text-[10px]" style={{ color: '#64748B' }}>Verified</span>
         </div>
-
-        {/* Worked */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-full"
-          style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-          <span className="text-base font-bold leading-none" style={{ color: '#0F172A' }}>
-            {perfLoading ? '—' : (perf?.totalLeads ?? '—')}
-          </span>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+          <span className="text-base font-bold leading-none" style={{ color: '#0F172A' }}>{perfLoading ? '—' : (perf?.totalLeads ?? '—')}</span>
           <span className="text-[10px]" style={{ color: '#64748B' }}>Worked</span>
         </div>
-
-        {/* No-followup warning — only if > 0 */}
         {(perf?.noFollowup ?? 0) > 0 && (
-          <div className="flex items-center gap-1.5 px-3 py-2 rounded-full"
-            style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+          <div className="flex items-center gap-1.5 px-3 py-2 rounded-full" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
             <span className="text-[11px]" style={{ color: '#D97706' }}>⚠</span>
             <span className="text-base font-bold leading-none" style={{ color: '#D97706' }}>{perf!.noFollowup}</span>
             <span className="text-[10px]" style={{ color: '#B45309' }}>no-fu</span>
@@ -249,7 +210,7 @@ export function TodayCallsSection({
     loadPerf(id, name)
   }
 
-  const handleClose  = () => { setExpandedCRE(null); setSelectedCRE('all'); setPerf(null) }
+  const handleClose   = () => { setExpandedCRE(null); setSelectedCRE('all'); setPerf(null) }
   const handleRefresh = () => { if (perf && expandedCRE) loadPerf(expandedCRE, perf.name) }
 
   return (
@@ -259,26 +220,17 @@ export function TodayCallsSection({
       <div className="rounded-2xl" style={{ background: '#fff', border: '1px solid #E8E2D8' }}>
         <div className="px-4 py-3 flex items-center justify-between">
           <p className="text-xs font-semibold" style={{ color: '#1C1712' }}>Team performance</p>
-
           <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setOpen(v => !v)}
+            <button type="button" onClick={() => setOpen(v => !v)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                padding: '8px 14px', borderRadius: 12,
-                background: '#1C1712',
-                border: '1px solid rgba(184,134,11,0.3)',
-                color: '#fff', fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', position: 'relative', zIndex: 10,
-              }}
-            >
+                padding: '8px 14px', borderRadius: 12, background: '#1C1712',
+                border: '1px solid rgba(184,134,11,0.3)', color: '#fff',
+                fontSize: 12, fontWeight: 600, cursor: 'pointer', position: 'relative', zIndex: 10,
+              }}>
               <Users size={13} color="#fff" />
-              <span style={{ maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {selectedName}
-              </span>
-              <ChevronDown size={12} color="#fff"
-                style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              <span style={{ maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedName}</span>
+              <ChevronDown size={12} color="#fff" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
             </button>
 
             {open && (
@@ -286,18 +238,14 @@ export function TodayCallsSection({
                 <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
                 <div style={{
                   position: 'absolute', right: 0, top: '100%', marginTop: 6,
-                  background: '#fff', border: '1px solid #E8E2D8',
-                  borderRadius: 16, overflow: 'hidden', minWidth: 180,
-                  boxShadow: '0 12px 32px rgba(0,0,0,0.12)', zIndex: 999,
+                  background: '#fff', border: '1px solid #E8E2D8', borderRadius: 16,
+                  overflow: 'hidden', minWidth: 180, boxShadow: '0 12px 32px rgba(0,0,0,0.12)', zIndex: 999,
                 }}>
                   <button type="button" onClick={() => selectCRE('all')}
                     style={{
-                      width: '100%', padding: '10px 16px',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      background: selectedCRE === 'all' ? '#FFFBEB' : 'transparent',
-                      borderBottom: '1px solid #F0EBE0',
-                      color: selectedCRE === 'all' ? '#B8860B' : '#1C1712',
-                      fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                      width: '100%', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      background: selectedCRE === 'all' ? '#FFFBEB' : 'transparent', borderBottom: '1px solid #F0EBE0',
+                      color: selectedCRE === 'all' ? '#B8860B' : '#1C1712', fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
                     }}>
                     <span>Total CRE</span>
                     <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: '#FEF3C7', color: '#B8860B' }}>{totalCount}</span>
@@ -307,12 +255,10 @@ export function TodayCallsSection({
                     return (
                       <button key={cre.id} type="button" onClick={() => selectCRE(cre.id)}
                         style={{
-                          width: '100%', padding: '10px 16px',
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          width: '100%', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           background: selectedCRE === cre.id ? '#FFFBEB' : 'transparent',
                           borderBottom: i < cres.length - 1 ? '1px solid #F0EBE0' : 'none',
-                          color: selectedCRE === cre.id ? '#B8860B' : '#1C1712',
-                          fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                          color: selectedCRE === cre.id ? '#B8860B' : '#1C1712', fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
                         }}>
                         <span style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cre.name}</span>
                         <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 20, marginLeft: 8, background: cnt > 0 ? '#FEF3C7' : '#F5F0E8', color: cnt > 0 ? '#B8860B' : '#9A8F82' }}>{cnt}</span>
@@ -329,17 +275,11 @@ export function TodayCallsSection({
       {/* ── 2. PERFORMANCE PANEL ── */}
       {expandedCRE && (
         <div className="space-y-3">
-          {/* Option B header */}
           <PerfHeader
-            name={selectedName}
-            perf={perf}
-            perfLoading={perfLoading}
-            expandedCRE={expandedCRE}
-            onClose={handleClose}
-            onRefresh={handleRefresh}
+            name={selectedName} perf={perf} perfLoading={perfLoading}
+            onClose={handleClose} onRefresh={handleRefresh}
           />
 
-          {/* Body */}
           {perfLoading ? (
             <div className="rounded-2xl py-12 flex flex-col items-center gap-2"
               style={{ border: '1px solid #E2E8F0', background: '#fff' }}>
@@ -361,54 +301,59 @@ export function TodayCallsSection({
                 <span>{perf.freshCalls + perf.followupCalls} calls · {perf.followupFuDone} fu</span>
               </div>
 
-              {/* Fresh */}
-              <div style={{ borderBottom: '1px solid #F1F5F9' }}>
-                <SectionHeader
-                  emoji="🆕" label="Fresh leads" count={perf.freshTotal} sub={`${perf.freshCalls} calls`}
-                  accentColor="#16A34A" bgColor="#F0FDF4" borderColor="#DCFCE7" textColor="#14532D"
-                />
-                <div className="px-3 pt-2">
-                  <StageGrid data={perf.freshStages} color="#DC2626" />
-                  <OutcomePills outcomes={perf.freshOutcomes} bg="#F0FDF4" border="#BBF7D0" color="#14532D" />
-                  <ExecGrid items={[['Visit done', perf.freshVisitDone], ['Visits created', perf.freshVisitsCreated], ['Quotations sent', perf.freshQuotations]]} />
+              {/* ── FRESH + FOLLOWUP: side-by-side on md+, stacked on mobile ── */}
+              <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+
+                {/* FRESH */}
+                <div>
+                  <SectionHeader
+                    emoji="🆕" label="Fresh leads" count={perf.freshTotal} sub={`${perf.freshCalls} calls`}
+                    accentColor="#16A34A" bgColor="#F0FDF4" borderColor="#DCFCE7" textColor="#14532D"
+                  />
+                  <div className="px-3 pt-2">
+                    <StageGrid data={perf.freshStages} color="#DC2626" />
+                    <OutcomePills outcomes={perf.freshOutcomes} bg="#F0FDF4" border="#BBF7D0" color="#14532D" />
+                    <ExecGrid items={[['Visit done', perf.freshVisitDone], ['Visits created', perf.freshVisitsCreated], ['Quotations sent', perf.freshQuotations]]} />
+                  </div>
                 </div>
-              </div>
 
-              {/* Follow-up */}
-              <div>
-                <SectionHeader
-                  emoji="🔄" label="Follow-up leads" count={perf.followupTotal} sub={`${perf.followupFuDone} fu · ${perf.followupCalls} calls`}
-                  accentColor="#7C3AED" bgColor="#F5F3FF" borderColor="#EDE9FE" textColor="#4C1D95"
-                />
-                <div className="px-3 pt-2">
-                  <StageGrid data={perf.followupStages} color="#7C3AED" />
-                  <OutcomePills outcomes={perf.followupOutcomes} bg="#F5F3FF" border="#DDD6FE" color="#4C1D95" />
+                {/* FOLLOWUP */}
+                <div>
+                  <SectionHeader
+                    emoji="🔄" label="Follow-up leads" count={perf.followupTotal} sub={`${perf.followupFuDone} fu · ${perf.followupCalls} calls`}
+                    accentColor="#7C3AED" bgColor="#F5F3FF" borderColor="#EDE9FE" textColor="#4C1D95"
+                  />
+                  <div className="px-3 pt-2">
+                    <StageGrid data={perf.followupStages} color="#7C3AED" />
+                    <OutcomePills outcomes={perf.followupOutcomes} bg="#F5F3FF" border="#DDD6FE" color="#4C1D95" />
 
-                  {Object.keys(perf.fuCompletionMap).length > 0 && (
-                    <div className="py-2" style={{ borderTop: '1px solid #F1F5F9' }}>
-                      <p className="text-[9px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#64748B' }}>Follow-up completions</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {Object.entries(perf.fuCompletionMap).map(([o, c]) => (
-                          <span key={o} className="px-2.5 py-1 rounded-full text-[9px] font-semibold"
-                            style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E3A8A' }}>{o} {c}</span>
-                        ))}
+                    {Object.keys(perf.fuCompletionMap).length > 0 && (
+                      <div className="py-2" style={{ borderTop: '1px solid #F1F5F9' }}>
+                        <p className="text-[9px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#64748B' }}>Follow-up completions</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {Object.entries(perf.fuCompletionMap).map(([o, c]) => (
+                            <span key={o} className="px-2.5 py-1 rounded-full text-[9px] font-semibold"
+                              style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E3A8A' }}>{o} {c}</span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  <ExecGrid items={[['Visit done', perf.followupVisitDone], ['Visits created', perf.followupVisitsCreated], ['Quotations sent', perf.followupQuotations]]} />
+                    <ExecGrid items={[['Visit done', perf.followupVisitDone], ['Visits created', perf.followupVisitsCreated], ['Quotations sent', perf.followupQuotations]]} />
 
-                  {perf.pending > 0 && (
-                    <div className="mb-3 p-3 rounded-xl flex items-center justify-between"
-                      style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
-                      <div className="flex-1 min-w-0 pr-3">
-                        <p className="text-[11px] font-semibold" style={{ color: '#92400E' }}>⏰ Pending follow-ups</p>
-                        <p className="text-[9px] mt-0.5" style={{ color: '#B45309' }}>Scheduled but not yet completed</p>
+                    {perf.pending > 0 && (
+                      <div className="mb-3 p-3 rounded-xl flex items-center justify-between"
+                        style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+                        <div className="flex-1 min-w-0 pr-3">
+                          <p className="text-[11px] font-semibold" style={{ color: '#92400E' }}>⏰ Pending follow-ups</p>
+                          <p className="text-[9px] mt-0.5" style={{ color: '#B45309' }}>Scheduled but not yet completed</p>
+                        </div>
+                        <p className="text-2xl font-bold flex-shrink-0" style={{ color: '#D97706' }}>{perf.pending}</p>
                       </div>
-                      <p className="text-2xl font-bold flex-shrink-0" style={{ color: '#D97706' }}>{perf.pending}</p>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
+
               </div>
             </div>
           ) : null}
