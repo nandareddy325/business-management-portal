@@ -12,8 +12,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
+    console.log('Webhook body received:', JSON.stringify(body))
+
     const {
-      names,
+      full_name,
       phone_number,
       location,
       service_required,
@@ -24,7 +26,7 @@ export async function POST(req: NextRequest) {
       .from('leads')
       .insert({
         company_id: GK_HOME_COMPANY_ID,
-        full_name: names || 'Website Lead',
+        full_name: full_name || 'Website Lead',
         phone: phone_number || '',
         location: location || 'Hyderabad',
         requirement: service_required || '',
@@ -37,6 +39,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error) {
+      console.error('Supabase error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -47,6 +50,7 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (err: any) {
+    console.error('Webhook error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
