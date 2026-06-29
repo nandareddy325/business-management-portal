@@ -26,7 +26,9 @@ export async function POST(req: NextRequest) {
       .from('leads')
       .insert({
         company_id: GK_HOME_COMPANY_ID,
-        full_name: full_name || 'Website Lead',
+        full_name: typeof full_name === 'object' 
+  ? `${full_name?.first_name || ''} ${full_name?.last_name || ''}`.trim()
+  : (full_name || 'Website Lead'),
         phone: phone_number || '',
         location: location || 'Hyderabad',
         requirement: service_required || '',
