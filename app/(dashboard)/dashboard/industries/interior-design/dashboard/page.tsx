@@ -16,8 +16,6 @@ const STAGES = [
   { key: 'lost',      label: 'Lost',       icon: XCircle,  color: '#DC2626', bg: '#FEF2F2', border: '#FECACA', href: '/dashboard/industries/interior-design/lost',         description: 'Not interested' },
 ]
 
-const ini = (n: string) => n?.split(' ').map((x: string) => x[0]).join('').slice(0,2).toUpperCase() || '?'
-
 export default async function InteriorDesignDashboard() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -46,15 +44,13 @@ export default async function InteriorDesignDashboard() {
   const totalLeads  = allLeads?.length ?? 0
   const wonLeads    = stageCounts['won'] ?? 0
   const activeLeads = totalLeads - wonLeads - (stageCounts['lost'] ?? 0)
-  const todayStr   = new Date().toDateString()
-  const todayLeads = allLeads?.filter(l => new Date(l.created_at).toDateString() === todayStr).length ?? 0
+  const todayStr    = new Date().toDateString()
+  const todayLeads  = allLeads?.filter(l => new Date(l.created_at).toDateString() === todayStr).length ?? 0
 
   const leadIds = allLeads?.map((l: any) => l.id) ?? []
-  const leadMap: Record<string, any> = {}
-  allLeads?.forEach((l: any) => { leadMap[l.id] = l })
 
   const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
-  const nowUTC = Date.now()
+  const nowUTC    = Date.now()
   const istDateStr = new Date(nowUTC + IST_OFFSET_MS).toISOString().split('T')[0]
   const todayStart = new Date(`${istDateStr}T00:00:00+05:30`)
   const todayEnd   = new Date(`${istDateStr}T23:59:59+05:30`)
@@ -112,8 +108,6 @@ export default async function InteriorDesignDashboard() {
       .sort((a: any, b: any) => a.name.localeCompare(b.name))
   }
 
-  const LEAD_BASE = '/dashboard/industries/interior-design/leads'
-
   return (
     <div style={{ background: '#F5F0E8', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
       <style>{`
@@ -121,8 +115,6 @@ export default async function InteriorDesignDashboard() {
         .fade-up { animation: fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both; }
         .card-hover { transition: all 0.2s ease; }
         .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(184,134,11,0.12); }
-        .row-hover { transition: background 0.15s ease; }
-        .row-hover:hover { background: #FDFAF6; }
       `}</style>
 
       <div className="px-2 md:px-4 pt-3 pb-10 space-y-4 max-w-7xl mx-auto">
@@ -211,18 +203,16 @@ export default async function InteriorDesignDashboard() {
             })}
           </div>
         </div>
-
-        {/* TODAY CALLS */}
+{/* TEAM PERFORMANCE */}
         <div className="fade-up">
           <TodayCallsSection
             todayCalls={todayCalls}
-            leadMap={leadMap}
             cres={cres}
             istDateStr={istDateStr}
-            leadBase={LEAD_BASE}
             companyId={profile.company_id}
           />
         </div>
+        
 
         <p className="text-center text-[10px] pb-2" style={{ color:'#C4BAB0' }}>
           Interior Design Pipeline · GK CRM · Live data
