@@ -53,4 +53,6 @@ export async function POST(req: NextRequest) {
     console.error('Webhook error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
+} export async function GET() {
+  return NextResponse.json({ status: 'GK Webhook Active ✅' })
 }
