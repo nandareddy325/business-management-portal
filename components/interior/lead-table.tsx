@@ -1,7 +1,6 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-// import LeadDetailPanel from '@/components/dashboard/lead-detail-panel'
 import { useState } from 'react'
 
 const GRADIENTS = [
@@ -90,88 +89,144 @@ export function LeadTable({
               const src = SOURCE_CONFIG[l.source] ?? SOURCE_CONFIG['Other']
               const int = INTEREST_CONFIG[l.interest] ?? { bg: '#F5F0E8', color: '#7A6E60' }
               const bgt = budget(l)
+              
               return (
                 <tr key={l.id}
                   onClick={() => goToLead(l.id)}
                   className="border-b border-[#F7F5F1] last:border-0 hover:bg-[#FDFAF8] transition-colors cursor-pointer">
-                  <td className="pl-5 pr-2 py-3.5">
-                    <span className="text-[10px] font-bold text-[#C4BAB0]">{i + 1}</span>
-                  </td>
-                  <td className="pl-2 pr-4 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
-                        style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 3px 10px ${g[0]}40` }}>
-                        {ini(l.lead_name)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-[#1C1712]">{l.lead_name}</p>
-                        {l.property_type && <p className="text-[10px] text-[#B8B0A0]">{l.property_type}</p>}
-                      </div>
-                    </div>
-                  </td>
-                  {columns.includes('Phone') && (
-                    <td className="px-4 py-3.5">
-                      <p className="text-sm font-mono text-[#1C1712]">{l.phone ?? '—'}</p>
-                    </td>
-                  )}
-                  {columns.includes('Email') && (
-                    <td className="px-4 py-3.5">
-                      <p className="text-xs text-[#7A6E60] max-w-[140px] truncate">{l.email ?? '—'}</p>
-                    </td>
-                  )}
-                  {columns.includes('Follow-up Date') && (
-                    <td className="px-4 py-3.5">
-                      {l.date ? (
-                        <p className="text-xs font-bold text-[#1C1712]">
-                          {new Date(l.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </p>
-                      ) : <span className="text-[10px] text-[#C4BAB0]">No date</span>}
-                    </td>
-                  )}
-                  {columns.includes('Source') && (
-                    <td className="px-4 py-3.5">
-                      {l.source ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
-                          style={{ background: src.bg, color: src.color, border: `1px solid ${src.color}30` }}>
-                          {src.icon} {l.source}
-                        </span>
-                      ) : <span className="text-[#C4BAB0]">—</span>}
-                    </td>
-                  )}
-                  {columns.includes('Interest') && (
-                    <td className="px-4 py-3.5">
-                      {l.interest ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
-                          style={{ background: int.bg, color: int.color, border: `1px solid ${int.color}30` }}>
-                          {l.interest === 'High' ? '🔥' : l.interest === 'Medium' ? '⚡' : '❄️'} {l.interest}
-                        </span>
-                      ) : <span className="text-[#C4BAB0]">—</span>}
-                    </td>
-                  )}
-                  {columns.includes('Budget') && (
-                    <td className="px-4 py-3.5">
-                      {bgt ? <p className="text-sm font-bold" style={{ color: '#B8860B' }}>{bgt}</p>
-                        : <span className="text-[#C4BAB0]">—</span>}
-                    </td>
-                  )}
-                  {columns.includes('City') && (
-                    <td className="px-4 py-3.5">
-                      {l.city ? <span className="text-[10px] text-[#7A6E60]">📍 {l.city}</span>
-                        : <span className="text-[#C4BAB0]">—</span>}
-                    </td>
-                  )}
-                  {columns.includes('Notes') && (
-                    <td className="px-4 py-3.5">
-                      <p className="text-xs text-[#7A6E60] max-w-[150px] truncate">{l.notes ?? '—'}</p>
-                    </td>
-                  )}
-                  {columns.includes('Date') && (
-                    <td className="px-4 py-3.5 pr-5">
-                      <p className="text-[10px] text-[#B8B0A0] whitespace-nowrap">
-                        {new Date(l.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </p>
-                    </td>
-                  )}
+                  
+                  {/* Render columns in the EXACT order they appear in the columns array */}
+                  {columns.map((col, colIdx) => {
+                    // # Column
+                    if (col === '#') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="pl-5 pr-2 py-3.5">
+                          <span className="text-[10px] font-bold text-[#C4BAB0]">{i + 1}</span>
+                        </td>
+                      )
+                    }
+
+                    // Lead Column
+                    if (col === 'Lead') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="pl-2 pr-4 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
+                              style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 3px 10px ${g[0]}40` }}>
+                              {ini(l.lead_name)}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-[#1C1712]">{l.lead_name}</p>
+                              {l.property_type && <p className="text-[10px] text-[#B8B0A0]">{l.property_type}</p>}
+                            </div>
+                          </div>
+                        </td>
+                      )
+                    }
+
+                    // Phone Column
+                    if (col === 'Phone') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="px-4 py-3.5">
+                          <p className="text-sm font-mono text-[#1C1712]">{l.phone ?? '—'}</p>
+                        </td>
+                      )
+                    }
+
+                    // Email Column
+                    if (col === 'Email') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="px-4 py-3.5">
+                          <p className="text-xs text-[#7A6E60] max-w-[140px] truncate">{l.email ?? '—'}</p>
+                        </td>
+                      )
+                    }
+
+                    // Follow-up Date Column
+                    if (col === 'Follow-up Date') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="px-4 py-3.5">
+                          {l.date ? (
+                            <p className="text-xs font-bold text-[#1C1712]">
+                              {new Date(l.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </p>
+                          ) : <span className="text-[10px] text-[#C4BAB0]">No date</span>}
+                        </td>
+                      )
+                    }
+
+                    // Source Column
+                    if (col === 'Source') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="px-4 py-3.5">
+                          {l.source ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
+                              style={{ background: src.bg, color: src.color, border: `1px solid ${src.color}30` }}>
+                              {src.icon} {l.source}
+                            </span>
+                          ) : <span className="text-[#C4BAB0]">—</span>}
+                        </td>
+                      )
+                    }
+
+                    // Interest Column
+                    if (col === 'Interest') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="px-4 py-3.5">
+                          {l.interest ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full"
+                              style={{ background: int.bg, color: int.color, border: `1px solid ${int.color}30` }}>
+                              {l.interest === 'High' ? '🔥' : l.interest === 'Medium' ? '⚡' : '❄️'} {l.interest}
+                            </span>
+                          ) : <span className="text-[#C4BAB0]">—</span>}
+                        </td>
+                      )
+                    }
+
+                    // Budget Column
+                    if (col === 'Budget') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="px-4 py-3.5">
+                          {bgt ? <p className="text-sm font-bold" style={{ color: '#B8860B' }}>{bgt}</p>
+                            : <span className="text-[#C4BAB0]">—</span>}
+                        </td>
+                      )
+                    }
+
+                    // City Column
+                    if (col === 'City') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="px-4 py-3.5">
+                          {l.city ? <span className="text-[10px] text-[#7A6E60]">📍 {l.city}</span>
+                            : <span className="text-[#C4BAB0]">—</span>}
+                        </td>
+                      )
+                    }
+
+                    // Notes Column
+                    if (col === 'Notes') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="px-4 py-3.5">
+                          <p className="text-xs text-[#7A6E60] max-w-[150px] truncate">{l.notes ?? '—'}</p>
+                        </td>
+                      )
+                    }
+
+                    // Date Column (created_at)
+                    if (col === 'Date') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="px-4 py-3.5 pr-5">
+                          <p className="text-[10px] text-[#B8B0A0] whitespace-nowrap">
+                            {new Date(l.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </p>
+                        </td>
+                      )
+                    }
+
+                    return null
+                  })}
+
+                  {/* Call Column (if enabled) */}
                   {showCall && (
                     <td className="px-4 py-3.5 pr-5" onClick={e => e.stopPropagation()}>
                       {l.phone ? (
