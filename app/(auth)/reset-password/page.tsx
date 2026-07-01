@@ -29,7 +29,7 @@ export default function ResetPasswordPage() {
       if (event === 'PASSWORD_RECOVERY') {
         setReady(true)
       }
-    })
+    })  
     return () => authListener.subscription.unsubscribe()
   }, [])
 
