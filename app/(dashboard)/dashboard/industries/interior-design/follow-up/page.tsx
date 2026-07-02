@@ -92,34 +92,6 @@ export default async function FollowUpPage() {
       return new Date(a.date).getTime() - new Date(b.date).getTime()
     })
 
-  // Calculate stats
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const tomorrow = new Date(today)
-  tomorrow.setDate(today.getDate() + 1)
-
-  const overdueLeads = leadsWithDates.filter((l: any) => {
-    if (!l.date) return false
-    const d = new Date(l.date)
-    d.setHours(0, 0, 0, 0)
-    return d < today
-  })
-
-  const todayLeads = leadsWithDates.filter((l: any) => {
-    if (!l.date) return false
-    const d = new Date(l.date)
-    d.setHours(0, 0, 0, 0)
-    return d.getTime() === today.getTime()
-  })
-
-  const tomorrowLeads = leadsWithDates.filter((l: any) => {
-    if (!l.date) return false
-    const d = new Date(l.date)
-    d.setHours(0, 0, 0, 0)
-    return d.getTime() === tomorrow.getTime()
-  })
-
   return (
     <div className="space-y-5 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -134,23 +106,6 @@ export default async function FollowUpPage() {
           style={{ background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
           <Calendar className="w-4 h-4" /> Follow Up
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Total',    value: leadsWithDates.length, color: '#7C3AED', icon: '📋' },
-          { label: 'Overdue',  value: overdueLeads.length,   color: '#DC2626', icon: '⚠️' },
-          { label: 'Today',    value: todayLeads.length,     color: '#16A34A', icon: '📅' },
-          { label: 'Tomorrow', value: tomorrowLeads.length,  color: '#D97706', icon: '🔜' },
-        ].map((s, i) => (
-          <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-base">{s.icon}</span>
-              <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
-            </div>
-            <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
-          </div>
-        ))}
       </div>
 
       <FollowUpClient leads={leadsWithDates} count={leadsWithDates.length} />
