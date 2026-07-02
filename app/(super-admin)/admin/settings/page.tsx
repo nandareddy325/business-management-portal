@@ -1,4 +1,5 @@
-﻿import { createServerSupabaseClient } from '@/lib/supabase/server'
+﻿// app/(super-admin)/admin/settings/page.tsx
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { Shield, Bell, Database, Globe, Lock, ChevronRight, Activity, Server, Users, Building2, Zap, CheckCircle, AlertTriangle, Clock } from 'lucide-react'
 
 export default async function AdminSettingsPage() {
