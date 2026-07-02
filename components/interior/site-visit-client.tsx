@@ -55,11 +55,14 @@ const parseFilterDate = (dateStr: string) => {
   return d
 }
 
+type StatFilter = 'total' | 'overdue' | 'today' | 'completed'
+
 export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [dateActive, setDateActive] = useState(false)
+  const [activeStatFilter, setActiveStatFilter] = useState<StatFilter>('total')
 
   const clearDate = () => { setFromDate(''); setToDate(''); setDateActive(false) }
 
@@ -108,13 +111,6 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
   const tomorrowLeads = pendingLeads.filter(l => { const d = parseVisitDate(l.date); return d && d.getTime() === tomorrow.getTime() })
   const upcomingLeads = pendingLeads.filter(l => { const d = parseVisitDate(l.date); return d && d > tomorrow })
   const noDateLeads = pendingLeads.filter(l => !l.date || !parseVisitDate(l.date))
-
-  const statsConfig = [
-    { label: 'Total',     value: filteredLeads.length,   color: '#0891B2', icon: '🏠' },
-    { label: 'Overdue',   value: overdueLeads.length,    color: '#DC2626', icon: '⚠️' },
-    { label: 'Today',     value: todayLeads.length,      color: '#16A34A', icon: '📅' },
-    { label: 'Completed', value: completedLeads.length,  color: '#059669', icon: '✅' },
-  ]
 
   const tableCols = ['#', 'Lead', 'Phone', 'Source', 'Budget', 'City', 'Site Visit Date']
 
@@ -184,17 +180,33 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
         )}
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards — clickable filters */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {statsConfig.map((s, i) => (
-          <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-base">{s.icon}</span>
-              <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
-            </div>
-            <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
-          </div>
-        ))}
+        {[
+          { key: 'total' as const,     label: 'Total',     value: filteredLeads.length,   color: '#0891B2', icon: '🏠' },
+          { key: 'overdue' as const,   label: 'Overdue',   value: overdueLeads.length,    color: '#DC2626', icon: '⚠️' },
+          { key: 'today' as const,     label: 'Today',     value: todayLeads.length,      color: '#16A34A', icon: '📅' },
+          { key: 'completed' as const, label: 'Completed', value: completedLeads.length,  color: '#059669', icon: '✅' },
+        ].map((s, i) => {
+          const isActive = activeStatFilter === s.key
+          return (
+            <button
+              key={i}
+              onClick={() => setActiveStatFilter(s.key)}
+              className="bg-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm transition-all text-left"
+              style={{
+                border: isActive ? `2px solid ${s.color}` : '1px solid #E8E2D8',
+                background: isActive ? `${s.color}0D` : '#fff',
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-base">{s.icon}</span>
+                <p className="text-xs font-medium" style={{ color: isActive ? s.color : '#7A6E60' }}>{s.label}</p>
+              </div>
+              <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
+            </button>
+          )
+        })}
       </div>
 
       {/* Alerts */}
@@ -202,7 +214,7 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
           <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
           <p className="text-sm font-bold text-red-700">
-            {overdueLeads.length} site visit{overdueLeads.length > 1 ? 's' : ''} overdue — follow up cheyyandi!
+            {overdueLeads.length} site visit{overdueLeads.length > 1 ? 's' : ''} overdue — please follow up
           </p>
         </div>
       )}
@@ -210,7 +222,7 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
           <Clock className="w-4 h-4 text-green-600 flex-shrink-0" />
           <p className="text-sm font-bold text-green-700">
-            {todayLeads.length} site visit{todayLeads.length > 1 ? 's' : ''} scheduled for Today
+            {todayLeads.length} site visit{todayLeads.length > 1 ? 's' : ''} scheduled for today
           </p>
         </div>
       )}
@@ -225,12 +237,12 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
             {searchQuery || dateActive ? 'No leads match your filter' : 'No site visits yet'}
           </p>
           <p className="text-[#9A8F82] text-sm mt-1">
-            {searchQuery || dateActive ? 'Try adjusting your search or date range' : 'Leads move here when site visit is scheduled'}
+            {searchQuery || dateActive ? 'Try adjusting your search or date range' : 'Leads move here when a site visit is scheduled'}
           </p>
         </div>
       ) : (
         <div className="space-y-4">
-          {overdueLeads.length > 0 && (
+          {(activeStatFilter === 'total' || activeStatFilter === 'overdue') && overdueLeads.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className="text-sm">⚠️</span>
@@ -240,7 +252,8 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
               <LeadTable leads={overdueLeads} count={overdueLeads.length} footerText="overdue visits" columns={tableCols} emptyIcon="⚠️" emptyText="" />
             </div>
           )}
-          {todayLeads.length > 0 && (
+
+          {(activeStatFilter === 'total' || activeStatFilter === 'today') && todayLeads.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className="text-sm">📅</span>
@@ -250,7 +263,8 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
               <LeadTable leads={todayLeads} count={todayLeads.length} footerText="today" columns={tableCols} emptyIcon="📅" emptyText="" />
             </div>
           )}
-          {tomorrowLeads.length > 0 && (
+
+          {activeStatFilter === 'total' && tomorrowLeads.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className="text-sm">🔜</span>
@@ -260,7 +274,8 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
               <LeadTable leads={tomorrowLeads} count={tomorrowLeads.length} footerText="tomorrow" columns={tableCols} emptyIcon="🔜" emptyText="" />
             </div>
           )}
-          {upcomingLeads.length > 0 && (
+
+          {activeStatFilter === 'total' && upcomingLeads.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className="text-sm">📆</span>
@@ -270,7 +285,8 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
               <LeadTable leads={upcomingLeads} count={upcomingLeads.length} footerText="upcoming" columns={tableCols} emptyIcon="📆" emptyText="" />
             </div>
           )}
-          {noDateLeads.length > 0 && (
+
+          {activeStatFilter === 'total' && noDateLeads.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className="text-sm">❓</span>
@@ -280,7 +296,8 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
               <LeadTable leads={noDateLeads} count={noDateLeads.length} footerText="no date" columns={tableCols} emptyIcon="❓" emptyText="" />
             </div>
           )}
-          {completedLeads.length > 0 && (
+
+          {(activeStatFilter === 'total' || activeStatFilter === 'completed') && completedLeads.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <CheckCircle2 className="w-3.5 h-3.5" style={{ color: '#059669' }} />
@@ -288,6 +305,16 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
                 <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black text-white" style={{ background: '#059669' }}>{completedLeads.length}</span>
               </div>
               <LeadTable leads={completedLeads} count={completedLeads.length} footerText="completed" columns={tableCols} emptyIcon="✅" emptyText="" />
+            </div>
+          )}
+
+          {activeStatFilter !== 'total' && (
+            (activeStatFilter === 'overdue' && overdueLeads.length === 0) ||
+            (activeStatFilter === 'today' && todayLeads.length === 0) ||
+            (activeStatFilter === 'completed' && completedLeads.length === 0)
+          ) && (
+            <div className="bg-white border border-[#E8E2D8] rounded-2xl py-16 text-center shadow-sm">
+              <p className="text-[#9A8F82] text-sm">No leads in this category right now</p>
             </div>
           )}
         </div>
