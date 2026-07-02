@@ -57,6 +57,9 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const [activities, setActivities] = useState(initialActivities)
   const [savingStage, setSavingStage] = useState<string | null>(null)
 
+  // ✅ NEW: current user's employee id (used for assigned_to so it satisfies RLS with_check)
+  const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null)
+
   const [showModal, setShowModal] = useState(false)
   const [noteText, setNoteText] = useState('')
   const [noteType, setNoteType] = useState<'note'|'call'|'sitevisit'|'quotation'>('call')
@@ -74,6 +77,9 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const [svType, setSvType] = useState<'before_quotation'|'after_quotation'>('before_quotation')
   const [svNote, setSvNote] = useState('')
   const [savingSV, setSavingSV] = useState(false)
+
+  // ✅ NEW: Mark Visit Completed state
+  const [markingComplete, setMarkingComplete] = useState(false)
 
   const [showQuotationPopup, setShowQuotationPopup] = useState(false)
   const [qtDate, setQtDate] = useState(getTomorrow())
@@ -116,7 +122,19 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     setLoadingRevisions(false)
   }
 
-  useEffect(() => { loadRevisions() }, [])
+  // ✅ NEW: load the logged-in user's employee id (used as assigned_to)
+  const loadEmployeeId = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
+    setMyEmployeeId(data?.id ?? null)
+  }
+
+  useEffect(() => { loadRevisions(); loadEmployeeId() }, [])
 
   // ── Stage Change — auto logs call ──
   const handleStageChange = async (stageKey: string) => {
@@ -130,7 +148,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     const prev = lead.pipeline_stage
     const { data: { user } } = await supabase.auth.getUser()
     setLead((l: any) => ({ ...l, pipeline_stage: stageKey }))
-    await supabase.from('leads').update({ pipeline_stage: stageKey }).eq('id', leadId)
+    await supabase.from('leads').update({ pipeline_stage: stageKey, assigned_to: myEmployeeId }).eq('id', leadId)
     try {
       const now = new Date().toISOString()
       // ✅ Auto log call for RNR and Lost — CRE called the client
@@ -166,6 +184,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       await supabase.from('leads').update({
         pipeline_stage: 'followup', followup_date: dt,
         followup_note: followUpNote.trim()||null,
+        assigned_to: myEmployeeId,
       }).eq('id', leadId)
       setLead((l: any) => ({ ...l, pipeline_stage: 'followup', followup_date: dt, followup_note: followUpNote.trim()||null }))
       const nowFU = new Date().toISOString()
@@ -202,8 +221,10 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       await supabase.from('leads').update({
         pipeline_stage: 'sitevisit', sitevisit_date: dt,
         sitevisit_type: svType, sitevisit_note: svNote.trim()||null,
+        sitevisit_status: 'scheduled',
+        assigned_to: myEmployeeId,
       }).eq('id', leadId)
-      setLead((l: any) => ({ ...l, pipeline_stage: 'sitevisit', sitevisit_date: dt, sitevisit_type: svType, sitevisit_note: svNote.trim()||null }))
+      setLead((l: any) => ({ ...l, pipeline_stage: 'sitevisit', sitevisit_date: dt, sitevisit_type: svType, sitevisit_note: svNote.trim()||null, sitevisit_status: 'scheduled' }))
       const nowSV = new Date().toISOString()
       // ✅ Auto call log
       await supabase.from('lead_activities').insert({
@@ -225,6 +246,23 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       setShowSiteVisitPopup(false)
     } catch (e) { console.error(e) }
     setSavingSV(false)
+  }
+
+  // ✅ NEW: Mark Site Visit as Completed
+  const handleMarkVisitCompleted = async () => {
+    setMarkingComplete(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    try {
+      await supabase.from('leads').update({ sitevisit_status: 'completed', assigned_to: myEmployeeId }).eq('id', leadId)
+      setLead((l: any) => ({ ...l, sitevisit_status: 'completed' }))
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'sitevisit', title: '✅ Site Visit Completed',
+        description: `Visit marked completed on ${fmtDateTime(new Date().toISOString())}`,
+        user_id: user?.id, created_at: new Date().toISOString(),
+      })
+      await refreshActivities()
+    } catch (e) { console.error(e) }
+    setMarkingComplete(false)
   }
 
   const uploadPdf = async (file: File): Promise<string | null> => {
@@ -267,6 +305,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
         quotation_type: qtType, quotation_amount: qtAmount.trim()||null,
         quotation_note: qtNote.trim()||null,
         quotation_pdf_url: pdfUrl || lead.quotation_pdf_url,
+        assigned_to: myEmployeeId,
       }).eq('id', leadId)
 
       setLead((l: any) => ({ ...l, pipeline_stage: 'quotation', quotation_date: dt, quotation_type: qtType, quotation_amount: qtAmount.trim()||null, quotation_note: qtNote.trim()||null, quotation_pdf_url: pdfUrl || l.quotation_pdf_url }))
@@ -309,6 +348,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
         won_amount: wonAmount.trim()||null,
         won_note: wonNote.trim()||null,
         won_date: new Date().toISOString(),
+        assigned_to: myEmployeeId,
       }).eq('id', leadId)
       setLead((l: any) => ({ ...l, pipeline_stage: 'won', won_amount: wonAmount.trim()||null, won_note: wonNote.trim()||null }))
       const nowWon = new Date().toISOString()
@@ -344,10 +384,11 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
         title: noteType==='note'?'Note added':noteType==='call'?'Call logged':noteType==='sitevisit'?'Site Visit':'Quotation',
         description: noteText.trim(), user_id: user?.id, created_at: new Date().toISOString(),
       })
-      if (noteType === 'note') {
-        await supabase.from('leads').update({ notes: noteText.trim() }).eq('id', leadId)
-        setLead((l: any) => ({ ...l, notes: noteText.trim() }))
-      }
+      // ✅ Any activity (call/note/sitevisit/quotation) claims the lead for this CRE
+      const leadUpdate: any = { assigned_to: myEmployeeId }
+      if (noteType === 'note') leadUpdate.notes = noteText.trim()
+      await supabase.from('leads').update(leadUpdate).eq('id', leadId)
+      if (noteType === 'note') setLead((l: any) => ({ ...l, notes: noteText.trim() }))
       await refreshActivities(); setNoteText(''); setShowModal(false)
     } catch (e) { console.error(e) }
     setSavingNote(false)
@@ -458,16 +499,30 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
 
         {/* Site Visit card */}
         {lead.sitevisit_date&&lead.pipeline_stage==='sitevisit'&&(
-          <div className="rounded-2xl p-4" style={{ background:'#E0F2FE',border:'1px solid #BAE6FD' }}>
+          <div className="rounded-2xl p-4" style={{ background:lead.sitevisit_status==='completed'?'#ECFDF5':'#E0F2FE',border:lead.sitevisit_status==='completed'?'1px solid #6EE7B7':'1px solid #BAE6FD' }}>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:'#0369A1' }}>🏠 Site Visit Scheduled</p>
+              <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:lead.sitevisit_status==='completed'?'#065F46':'#0369A1' }}>{lead.sitevisit_status==='completed'?'✅ Site Visit Completed':'🏠 Site Visit Scheduled'}</p>
               <div className="flex items-center gap-2">
                 <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background:lead.sitevisit_type==='before_quotation'?'#FEF3C7':'#FCE7F3',color:lead.sitevisit_type==='before_quotation'?'#92400E':'#9D174D',border:`1px solid ${lead.sitevisit_type==='before_quotation'?'#FDE68A':'#FBCFE8'}` }}>{lead.sitevisit_type==='before_quotation'?'📋 Before Quotation':'✅ After Quotation'}</span>
                 <button onClick={()=>{setSvDate(new Date(lead.sitevisit_date).toISOString().split('T')[0]);setSvTime(new Date(lead.sitevisit_date).toTimeString().slice(0,5));setSvType(lead.sitevisit_type||'before_quotation');setSvNote(lead.sitevisit_note||'');setShowSiteVisitPopup(true)}} className="text-[9px] font-bold px-2.5 py-1 rounded-lg" style={{ background:'#BAE6FD',color:'#0369A1',border:'1px solid #7DD3FC' }}>✏️ Edit</button>
+                {lead.sitevisit_status !== 'completed' ? (
+                  <button
+                    onClick={handleMarkVisitCompleted}
+                    disabled={markingComplete}
+                    className="text-[9px] font-bold px-2.5 py-1 rounded-lg disabled:opacity-50"
+                    style={{ background:'#059669', color:'#fff', border:'1px solid #059669' }}
+                  >
+                    {markingComplete ? '⏳ Saving...' : '✅ Mark Completed'}
+                  </button>
+                ) : (
+                  <span className="text-[9px] font-bold px-2.5 py-1 rounded-full" style={{ background:'#D1FAE5', color:'#065F46', border:'1px solid #6EE7B7' }}>
+                    ✅ Completed
+                  </span>
+                )}
               </div>
             </div>
-            <p className="text-base font-black" style={{ color:'#0369A1' }}>{fmtDateTime(lead.sitevisit_date)}</p>
-            {lead.sitevisit_note&&<p className="text-xs mt-1" style={{ color:'#0891B2' }}>{lead.sitevisit_note}</p>}
+            <p className="text-base font-black" style={{ color:lead.sitevisit_status==='completed'?'#065F46':'#0369A1' }}>{fmtDateTime(lead.sitevisit_date)}</p>
+            {lead.sitevisit_note&&<p className="text-xs mt-1" style={{ color:lead.sitevisit_status==='completed'?'#059669':'#0891B2' }}>{lead.sitevisit_note}</p>}
           </div>
         )}
 
