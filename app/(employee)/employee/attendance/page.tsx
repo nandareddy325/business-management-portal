@@ -34,7 +34,7 @@ export default function EmployeeAttendancePage() {
   const year     = now.getFullYear()
   const month    = now.getMonth()
   const today    = now.getDate()
-  const todayStr = now.toISOString().split('T')[0]
+  const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
   const monthName = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
 
   const monthStart = new Date(year, month, 1).toISOString().split('T')[0]
@@ -85,6 +85,7 @@ export default function EmployeeAttendancePage() {
       const { error } = await supabase.from('attendance').insert({
         employee_id:     employee.id,
         attendance_date: todayStr,
+        date:            todayStr,
         status:          'present',
         check_in:        checkIn,
       })
