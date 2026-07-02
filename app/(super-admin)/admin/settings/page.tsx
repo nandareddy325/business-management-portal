@@ -197,6 +197,136 @@ export default function AdminSettingsPage() {
           })}
         </div>
 
+        {/* Settings Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+          {/* Platform Settings */}
+          <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
+              <div className="w-8 h-8 rounded-xl bg-[#F5F0E8] flex items-center justify-center">
+                <Globe size={15} className="text-[#B8860B]" />
+              </div>
+              <div>
+                <h2 className="font-serif text-sm font-bold text-[#1C1712]">Platform Settings</h2>
+                <p className="text-[10px] text-[#9A8F82]">Core configuration</p>
+              </div>
+            </div>
+            <div className="divide-y divide-[#F0EBE0]">
+              {[
+                { label: 'Platform Name', value: 'GK CRM' },
+                { label: 'Support Email', value: 'support@gkcrm.in' },
+                { label: 'Default Trial Days', value: '14 days' },
+                { label: 'Plan', value: 'Enterprise' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between px-6 py-3.5 hover:bg-[#FFFBEF] transition-colors group cursor-pointer">
+                  <p className="text-xs font-semibold text-[#1C1712]">{item.label}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[#9A8F82]">{item.value}</span>
+                    <ChevronRight size={12} className="text-[#D3CBBB] group-hover:text-[#B8860B] transition-colors" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Security */}
+          <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
+              <div className="w-8 h-8 rounded-xl bg-[#F5F0E8] flex items-center justify-center">
+                <Lock size={15} className="text-[#B8860B]" />
+              </div>
+              <div>
+                <h2 className="font-serif text-sm font-bold text-[#1C1712]">Security</h2>
+                <p className="text-[10px] text-[#9A8F82]">Access & protection</p>
+              </div>
+            </div>
+            <div className="divide-y divide-[#F0EBE0]">
+              {[
+                { label: 'Two-Factor Auth', value: 'Enabled', type: 'green' },
+                { label: 'Session Timeout', value: '24 hours', type: 'text' },
+                { label: 'IP Whitelist', value: 'Disabled', type: 'gray' },
+                { label: 'RLS Policies', value: 'Active', type: 'green' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between px-6 py-3.5 hover:bg-[#FFFBEF] transition-colors group cursor-pointer">
+                  <p className="text-xs font-semibold text-[#1C1712]">{item.label}</p>
+                  <div className="flex items-center gap-2">
+                    {item.type === 'green' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">{item.value}</span>}
+                    {item.type === 'gray' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#F5F0E8] text-[#9A8F82]">{item.value}</span>}
+                    {item.type === 'text' && <span className="text-xs text-[#9A8F82]">{item.value}</span>}
+                    <ChevronRight size={12} className="text-[#D3CBBB] group-hover:text-[#B8860B] transition-colors" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Database */}
+          <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
+              <div className="w-8 h-8 rounded-xl bg-[#F5F0E8] flex items-center justify-center">
+                <Database size={15} className="text-[#B8860B]" />
+              </div>
+              <div>
+                <h2 className="font-serif text-sm font-bold text-[#1C1712]">Database</h2>
+                <p className="text-[10px] text-[#9A8F82]">Supabase · Live</p>
+              </div>
+              <div className="ml-auto flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[9px] font-bold text-emerald-600">CONNECTED</span>
+              </div>
+            </div>
+            <div className="divide-y divide-[#F0EBE0]">
+              {[
+                { label: 'Provider', value: 'Supabase', type: 'text' },
+                { label: 'Region', value: 'Tokyo (ap-northeast-1)', type: 'text' },
+                { label: 'Backup', value: 'Daily Auto', type: 'green' },
+                { label: 'Total Records', value: '5,234', type: 'bold' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between px-6 py-3.5 hover:bg-[#FFFBEF] transition-colors group cursor-pointer">
+                  <p className="text-xs font-semibold text-[#1C1712]">{item.label}</p>
+                  <div className="flex items-center gap-2">
+                    {item.type === 'green' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">{item.value}</span>}
+                    {item.type === 'bold' && <span className="text-xs font-black text-[#B8860B]">{item.value}</span>}
+                    {item.type === 'text' && <span className="text-xs text-[#9A8F82]">{item.value}</span>}
+                    <ChevronRight size={12} className="text-[#D3CBBB] group-hover:text-[#B8860B] transition-colors" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Notifications */}
+          <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
+              <div className="w-8 h-8 rounded-xl bg-[#F5F0E8] flex items-center justify-center">
+                <Bell size={15} className="text-[#B8860B]" />
+              </div>
+              <div>
+                <h2 className="font-serif text-sm font-bold text-[#1C1712]">Notifications</h2>
+                <p className="text-[10px] text-[#9A8F82]">Alert preferences</p>
+              </div>
+            </div>
+            <div className="divide-y divide-[#F0EBE0]">
+              {[
+                { label: 'New Tenant Signup', value: 'Email + Dashboard', type: 'green' },
+                { label: 'Payment Failed', value: 'Email', type: 'text' },
+                { label: 'Subscription Expired', value: 'Email + Dashboard', type: 'green' },
+                { label: 'System Alerts', value: 'All Channels', type: 'gold' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between px-6 py-3.5 hover:bg-[#FFFBEF] transition-colors group cursor-pointer">
+                  <p className="text-xs font-semibold text-[#1C1712]">{item.label}</p>
+                  <div className="flex items-center gap-2">
+                    {item.type === 'green' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">{item.value}</span>}
+                    {item.type === 'gold' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(184,134,11,0.1)', color: '#B8860B' }}>{item.value}</span>}
+                    {item.type === 'text' && <span className="text-xs text-[#9A8F82]">{item.value}</span>}
+                    <ChevronRight size={12} className="text-[#D3CBBB] group-hover:text-[#B8860B] transition-colors" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Danger Zone */}
         <div className="rounded-2xl border border-red-200 shadow-sm overflow-hidden bg-white">
           <div className="flex items-center gap-3 px-6 py-4 border-b border-red-100 bg-gradient-to-r from-red-50 to-rose-50">
