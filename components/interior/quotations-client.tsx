@@ -6,15 +6,21 @@ import { LeadTable } from '@/components/interior/lead-table'
 
 interface Lead { id: string; lead_name: string; phone?: string; email?: string; source?: string; budget?: string; city?: string; interest?: string; notes?: string; date?: string; created_at: string }
 
-export function QuotationsClient({ leads, count }: { leads: Lead[]; count: number }) {
+type StatFilter = 'total' | 'before' | 'after'
+
+const isBeforeVisit = (l: Lead) => !!l.notes?.includes('[Quotation Before Visit]')
+const isAfterVisit  = (l: Lead) => !!l.notes?.includes('[Quotation After Visit]')
+
+export function QuotationsClient({ leads, count, totalBudget }: { leads: Lead[]; count: number; totalBudget: number }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [fromDate, setFromDate]       = useState('')
   const [toDate, setToDate]           = useState('')
   const [dateActive, setDateActive]   = useState(false)
+  const [activeStatFilter, setActiveStatFilter] = useState<StatFilter>('total')
 
   const clearDate = () => { setFromDate(''); setToDate(''); setDateActive(false) }
 
-  const filteredLeads = useMemo(() => {
+  const dateFilteredLeads = useMemo(() => {
     return leads.filter(l => {
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
@@ -28,6 +34,26 @@ export function QuotationsClient({ leads, count }: { leads: Lead[]; count: numbe
       return true
     })
   }, [leads, searchQuery, fromDate, toDate, dateActive])
+
+  const beforeVisitLeads = dateFilteredLeads.filter(isBeforeVisit)
+  const afterVisitLeads  = dateFilteredLeads.filter(isAfterVisit)
+
+  const filteredLeads = useMemo(() => {
+    if (activeStatFilter === 'before') return beforeVisitLeads
+    if (activeStatFilter === 'after')  return afterVisitLeads
+    return dateFilteredLeads
+  }, [activeStatFilter, dateFilteredLeads, beforeVisitLeads, afterVisitLeads])
+
+  const budgetDisplay = totalBudget >= 100000
+    ? '₹' + (totalBudget / 100000).toFixed(1) + 'L'
+    : totalBudget > 0 ? '₹' + totalBudget.toLocaleString('en-IN') : '—'
+
+  const statsConfig = [
+    { key: 'total' as const,  label: 'Total Quotes',      value: count,                  color: '#DB2777' },
+    { key: 'total' as const,  label: 'Total Pipeline',    value: budgetDisplay,          color: '#B8860B', isPipeline: true },
+    { key: 'before' as const, label: 'Before Site Visit', value: beforeVisitLeads.length, color: '#0891B2' },
+    { key: 'after' as const,  label: 'After Site Visit',  value: afterVisitLeads.length,  color: '#7C3AED' },
+  ]
 
   return (
     <div className="space-y-4">
@@ -70,12 +96,41 @@ export function QuotationsClient({ leads, count }: { leads: Lead[]; count: numbe
           </div>
         )}
       </div>
+
+      {/* Stats Cards — clickable filters */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {statsConfig.map((s, i) => {
+          const isActive = activeStatFilter === s.key && !s.isPipeline
+          const clickable = !s.isPipeline
+          return (
+            <button
+              key={i}
+              onClick={() => clickable && setActiveStatFilter(s.key)}
+              disabled={!clickable}
+              className="bg-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm transition-all text-left"
+              style={{
+                border: isActive ? `2px solid ${s.color}` : '1px solid #E8E2D8',
+                background: isActive ? `${s.color}0D` : '#fff',
+                cursor: clickable ? 'pointer' : 'default',
+              }}
+            >
+              <p className="text-xs font-medium" style={{ color: isActive ? s.color : '#7A6E60' }}>{s.label}</p>
+              <p className="font-black text-xl" style={{ color: s.color }}>{s.value}</p>
+            </button>
+          )
+        })}
+      </div>
+
       <LeadTable
         leads={filteredLeads}
         count={filteredLeads.length}
         footerText="quotations"
         emptyIcon="💰"
-        emptyText={searchQuery || dateActive ? 'No leads match your filter' : 'No quotations yet'}
+        emptyText={
+          activeStatFilter === 'before' ? 'No quotations sent before site visit' :
+          activeStatFilter === 'after'  ? 'No quotations sent after site visit' :
+          searchQuery || dateActive ? 'No leads match your filter' : 'No quotations yet'
+        }
         columns={['#', 'Lead', 'Phone', 'Source', 'Interest', 'Budget', 'City', 'Notes', 'Date']}
       />
     </div>

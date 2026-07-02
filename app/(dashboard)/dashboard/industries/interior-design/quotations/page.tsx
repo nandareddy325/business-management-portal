@@ -19,8 +19,7 @@ export default async function QuotationsPage() {
     .eq('pipeline_stage', 'quotation')
     .order('created_at', { ascending: false })
 
-  const highInterest = leads?.filter((l: any) => l.interest === 'High').length ?? 0
-  const totalBudget  = leads?.reduce((s, l: any) => s + Number(l.budget || 0), 0) ?? 0
+  const totalBudget = leads?.reduce((s, l: any) => s + Number(l.budget || 0), 0) ?? 0
 
   return (
     <div className="space-y-5 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
@@ -35,19 +34,7 @@ export default async function QuotationsPage() {
           <FileText className="w-4 h-4" />Quotation Stage
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: 'Total Quotes',   value: count ?? 0,    color: '#DB2777' },
-          { label: 'High Interest',  value: highInterest,  color: '#059669' },
-          { label: 'Total Pipeline', value: totalBudget >= 100000 ? '₹' + (totalBudget / 100000).toFixed(1) + 'L' : totalBudget > 0 ? '₹' + totalBudget.toLocaleString('en-IN') : '—', color: '#B8860B' },
-        ].map((s, i) => (
-          <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
-            <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
-            <p className="font-black text-xl" style={{ color: s.color }}>{s.value}</p>
-          </div>
-        ))}
-      </div>
-      <QuotationsClient leads={leads ?? []} count={count ?? 0} />
+      <QuotationsClient leads={leads ?? []} count={count ?? 0} totalBudget={totalBudget} />
     </div>
   )
 }
