@@ -170,6 +170,19 @@ export function LeadTable({
                       )
                     }
 
+                    // Quotation Date Column (quotation_date)
+                    if (col === 'Quotation Date') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="px-4 py-3.5 pr-5">
+                          {l.quotation_date ? (
+                            <p className="text-xs font-bold whitespace-nowrap" style={{ color: '#DB2777' }}>
+                              {new Date(l.quotation_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </p>
+                          ) : <span className="text-[10px] text-[#C4BAB0]">Not sent</span>}
+                        </td>
+                      )
+                    }
+
                     // Source Column
                     if (col === 'Source') {
                       return (
@@ -307,6 +320,11 @@ export function LeadTable({
                         🏠 {new Date(l.sitevisit_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                         {' '}
                         {new Date(l.sitevisit_date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </span>
+                    )}
+                    {l.quotation_date && (
+                      <span className="text-[10px] font-bold" style={{ color: '#DB2777' }}>
+                        💰 {new Date(l.quotation_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                       </span>
                     )}
                   </div>
