@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Search, X, Calendar } from 'lucide-react'
 import { LeadTable } from '@/components/interior/lead-table'
 
-interface Lead { id: string; lead_name: string; phone?: string; email?: string; source?: string; budget?: string; city?: string; interest?: string; notes?: string; date?: string; created_at: string }
+interface Lead { id: string; lead_name: string; phone?: string; email?: string; source?: string; budget?: string; city?: string; interest?: string; notes?: string; date?: string; sitevisit_date?: string; created_at: string }
 
 export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number }) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -76,7 +76,7 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
         footerText="site visits"
         emptyIcon="🏠"
         emptyText={searchQuery || dateActive ? 'No leads match your filter' : 'No site visits yet'}
-        columns={['#', 'Lead', 'Phone', 'Source', 'Interest', 'Budget', 'City', 'Notes', 'Date']}
+        columns={['#', 'Lead', 'Phone', 'Source', 'Interest', 'Budget', 'City', 'Notes', 'Site Visit Date']}
       />
     </div>
   )

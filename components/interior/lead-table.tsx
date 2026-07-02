@@ -155,6 +155,21 @@ export function LeadTable({
                       )
                     }
 
+                    // Site Visit Date Column (sitevisit_date)
+                    if (col === 'Site Visit Date') {
+                      return (
+                        <td key={`${l.id}-${col}`} className="px-4 py-3.5 pr-5">
+                          {l.sitevisit_date ? (
+                            <p className="text-xs font-bold whitespace-nowrap" style={{ color: '#0891B2' }}>
+                              {new Date(l.sitevisit_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              {' '}
+                              {new Date(l.sitevisit_date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                            </p>
+                          ) : <span className="text-[10px] text-[#C4BAB0]">Not scheduled</span>}
+                        </td>
+                      )
+                    }
+
                     // Source Column
                     if (col === 'Source') {
                       return (
@@ -287,6 +302,13 @@ export function LeadTable({
                     {l.interest && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: int.bg, color: int.color }}>{l.interest === 'High' ? '🔥' : l.interest === 'Medium' ? '⚡' : '❄️'} {l.interest}</span>}
                     {l.city && <span className="text-[10px] text-[#7A6E60]">📍 {l.city}</span>}
                     {l.date && <span className="text-[10px] text-[#D97706]">📅 {new Date(l.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>}
+                    {l.sitevisit_date && (
+                      <span className="text-[10px] font-bold" style={{ color: '#0891B2' }}>
+                        🏠 {new Date(l.sitevisit_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                        {' '}
+                        {new Date(l.sitevisit_date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </span>
+                    )}
                   </div>
                   {l.notes && <p className="text-[10px] text-[#9A8F82] mt-1.5 line-clamp-2">{l.notes}</p>}
                 </div>
