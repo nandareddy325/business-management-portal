@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
 import { Users, Search, X, Calendar } from 'lucide-react'
+import { matchStage, getStageCounts, UNIQUE_STAGES, type CanonicalStage } from '@/lib/stage-utils'
+import { fetchAllLeads } from '@/lib/fetch-all-leads'
 
 const GRADIENTS = [
   ['#7C3AED', '#4F46E5'], ['#0891B2', '#0E7490'], ['#059669', '#047857'],
@@ -53,16 +55,6 @@ const ini = (name: string) =>
 
 const LEAD_BASE = '/dashboard/industries/interior-design/leads'
 
-const UNIQUE_STAGES = [
-  { key: 'new',       label: '🆕 New Leads' },
-  { key: 'followup',  label: '🔄 Follow Up' },
-  { key: 'rnr',       label: '📵 RNR' },
-  { key: 'sitevisit', label: '🏠 Site Visit' },
-  { key: 'quotation', label: '💰 Quotations' },
-  { key: 'won',       label: '🏆 Won' },
-  { key: 'lost',      label: '❌ Lost' },
-]
-
 // Today in IST as YYYY-MM-DD
 const todayIST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
 
@@ -70,7 +62,7 @@ export default function AllLeadsPage() {
   const router = useRouter()
   const [leads, setLeads] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeFilter, setActiveFilter] = useState<string | null>(null)
+  const [activeFilter, setActiveFilter] = useState<CanonicalStage | null>(null)
 
   // ── Search ──
   const [searchQuery, setSearchQuery] = useState('')
@@ -90,11 +82,10 @@ export default function AllLeadsPage() {
     if (!user) return
     const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
     if (!profile?.company_id) return
-    const { data } = await supabase
-      .from('leads').select('*')
-      .eq('company_id', profile.company_id)
-      .eq('industry', 'interior-design')
-      .order('created_at', { ascending: false })
+    // Paginated fetch — bypasses Supabase's default 1000-row cap.
+    // Confirmed via SQL: actual lead count is 1079, not 1000. A plain
+    // .select('*') was silently truncating results here.
+    const data = await fetchAllLeads(supabase, profile.company_id, 'interior-design', '*, notes')
     const sorted = [...(data ?? [])].sort((a, b) =>
       (STAGE_ORDER[a.pipeline_stage] ?? 99) - (STAGE_ORDER[b.pipeline_stage] ?? 99)
     )
@@ -103,15 +94,6 @@ export default function AllLeadsPage() {
   }
 
   useEffect(() => { fetchLeads() }, [])
-
-  const matchStage = (lead: any, key: string) => {
-    if (key === 'new') return lead.pipeline_stage === 'new' || lead.pipeline_stage === 'new-leads'
-    if (key === 'rnr') return lead.pipeline_stage === 'rnr'
-    if (key === 'followup') return lead.pipeline_stage === 'followup' || lead.pipeline_stage === 'follow-up'
-    if (key === 'sitevisit') return lead.pipeline_stage === 'sitevisit' || lead.pipeline_stage === 'site-visit'
-    if (key === 'quotation') return lead.pipeline_stage === 'quotation' || lead.pipeline_stage === 'quotations'
-    return lead.pipeline_stage === key
-  }
 
   // ── Quick date presets ──
   const applyDatePreset = (days: number) => {
@@ -158,11 +140,13 @@ export default function AllLeadsPage() {
     return result
   }, [leads, activeFilter, searchQuery, fromDate, toDate, dateActive])
 
-  const getCount = (key: string) => leads.filter(l => matchStage(l, key)).length
+  // Single pass, shared with Sidebar — guarantees identical numbers everywhere.
+  const stageCounts = useMemo(() => getStageCounts(leads), [leads])
+  const getCount = (key: CanonicalStage) => stageCounts[key]
 
   const totalLeads  = leads.length
-  const wonCount    = leads.filter(l => l.pipeline_stage === 'won').length
-  const activeCount = totalLeads - wonCount - leads.filter(l => l.pipeline_stage === 'lost').length
+  const wonCount    = stageCounts.won
+  const activeCount = totalLeads - wonCount - stageCounts.lost
   const convRate    = totalLeads > 0 ? ((wonCount / totalLeads) * 100).toFixed(1) : '0'
 
   return (

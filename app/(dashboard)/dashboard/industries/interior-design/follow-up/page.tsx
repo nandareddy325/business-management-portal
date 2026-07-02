@@ -2,13 +2,14 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Calendar } from 'lucide-react'
 import { FollowUpClient } from '@/components/interior/followup-client'
+import { matchStage } from '@/lib/stage-utils'
+import { fetchAllLeads } from '@/lib/fetch-all-leads'
 
 export const dynamic = 'force-dynamic'
 
 // Extract date from description like "📅 04 Jul 2026, 11:00 am"
 const extractDateFromDescription = (desc: string): string | null => {
   if (!desc) return null
-  // Match pattern: "04 Jul 2026, 11:00 am"
   const match = desc.match(/(\d{2}\s+\w+\s+\d{4}),?\s+(\d{1,2}:\d{2}\s+[ap]m)/i)
   if (match) {
     return `${match[1]}, ${match[2]}`
@@ -38,71 +39,82 @@ export default async function FollowUpPage() {
     .select('company_id')
     .eq('id', user.id)
     .single()
-  
+
   if (!profile?.company_id) redirect('/login')
 
-  // Fetch all interior-design leads
-  const { data: leads } = await supabase
-    .from('leads')
-    .select('id, lead_name, phone, email, source, budget, city, interest, notes, created_at, pipeline_stage, property_type, company_id, industry')
-    .eq('company_id', profile.company_id)
-    .eq('industry', 'interior-design')
+  // Paginated fetch — bypasses Supabase's default 1000-row cap
+  // (confirmed via SQL: total leads = 1079, not 1000).
+  const allLeads = await fetchAllLeads(
+    supabase,
+    profile.company_id,
+    'interior-design',
+    'id, lead_name, phone, email, source, budget, city, interest, notes, created_at, pipeline_stage, property_type, company_id, industry'
+  )
 
-  // Fetch follow-up activities (type: 'followup')
+  // ── THE FIX ──
+  // pipeline_stage is the source of truth for "is this lead in Follow Up",
+  // same as Sidebar badge and All-Leads pill. Previously this page only
+  // showed leads that ALSO had a parseable date from lead_activities,
+  // which silently dropped every Follow Up lead that had no logged
+  // activity yet (74 of 86, in Ganesh's case).
+  const followUpLeads = allLeads.filter(l => matchStage(l, 'followup'))
+
+  // Fetch follow-up activities (type: 'followup') to attach dates where available.
   const { data: activities } = await supabase
     .from('lead_activities')
     .select('id, lead_id, description, type, created_at')
     .eq('type', 'followup')
     .order('created_at', { ascending: false })
 
-  // Map activities to leads with extracted dates
   const leadActivityMap = new Map<string, string>()
   activities?.forEach((a: any) => {
     if (!leadActivityMap.has(a.lead_id)) {
-      // Extract date from description
       const dateStr = extractDateFromDescription(a.description)
       if (dateStr) {
         const isoDate = parseFollowUpDateString(dateStr)
-        if (isoDate) {
-          leadActivityMap.set(a.lead_id, isoDate)
-        }
+        if (isoDate) leadActivityMap.set(a.lead_id, isoDate)
       }
     }
   })
 
-  // Enrich leads with follow-up dates
-  const leadsWithDates = (leads ?? [])
+  // Enrich ALL Follow Up leads with a date where we have one — leads
+  // without a logged date keep date: null and show up in the
+  // "No Date Set" section inside FollowUpClient instead of vanishing.
+  const leadsWithDates = followUpLeads
     .map((l: any) => ({
       ...l,
-      date: leadActivityMap.get(l.id) || null
+      date: leadActivityMap.get(l.id) || null,
     }))
-    .filter((l: any) => l.date !== null)
     .sort((a: any, b: any) => {
-      const dateA = new Date(a.date).getTime()
-      const dateB = new Date(b.date).getTime()
-      return dateA - dateB
+      if (!a.date && !b.date) return 0
+      if (!a.date) return 1
+      if (!b.date) return -1
+      return new Date(a.date).getTime() - new Date(b.date).getTime()
     })
 
   // Calculate stats
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  
+
   const tomorrow = new Date(today)
   tomorrow.setDate(today.getDate() + 1)
 
   const overdueLeads = leadsWithDates.filter((l: any) => {
+    if (!l.date) return false
     const d = new Date(l.date)
     d.setHours(0, 0, 0, 0)
     return d < today
   })
 
   const todayLeads = leadsWithDates.filter((l: any) => {
+    if (!l.date) return false
     const d = new Date(l.date)
     d.setHours(0, 0, 0, 0)
     return d.getTime() === today.getTime()
   })
 
   const tomorrowLeads = leadsWithDates.filter((l: any) => {
+    if (!l.date) return false
     const d = new Date(l.date)
     d.setHours(0, 0, 0, 0)
     return d.getTime() === tomorrow.getTime()
@@ -115,7 +127,7 @@ export default async function FollowUpPage() {
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>Interior Design · Pipeline</p>
           <h1 className="text-2xl font-bold text-[#1C1712]">Follow Up</h1>
           <p className="text-sm text-[#9A8F82] mt-0.5">
-            <span className="font-bold text-[#1C1712]">{leadsWithDates.length}</span> leads — call reminders based on Next Call Date
+            <span className="font-bold text-[#1C1712]">{leadsWithDates.length}</span> leads in Follow Up stage
           </p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap"

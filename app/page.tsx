@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import GKCRMPricing from "@/app/pricing/page";
 
 const industries = [
-  { id: 'interior-design', name: 'Interior Design', icon: '🛋️', color: 'from-purple-500 to-violet-700', desc: 'Lead pipeline, projects, designs & materials tracking' },
-  { id: 'real-estate',     name: 'Real Estate',     icon: '🏠', color: 'from-blue-500 to-cyan-700',    desc: 'Property leads, site visits & deal management' },
-  { id: 'hospital',        name: 'Hospital',         icon: '🏥', color: 'from-red-500 to-rose-700',     desc: 'Patients, doctors, appointments & billing' },
-  { id: 'b2b-business',    name: 'B2B Business',     icon: '🤝', color: 'from-amber-500 to-orange-700', desc: 'Clients, deals, invoices & pipeline management' },
-  { id: 'clinics',         name: 'Clinics',          icon: '🩺', color: 'from-emerald-500 to-teal-700', desc: 'Patients, prescriptions, doctors & billing' },
+  { id: 'interior-design', name: 'Interior Design', icon: '🛋️', color: 'from-purple-500 to-violet-700', desc: 'Lead pipeline, projects, designs & materials tracking', comingSoon: false },
+  { id: 'real-estate',     name: 'Real Estate',     icon: '🏠', color: 'from-blue-500 to-cyan-700',    desc: 'Property leads, site visits & deal management', comingSoon: true },
+  { id: 'hospital',        name: 'Hospital',         icon: '🏥', color: 'from-red-500 to-rose-700',     desc: 'Patients, doctors, appointments & billing', comingSoon: true },
+  { id: 'b2b-business',    name: 'B2B Business',     icon: '🤝', color: 'from-amber-500 to-orange-700', desc: 'Clients, deals, invoices & pipeline management', comingSoon: true },
+  { id: 'clinics',         name: 'Clinics',          icon: '🩺', color: 'from-emerald-500 to-teal-700', desc: 'Patients, prescriptions, doctors & billing', comingSoon: true },
 ]
 
 const features = [
@@ -494,16 +494,45 @@ export default function LandingPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
               {industries.map((ind, i) => (
                 <button key={ind.id}
-                  onClick={() => { setIndustryIdx(i); router.push(`/signup?industry=${ind.id}`) }}
-                  onMouseEnter={() => setIndustryIdx(i)}
-                  className={`group relative overflow-hidden rounded-2xl p-4 md:p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${industryIdx === i ? 'shadow-xl -translate-y-1' : ''}`}>
-                  <div className={`absolute inset-0 bg-gradient-to-br ${ind.color} opacity-${industryIdx === i ? '100' : '0'} group-hover:opacity-100 transition-opacity duration-300`} />
-                  <div className={`absolute inset-0 bg-[#F7F5F1] opacity-${industryIdx === i ? '0' : '100'} group-hover:opacity-0 border border-[#E2D9C8] rounded-2xl transition-opacity duration-300`} />
+                  disabled={ind.comingSoon}
+                  onClick={() => {
+                    if (ind.comingSoon) return
+                    setIndustryIdx(i)
+                    router.push(`/signup?industry=${ind.id}`)
+                  }}
+                  onMouseEnter={() => { if (!ind.comingSoon) setIndustryIdx(i) }}
+                  className={`group relative overflow-hidden rounded-2xl p-4 md:p-5 text-left transition-all duration-300 ${
+                    ind.comingSoon
+                      ? 'opacity-60 cursor-not-allowed'
+                      : `hover:-translate-y-1 hover:shadow-xl ${industryIdx === i ? 'shadow-xl -translate-y-1' : ''}`
+                  }`}>
+                  {ind.comingSoon ? (
+                    <div className="absolute inset-0 bg-[#F7F5F1] border border-[#E2D9C8] rounded-2xl" />
+                  ) : (
+                    <>
+                      <div className={`absolute inset-0 bg-gradient-to-br ${ind.color} opacity-${industryIdx === i ? '100' : '0'} group-hover:opacity-100 transition-opacity duration-300`} />
+                      <div className={`absolute inset-0 bg-[#F7F5F1] opacity-${industryIdx === i ? '0' : '100'} group-hover:opacity-0 border border-[#E2D9C8] rounded-2xl transition-opacity duration-300`} />
+                    </>
+                  )}
                   <div className="relative">
                     <p className="text-3xl md:text-4xl mb-3">{ind.icon}</p>
-                    <h3 className={`font-bold text-xs md:text-sm mb-1.5 transition-colors ${industryIdx === i ? 'text-white' : 'text-[#1C1712] group-hover:text-white'}`}>{ind.name}</h3>
-                    <p className={`text-[10px] md:text-xs leading-relaxed transition-colors hidden sm:block ${industryIdx === i ? 'text-white/80' : 'text-[#9A8F82] group-hover:text-white/80'}`}>{ind.desc}</p>
-                    <p className={`text-xs font-bold mt-3 transition-colors ${industryIdx === i ? 'text-white' : 'text-[#B8860B] group-hover:text-white'}`}>Start →</p>
+                    <h3 className={`font-bold text-xs md:text-sm mb-1.5 transition-colors ${
+                      ind.comingSoon
+                        ? 'text-[#9A8F82]'
+                        : industryIdx === i ? 'text-white' : 'text-[#1C1712] group-hover:text-white'
+                    }`}>{ind.name}</h3>
+                    <p className={`text-[10px] md:text-xs leading-relaxed transition-colors hidden sm:block ${
+                      ind.comingSoon
+                        ? 'text-[#B8B0A0]'
+                        : industryIdx === i ? 'text-white/80' : 'text-[#9A8F82] group-hover:text-white/80'
+                    }`}>{ind.desc}</p>
+                    {ind.comingSoon ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] md:text-[10px] font-bold mt-3 text-[#B8860B] bg-amber-50 border border-amber-200 px-2 py-1 rounded-full">
+                        🔒 Coming Soon
+                      </span>
+                    ) : (
+                      <p className={`text-xs font-bold mt-3 transition-colors ${industryIdx === i ? 'text-white' : 'text-[#B8860B] group-hover:text-white'}`}>Start →</p>
+                    )}
                   </div>
                 </button>
               ))}

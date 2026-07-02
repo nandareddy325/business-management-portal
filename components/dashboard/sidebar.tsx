@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { X, ChevronDown, LogOut } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
+import { getStageCounts, type CanonicalStage } from '@/lib/stage-utils'
+import { fetchAllLeads } from '@/lib/fetch-all-leads'
 
 interface SidebarProps { isOpen: boolean; onClose: () => void }
 
@@ -159,7 +161,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [userInitials, setUserInitials] = useState('U')
   const [userCompany, setUserCompany] = useState('GK Digital')
   const [activeIndustries, setActiveIndustries] = useState<string[]>([])
-  const [stageCounts, setStageCounts] = useState<Record<string, number>>({})
+  // Now keyed by CanonicalStage ('new' | 'followup' | 'rnr' | 'sitevisit' | 'quotation' | 'won' | 'lost')
+  const [stageCounts, setStageCounts] = useState<Record<CanonicalStage, number>>({
+    new: 0, followup: 0, rnr: 0, sitevisit: 0, quotation: 0, won: 0, lost: 0,
+  })
   const [totalLeads, setTotalLeads] = useState(0)
   const [industryDropdownOpen, setIndustryDropdownOpen] = useState(false)
   const [empPermissions, setEmpPermissions] = useState<string[]>(['pipeline'])
@@ -176,6 +181,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
     return () => { document.body.style.overflow = '' }
   }, [isOpen])
+
+  // Shared fetch+count logic — used on init AND on realtime updates below,
+  // so both paths always compute counts the exact same way as All Leads.
+  const refreshStageCounts = async (companyId: string) => {
+    // Paginated fetch — bypasses Supabase's default 1000-row cap.
+    // Confirmed via SQL: actual lead count is 1079, not 1000.
+    const leads = await fetchAllLeads(supabase, companyId, 'interior-design', 'pipeline_stage, notes')
+    if (!leads) return
+    setStageCounts(getStageCounts(leads))
+    setTotalLeads(leads.length)
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -198,24 +214,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             const { data: ci } = await supabase.from('company_industries').select('industries(slug)').eq('company_id', profile.company_id).eq('is_active', true)
             if (ci) setActiveIndustries(ci.map((c: any) => c.industries?.slug).filter(Boolean))
 
-            const { data: leads } = await supabase
-              .from('leads')
-              .select('pipeline_stage, notes')
-              .eq('company_id', profile.company_id)
-              .eq('industry', 'interior-design')
-            if (leads) {
-              const counts: Record<string, number> = {}
-              leads.forEach(l => {
-                const s = l.pipeline_stage || 'new'
-                if (s === 'followup' && String(l.notes || '').startsWith('[RNR]')) {
-                  counts['rnr'] = (counts['rnr'] || 0) + 1
-                } else {
-                  counts[s] = (counts[s] || 0) + 1
-                }
-              })
-              setStageCounts(counts)
-              setTotalLeads(leads.length)
-            }
+            await refreshStageCounts(profile.company_id)
           }
           if (!isAdmin) {
             const { data: empData } = await supabase.from('employees').select('permissions').eq('user_id', user.id).maybeSingle()
@@ -239,23 +238,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         if (!user) return
         const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
         if (!profile?.company_id) return
-        const { data: leads } = await supabase
-          .from('leads')
-          .select('pipeline_stage, notes')
-          .eq('company_id', profile.company_id)
-          .eq('industry', 'interior-design')
-        if (!leads) return
-        const counts: Record<string, number> = {}
-        leads.forEach(l => {
-          const s = l.pipeline_stage || 'new'
-          if (s === 'followup' && String(l.notes || '').startsWith('[RNR]')) {
-            counts['rnr'] = (counts['rnr'] || 0) + 1
-          } else {
-            counts[s] = (counts[s] || 0) + 1
-          }
-        })
-        setStageCounts(counts)
-        setTotalLeads(leads.length)
+        await refreshStageCounts(profile.company_id)
       }).subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [])
@@ -282,7 +265,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const getBadge = (href: string) => {
     const IND_BASE = `/dashboard/industries/${currentIndustrySlug}`
-    const stageMap: Record<string, string> = {
+    // Values here are CanonicalStage keys from stage-utils — same keys
+    // All-Leads page uses for its filter chips. That's what fixes the mismatch.
+    const stageMap: Record<string, CanonicalStage | '__total__'> = {
       [`${IND_BASE}/new-leads`]:  'new',
       [`${IND_BASE}/follow-up`]:  'followup',
       [`${IND_BASE}/rnr`]:        'rnr',
