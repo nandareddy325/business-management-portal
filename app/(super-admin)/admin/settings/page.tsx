@@ -4,10 +4,14 @@
 import { useState } from 'react'
 import { Shield, Bell, Database, Globe, Lock, ChevronRight, Activity, Server, Users, Building2, Zap, CheckCircle, AlertTriangle, Clock } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
+import { ConfirmationModal } from '@/components/super-admin/ConfirmationModal'
 
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [modal, setModal] = useState<{
+    type: 'cache' | 'maintenance' | 'reset' | null
+  }>({ type: null })
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,34 +19,25 @@ export default function AdminSettingsPage() {
   )
 
   const handleClearCache = async () => {
-    if (!window.confirm('Are you sure you want to clear all cached data? This will force a refresh.')) return
-    
     setLoading('cache')
     try {
-      // Clear browser cache
       if ('caches' in window) {
         const cacheNames = await caches.keys()
         await Promise.all(cacheNames.map(name => caches.delete(name)))
       }
-      
-      // Clear localStorage
       localStorage.clear()
-      
-      // Revalidate all data
       await fetch('/api/revalidate', { method: 'POST' })
       
-      setMessage({ type: 'success', text: '✅ Cache cleared successfully! Reloading...' })
+      setMessage({ type: 'success', text: '✅ Cache cleared! Reloading...' })
+      setModal({ type: null })
       setTimeout(() => window.location.reload(), 1500)
     } catch (error) {
-      setMessage({ type: 'error', text: '❌ Error clearing cache: ' + String(error) })
-    } finally {
+      setMessage({ type: 'error', text: '❌ Error: ' + String(error) })
       setLoading(null)
     }
   }
 
   const handleMaintenanceMode = async () => {
-    if (!window.confirm('Enable Maintenance Mode? All tenants will be temporarily blocked.')) return
-    
     setLoading('maintenance')
     try {
       const response = await fetch('/api/admin/maintenance', {
@@ -54,21 +49,15 @@ export default function AdminSettingsPage() {
       if (!response.ok) throw new Error('Failed to enable maintenance mode')
       
       setMessage({ type: 'success', text: '✅ Maintenance mode enabled!' })
+      setModal({ type: null })
       setTimeout(() => window.location.reload(), 1500)
     } catch (error) {
       setMessage({ type: 'error', text: '❌ Error: ' + String(error) })
-    } finally {
       setLoading(null)
     }
   }
 
   const handleResetPlatform = async () => {
-    const confirmText = prompt('⚠️ TYPE "RESET EVERYTHING" to confirm. This is IRREVERSIBLE!')
-    if (confirmText !== 'RESET EVERYTHING') {
-      setMessage({ type: 'error', text: '❌ Confirmation failed' })
-      return
-    }
-    
     setLoading('reset')
     try {
       const response = await fetch('/api/admin/reset', {
@@ -79,10 +68,10 @@ export default function AdminSettingsPage() {
       if (!response.ok) throw new Error('Failed to reset platform')
       
       setMessage({ type: 'success', text: '✅ Platform reset complete. Redirecting...' })
+      setModal({ type: null })
       setTimeout(() => window.location.href = '/', 2000)
     } catch (error) {
       setMessage({ type: 'error', text: '❌ Error: ' + String(error) })
-    } finally {
       setLoading(null)
     }
   }
@@ -130,7 +119,6 @@ export default function AdminSettingsPage() {
           
           <div className="relative p-8">
             <div className="flex items-start gap-6">
-              {/* Avatar */}
               <div className="relative">
                 <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-black text-white shadow-2xl"
                   style={{ background: 'linear-gradient(135deg, #B8860B, #D4A520, #B8860B)' }}>
@@ -141,12 +129,10 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
-              {/* Info */}
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-1">
                   <h2 className="text-2xl font-bold text-white">Super Admin</h2>
-                  <span className="text-[10px] font-black px-2.5 py-1 rounded-full tracking-widest uppercase"
-                    style={{ background: 'rgba(184,134,11,0.2)', color: '#F0C040', border: '1px solid rgba(184,134,11,0.3)' }}>
+                  <span className="text-[10px] font-black px-2.5 py-1 rounded-full tracking-widest uppercase" style={{ background: 'rgba(184,134,11,0.2)', color: '#F0C040', border: '1px solid rgba(184,134,11,0.3)' }}>
                     ⚡ Super Admin
                   </span>
                 </div>
@@ -164,7 +150,6 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
-              {/* Live Stats */}
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: 'Companies', value: '12', icon: Building2, color: '#60A5FA' },
@@ -172,8 +157,7 @@ export default function AdminSettingsPage() {
                 ].map(s => {
                   const Icon = s.icon
                   return (
-                    <div key={s.label} className="rounded-xl px-4 py-3 text-center"
-                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div key={s.label} className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
                       <Icon size={14} style={{ color: s.color }} className="mx-auto mb-1" />
                       <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
                       <p className="text-[9px] text-white/30 uppercase tracking-wider">{s.label}</p>
@@ -188,10 +172,10 @@ export default function AdminSettingsPage() {
         {/* System Health */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Database', uptime: '99.9%', status: 'Healthy', icon: Database, color: '#34D399', bg: 'from-emerald-500/10 to-emerald-500/5', border: 'border-emerald-500/20' },
-            { label: 'Auth Service', uptime: '100%', status: 'Healthy', icon: Lock, color: '#60A5FA', bg: 'from-blue-500/10 to-blue-500/5', border: 'border-blue-500/20' },
-            { label: 'Realtime', uptime: '99.7%', status: 'Healthy', icon: Activity, color: '#A78BFA', bg: 'from-violet-500/10 to-violet-500/5', border: 'border-violet-500/20' },
-            { label: 'Storage', uptime: '100%', status: 'Healthy', icon: Server, color: '#F59E0B', bg: 'from-amber-500/10 to-amber-500/5', border: 'border-amber-500/20' },
+            { label: 'Database', uptime: '99.9%', icon: Database, color: '#34D399', bg: 'from-emerald-500/10 to-emerald-500/5', border: 'border-emerald-500/20' },
+            { label: 'Auth Service', uptime: '100%', icon: Lock, color: '#60A5FA', bg: 'from-blue-500/10 to-blue-500/5', border: 'border-blue-500/20' },
+            { label: 'Realtime', uptime: '99.7%', icon: Activity, color: '#A78BFA', bg: 'from-violet-500/10 to-violet-500/5', border: 'border-violet-500/20' },
+            { label: 'Storage', uptime: '100%', icon: Server, color: '#F59E0B', bg: 'from-amber-500/10 to-amber-500/5', border: 'border-amber-500/20' },
           ].map(item => {
             const Icon = item.icon
             return (
@@ -213,70 +197,6 @@ export default function AdminSettingsPage() {
           })}
         </div>
 
-        {/* Settings Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-
-          {/* Platform Settings */}
-          <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
-              <div className="w-8 h-8 rounded-xl bg-[#F5F0E8] flex items-center justify-center">
-                <Globe size={15} className="text-[#B8860B]" />
-              </div>
-              <div>
-                <h2 className="font-serif text-sm font-bold text-[#1C1712]">Platform Settings</h2>
-                <p className="text-[10px] text-[#9A8F82]">Core configuration</p>
-              </div>
-            </div>
-            <div className="divide-y divide-[#F0EBE0]">
-              {[
-                { label: 'Platform Name', value: 'GK CRM' },
-                { label: 'Support Email', value: 'support@gkcrm.in' },
-                { label: 'Default Trial Days', value: '14 days' },
-                { label: 'Plan', value: 'Enterprise' },
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between px-6 py-3.5 hover:bg-[#FFFBEF] transition-colors group cursor-pointer">
-                  <p className="text-xs font-semibold text-[#1C1712]">{item.label}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#9A8F82]">{item.value}</span>
-                    <ChevronRight size={12} className="text-[#D3CBBB] group-hover:text-[#B8860B] transition-colors" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Security */}
-          <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
-              <div className="w-8 h-8 rounded-xl bg-[#F5F0E8] flex items-center justify-center">
-                <Lock size={15} className="text-[#B8860B]" />
-              </div>
-              <div>
-                <h2 className="font-serif text-sm font-bold text-[#1C1712]">Security</h2>
-                <p className="text-[10px] text-[#9A8F82]">Access & protection</p>
-              </div>
-            </div>
-            <div className="divide-y divide-[#F0EBE0]">
-              {[
-                { label: 'Two-Factor Auth', value: 'Enabled', type: 'green' },
-                { label: 'Session Timeout', value: '24 hours', type: 'text' },
-                { label: 'IP Whitelist', value: 'Disabled', type: 'gray' },
-                { label: 'RLS Policies', value: 'Active', type: 'green' },
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between px-6 py-3.5 hover:bg-[#FFFBEF] transition-colors group cursor-pointer">
-                  <p className="text-xs font-semibold text-[#1C1712]">{item.label}</p>
-                  <div className="flex items-center gap-2">
-                    {item.type === 'green' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">{item.value}</span>}
-                    {item.type === 'gray' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-[#F5F0E8] text-[#9A8F82]">{item.value}</span>}
-                    {item.type === 'text' && <span className="text-xs text-[#9A8F82]">{item.value}</span>}
-                    <ChevronRight size={12} className="text-[#D3CBBB] group-hover:text-[#B8860B] transition-colors" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* Danger Zone */}
         <div className="rounded-2xl border border-red-200 shadow-sm overflow-hidden bg-white">
           <div className="flex items-center gap-3 px-6 py-4 border-b border-red-100 bg-gradient-to-r from-red-50 to-rose-50">
@@ -293,25 +213,25 @@ export default function AdminSettingsPage() {
               { 
                 label: 'Clear All Cache', 
                 sub: 'Force refresh all cached data across platform',
-                onClick: handleClearCache,
-                loading: 'cache',
-                btn: 'Clear Cache', 
+                onClick: () => setModal({ type: 'cache' }),
+                btn: 'Clear Cache',
+                modalType: 'cache',
                 style: 'border border-[#E8E2D8] text-[#1C1712] hover:border-[#B8860B] hover:text-[#B8860B]' 
               },
               { 
                 label: 'Maintenance Mode', 
                 sub: 'Temporarily disable access for all tenants',
-                onClick: handleMaintenanceMode,
-                loading: 'maintenance',
-                btn: 'Enable Mode', 
+                onClick: () => setModal({ type: 'maintenance' }),
+                btn: 'Enable Mode',
+                modalType: 'maintenance',
                 style: 'border border-amber-300 text-amber-700 hover:bg-amber-50' 
               },
               { 
                 label: 'Reset Platform', 
                 sub: 'This action is irreversible. All tenant data will be permanently deleted.',
-                onClick: handleResetPlatform,
-                loading: 'reset',
-                btn: 'Reset Everything', 
+                onClick: () => setModal({ type: 'reset' }),
+                btn: 'Reset Everything',
+                modalType: 'reset',
                 style: 'border border-red-300 text-red-600 hover:bg-red-50' 
               },
             ].map(action => (
@@ -325,7 +245,7 @@ export default function AdminSettingsPage() {
                   disabled={loading !== null}
                   className={`text-xs font-bold px-4 py-2 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${action.style}`}
                 >
-                  {loading === action.loading ? '⏳ Processing...' : action.btn}
+                  {loading === action.modalType ? '⏳ Processing...' : action.btn}
                 </button>
               </div>
             ))}
@@ -333,6 +253,42 @@ export default function AdminSettingsPage() {
         </div>
 
       </div>
+
+      {/* Modals */}
+      <ConfirmationModal
+        isOpen={modal.type === 'cache'}
+        title="Clear All Cache"
+        message="This will force refresh all cached data across the platform. Are you sure?"
+        confirmText="Clear Cache"
+        type="warning"
+        loading={loading === 'cache'}
+        onConfirm={handleClearCache}
+        onCancel={() => setModal({ type: null })}
+      />
+
+      <ConfirmationModal
+        isOpen={modal.type === 'maintenance'}
+        title="Enable Maintenance Mode"
+        message="All tenants will be temporarily blocked from accessing the platform. Super admins can still access. Continue?"
+        confirmText="Enable Mode"
+        type="danger"
+        loading={loading === 'maintenance'}
+        onConfirm={handleMaintenanceMode}
+        onCancel={() => setModal({ type: null })}
+      />
+
+      <ConfirmationModal
+        isOpen={modal.type === 'reset'}
+        title="Reset Platform"
+        message="⚠️ THIS ACTION IS PERMANENT AND IRREVERSIBLE!\n\nAll tenant data, leads, quotations, invoices, and projects will be permanently deleted. This cannot be undone."
+        confirmText="Reset Everything"
+        type="critical"
+        loading={loading === 'reset'}
+        requiresTyping={true}
+        confirmationWord="RESET EVERYTHING"
+        onConfirm={handleResetPlatform}
+        onCancel={() => setModal({ type: null })}
+      />
     </div>
   )
 }
