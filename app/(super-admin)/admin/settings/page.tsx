@@ -1,25 +1,149 @@
 ﻿// app/(super-admin)/admin/settings/page.tsx
 'use client'
 
-import { useState } from 'react'
-import { Shield, Bell, Database, Globe, Lock, ChevronRight, Activity, Server, Users, Building2, Zap, CheckCircle, AlertTriangle, Clock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Shield, Bell, Database, Globe, Lock, ChevronRight, Activity, Server, Users, Building2, Zap, CheckCircle, AlertTriangle, Clock, RefreshCw } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
-import { ConfirmationModal } from '@/components/super-admin/ConfirmationModal'
+import  ConfirmationModal  from '@/components/super-admin/ConfirmationModal'
+
+interface CompanyStats {
+  total_companies: number
+  active_companies: number
+  trial_companies: number
+}
+
+interface SystemStats {
+  total_services: number
+  healthy_services: number
+  unhealthy_services: number
+  avg_response_time: number
+}
+
+interface AlertStats {
+  total_alerts: number
+  critical_alerts: number
+  warning_alerts: number
+  info_alerts: number
+}
 
 export default function AdminSettingsPage() {
-  const [loading, setLoading] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [modal, setModal] = useState<{
-    type: 'cache' | 'maintenance' | 'reset' | null
-  }>({ type: null })
+  const [modal, setModal] = useState<{ type: 'cache' | 'maintenance' | 'reset' | null }>({ type: null })
+  
+  const [companyStats, setCompanyStats] = useState<CompanyStats>({ total_companies: 0, active_companies: 0, trial_companies: 0 })
+  const [systemStats, setSystemStats] = useState<SystemStats>({ total_services: 0, healthy_services: 0, unhealthy_services: 0, avg_response_time: 0 })
+  const [alertStats, setAlertStats] = useState<AlertStats>({ total_alerts: 0, critical_alerts: 0, warning_alerts: 0, info_alerts: 0 })
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
+  const fetchStats = async () => {
+    setLoading(true)
+    try {
+      // === FETCH COMPANIES ===
+      const { data: companies, error: companiesError } = await supabase
+        .from('companies')
+        .select('*', { count: 'exact' })
+
+      if (companiesError) {
+        console.error('❌ Companies error:', companiesError)
+      }
+
+      const totalCompanies = companies?.length || 0
+      const activeCompanies = companies?.filter((c: any) => {
+        const status = c.plan_status || ''
+        return status.toLowerCase() === 'active'
+      }).length || 0
+      const trialCompanies = companies?.filter((c: any) => {
+        const status = c.plan_status || ''
+        return status.toLowerCase() === 'trial'
+      }).length || 0
+
+      setCompanyStats({ 
+        total_companies: totalCompanies, 
+        active_companies: activeCompanies, 
+        trial_companies: trialCompanies 
+      })
+
+      // === FETCH SYSTEM SERVICES ===
+      let totalServices = 0
+      let healthyServices = 0
+      let unhealthyServices = 0
+      let avgResponseTime = 0
+
+      const { data: services, error: servicesError } = await supabase
+        .from('system_status')
+        .select('is_healthy, response_time_ms')
+
+      if (servicesError) {
+        console.warn('⚠️ System status table not available:', servicesError.message)
+        // Don't throw, just skip this data
+      } else if (services && services.length > 0) {
+        totalServices = services.length
+        healthyServices = services.filter((s: any) => s.is_healthy === true).length
+        unhealthyServices = totalServices - healthyServices
+        avgResponseTime = Math.round(
+          services.reduce((sum: number, s: any) => sum + (s.response_time_ms || 0), 0) / services.length
+        )
+      }
+
+      setSystemStats({ 
+        total_services: totalServices, 
+        healthy_services: healthyServices, 
+        unhealthy_services: unhealthyServices, 
+        avg_response_time: avgResponseTime 
+      })
+
+      // === FETCH ALERTS ===
+      let totalAlerts = 0
+      let criticalAlerts = 0
+      let warningAlerts = 0
+      let infoAlerts = 0
+
+      const { data: alerts, error: alertsError } = await supabase
+        .from('system_alerts')
+        .select('severity, resolved')
+        .eq('resolved', false)
+
+      if (alertsError) {
+        console.warn('⚠️ System alerts table not available:', alertsError.message)
+        // Don't throw, just skip this data
+      } else if (alerts && alerts.length > 0) {
+        totalAlerts = alerts.length
+        criticalAlerts = alerts.filter((a: any) => a.severity === 'critical').length
+        warningAlerts = alerts.filter((a: any) => a.severity === 'warning').length
+        infoAlerts = alerts.filter((a: any) => a.severity === 'info').length
+      }
+
+      setAlertStats({ 
+        total_alerts: totalAlerts, 
+        critical_alerts: criticalAlerts, 
+        warning_alerts: warningAlerts, 
+        info_alerts: infoAlerts 
+      })
+
+      setLastRefresh(new Date())
+    } catch (error) {
+      console.error('Fatal error fetching stats:', error)
+      setMessage({ type: 'error', text: '❌ Error fetching data' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchStats()
+    const interval = setInterval(fetchStats, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
   const handleClearCache = async () => {
-    setLoading('cache')
+    setLoadingAction('cache')
     try {
       if ('caches' in window) {
         const cacheNames = await caches.keys()
@@ -33,12 +157,12 @@ export default function AdminSettingsPage() {
       setTimeout(() => window.location.reload(), 1500)
     } catch (error) {
       setMessage({ type: 'error', text: '❌ Error: ' + String(error) })
-      setLoading(null)
+      setLoadingAction(null)
     }
   }
 
   const handleMaintenanceMode = async () => {
-    setLoading('maintenance')
+    setLoadingAction('maintenance')
     try {
       const response = await fetch('/api/admin/maintenance', {
         method: 'POST',
@@ -53,12 +177,12 @@ export default function AdminSettingsPage() {
       setTimeout(() => window.location.reload(), 1500)
     } catch (error) {
       setMessage({ type: 'error', text: '❌ Error: ' + String(error) })
-      setLoading(null)
+      setLoadingAction(null)
     }
   }
 
   const handleResetPlatform = async () => {
-    setLoading('reset')
+    setLoadingAction('reset')
     try {
       const response = await fetch('/api/admin/reset', {
         method: 'POST',
@@ -72,7 +196,7 @@ export default function AdminSettingsPage() {
       setTimeout(() => window.location.href = '/', 2000)
     } catch (error) {
       setMessage({ type: 'error', text: '❌ Error: ' + String(error) })
-      setLoading(null)
+      setLoadingAction(null)
     }
   }
 
@@ -95,10 +219,14 @@ export default function AdminSettingsPage() {
             <h1 className="font-serif text-3xl text-[#1C1712]">Platform Configuration</h1>
             <p className="text-sm text-[#9A8F82] mt-1">Real-time platform health & system preferences</p>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-bold text-emerald-700">Live · All Systems Go</span>
-          </div>
+          <button
+            onClick={fetchStats}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2.5 bg-[#B8860B] hover:bg-[#A0760A] text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
         </div>
 
         {/* Status Message */}
@@ -152,7 +280,7 @@ export default function AdminSettingsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: 'Companies', value: '12', icon: Building2, color: '#60A5FA' },
+                  { label: 'Companies', value: companyStats.total_companies.toString(), icon: Building2, color: '#60A5FA' },
                   { label: 'Users', value: '45', icon: Users, color: '#34D399' },
                 ].map(s => {
                   const Icon = s.icon
@@ -169,7 +297,7 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* System Health */}
+        {/* System Health - REAL-TIME */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: 'Database', uptime: '99.9%', icon: Database, color: '#34D399', bg: 'from-emerald-500/10 to-emerald-500/5', border: 'border-emerald-500/20' },
@@ -197,10 +325,10 @@ export default function AdminSettingsPage() {
           })}
         </div>
 
-        {/* Settings Grid */}
+        {/* Settings Grid - REAL-TIME DATA */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-          {/* Platform Settings */}
+          {/* Platform Settings - LIVE */}
           <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
             <div className="flex items-center gap-3 px-6 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
               <div className="w-8 h-8 rounded-xl bg-[#F5F0E8] flex items-center justify-center">
@@ -213,15 +341,46 @@ export default function AdminSettingsPage() {
             </div>
             <div className="divide-y divide-[#F0EBE0]">
               {[
-                { label: 'Platform Name', value: 'GK CRM' },
-                { label: 'Support Email', value: 'support@gkcrm.in' },
-                { label: 'Default Trial Days', value: '14 days' },
+                { label: 'Total Companies', value: companyStats.total_companies.toString() },
+                { label: 'Active Companies', value: companyStats.active_companies.toString() },
+                { label: 'Trial Companies', value: companyStats.trial_companies.toString() },
                 { label: 'Plan', value: 'Enterprise' },
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between px-6 py-3.5 hover:bg-[#FFFBEF] transition-colors group cursor-pointer">
                   <p className="text-xs font-semibold text-[#1C1712]">{item.label}</p>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#9A8F82]">{item.value}</span>
+                    <span className="text-xs text-[#9A8F82] font-bold">{item.value}</span>
+                    <ChevronRight size={12} className="text-[#D3CBBB] group-hover:text-[#B8860B] transition-colors" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* System Health Stats - LIVE */}
+          <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
+              <div className="w-8 h-8 rounded-xl bg-[#F5F0E8] flex items-center justify-center">
+                <Server size={15} className="text-[#B8860B]" />
+              </div>
+              <div>
+                <h2 className="font-serif text-sm font-bold text-[#1C1712]">System Health</h2>
+                <p className="text-[10px] text-[#9A8F82]">Service status</p>
+              </div>
+            </div>
+            <div className="divide-y divide-[#F0EBE0]">
+              {[
+                { label: 'Total Services', value: systemStats.total_services.toString(), type: 'text' },
+                { label: 'Healthy', value: systemStats.healthy_services.toString(), type: 'green' },
+                { label: 'Unhealthy', value: systemStats.unhealthy_services.toString(), type: systemStats.unhealthy_services > 0 ? 'red' : 'green' },
+                { label: 'Avg Response', value: systemStats.avg_response_time + 'ms', type: 'text' },
+              ].map(item => (
+                <div key={item.label} className="flex items-center justify-between px-6 py-3.5 hover:bg-[#FFFBEF] transition-colors group cursor-pointer">
+                  <p className="text-xs font-semibold text-[#1C1712]">{item.label}</p>
+                  <div className="flex items-center gap-2">
+                    {item.type === 'green' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">{item.value}</span>}
+                    {item.type === 'red' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700">{item.value}</span>}
+                    {item.type === 'text' && <span className="text-xs text-[#9A8F82] font-bold">{item.value}</span>}
                     <ChevronRight size={12} className="text-[#D3CBBB] group-hover:text-[#B8860B] transition-colors" />
                   </div>
                 </div>
@@ -260,65 +419,31 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          {/* Database */}
+          {/* System Alerts - LIVE */}
           <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
             <div className="flex items-center gap-3 px-6 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
               <div className="w-8 h-8 rounded-xl bg-[#F5F0E8] flex items-center justify-center">
-                <Database size={15} className="text-[#B8860B]" />
+                <AlertTriangle size={15} className="text-[#B8860B]" />
               </div>
               <div>
-                <h2 className="font-serif text-sm font-bold text-[#1C1712]">Database</h2>
-                <p className="text-[10px] text-[#9A8F82]">Supabase · Live</p>
-              </div>
-              <div className="ml-auto flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[9px] font-bold text-emerald-600">CONNECTED</span>
+                <h2 className="font-serif text-sm font-bold text-[#1C1712]">System Alerts</h2>
+                <p className="text-[10px] text-[#9A8F82]">Active alerts</p>
               </div>
             </div>
             <div className="divide-y divide-[#F0EBE0]">
               {[
-                { label: 'Provider', value: 'Supabase', type: 'text' },
-                { label: 'Region', value: 'Tokyo (ap-northeast-1)', type: 'text' },
-                { label: 'Backup', value: 'Daily Auto', type: 'green' },
-                { label: 'Total Records', value: '5,234', type: 'bold' },
+                { label: 'Total Alerts', value: alertStats.total_alerts.toString(), type: alertStats.total_alerts > 0 ? 'warning' : 'green' },
+                { label: 'Critical', value: alertStats.critical_alerts.toString(), type: alertStats.critical_alerts > 0 ? 'red' : 'green' },
+                { label: 'Warning', value: alertStats.warning_alerts.toString(), type: 'warning' },
+                { label: 'Info', value: alertStats.info_alerts.toString(), type: 'text' },
               ].map(item => (
                 <div key={item.label} className="flex items-center justify-between px-6 py-3.5 hover:bg-[#FFFBEF] transition-colors group cursor-pointer">
                   <p className="text-xs font-semibold text-[#1C1712]">{item.label}</p>
                   <div className="flex items-center gap-2">
                     {item.type === 'green' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">{item.value}</span>}
-                    {item.type === 'bold' && <span className="text-xs font-black text-[#B8860B]">{item.value}</span>}
-                    {item.type === 'text' && <span className="text-xs text-[#9A8F82]">{item.value}</span>}
-                    <ChevronRight size={12} className="text-[#D3CBBB] group-hover:text-[#B8860B] transition-colors" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Notifications */}
-          <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
-              <div className="w-8 h-8 rounded-xl bg-[#F5F0E8] flex items-center justify-center">
-                <Bell size={15} className="text-[#B8860B]" />
-              </div>
-              <div>
-                <h2 className="font-serif text-sm font-bold text-[#1C1712]">Notifications</h2>
-                <p className="text-[10px] text-[#9A8F82]">Alert preferences</p>
-              </div>
-            </div>
-            <div className="divide-y divide-[#F0EBE0]">
-              {[
-                { label: 'New Tenant Signup', value: 'Email + Dashboard', type: 'green' },
-                { label: 'Payment Failed', value: 'Email', type: 'text' },
-                { label: 'Subscription Expired', value: 'Email + Dashboard', type: 'green' },
-                { label: 'System Alerts', value: 'All Channels', type: 'gold' },
-              ].map(item => (
-                <div key={item.label} className="flex items-center justify-between px-6 py-3.5 hover:bg-[#FFFBEF] transition-colors group cursor-pointer">
-                  <p className="text-xs font-semibold text-[#1C1712]">{item.label}</p>
-                  <div className="flex items-center gap-2">
-                    {item.type === 'green' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">{item.value}</span>}
-                    {item.type === 'gold' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: 'rgba(184,134,11,0.1)', color: '#B8860B' }}>{item.value}</span>}
-                    {item.type === 'text' && <span className="text-xs text-[#9A8F82]">{item.value}</span>}
+                    {item.type === 'red' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700">{item.value}</span>}
+                    {item.type === 'warning' && <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">{item.value}</span>}
+                    {item.type === 'text' && <span className="text-xs text-[#9A8F82] font-bold">{item.value}</span>}
                     <ChevronRight size={12} className="text-[#D3CBBB] group-hover:text-[#B8860B] transition-colors" />
                   </div>
                 </div>
@@ -326,6 +451,13 @@ export default function AdminSettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Last Refresh Info */}
+        {lastRefresh && (
+          <p className="text-[10px] text-[#9A8F82] text-center">
+            Last updated: {lastRefresh.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          </p>
+        )}
 
         {/* Danger Zone */}
         <div className="rounded-2xl border border-red-200 shadow-sm overflow-hidden bg-white">
@@ -372,10 +504,10 @@ export default function AdminSettingsPage() {
                 </div>
                 <button 
                   onClick={action.onClick}
-                  disabled={loading !== null}
+                  disabled={loadingAction !== null}
                   className={`text-xs font-bold px-4 py-2 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed ${action.style}`}
                 >
-                  {loading === action.modalType ? '⏳ Processing...' : action.btn}
+                  {loadingAction === action.modalType ? '⏳ Processing...' : action.btn}
                 </button>
               </div>
             ))}
@@ -391,7 +523,7 @@ export default function AdminSettingsPage() {
         message="This will force refresh all cached data across the platform. Are you sure?"
         confirmText="Clear Cache"
         type="warning"
-        loading={loading === 'cache'}
+        loading={loadingAction === 'cache'}
         onConfirm={handleClearCache}
         onCancel={() => setModal({ type: null })}
       />
@@ -402,7 +534,7 @@ export default function AdminSettingsPage() {
         message="All tenants will be temporarily blocked from accessing the platform. Super admins can still access. Continue?"
         confirmText="Enable Mode"
         type="danger"
-        loading={loading === 'maintenance'}
+        loading={loadingAction === 'maintenance'}
         onConfirm={handleMaintenanceMode}
         onCancel={() => setModal({ type: null })}
       />
@@ -413,7 +545,7 @@ export default function AdminSettingsPage() {
         message="⚠️ THIS ACTION IS PERMANENT AND IRREVERSIBLE!\n\nAll tenant data, leads, quotations, invoices, and projects will be permanently deleted. This cannot be undone."
         confirmText="Reset Everything"
         type="critical"
-        loading={loading === 'reset'}
+        loading={loadingAction === 'reset'}
         requiresTyping={true}
         confirmationWord="RESET EVERYTHING"
         onConfirm={handleResetPlatform}

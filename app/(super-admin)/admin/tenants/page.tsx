@@ -1,137 +1,228 @@
-// app/(super-admin)/admin/tenants/page.tsx
-import { createClient } from '@supabase/supabase-js'
-import { Search, Building2 } from 'lucide-react'
+// app/(super-admin)/admin/tenants/page.tsx - FRESH VERSION
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Search, Building2, RefreshCw, Calendar } from 'lucide-react'
+import { createBrowserClient } from '@supabase/ssr'
 import TenantActions from '@/components/super-admin/TenantActions'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
-
-async function getTenants(search?: string, page = 1) {
-  const limit = 15
-  const from = (page - 1) * limit
-
-  let query = supabaseAdmin
-    .from('companies')
-    .select('*, plan:plans(name, price_monthly)', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(from, from + limit - 1)
-
-  if (search) query = query.ilike('name', `%${search}%`)
-  const { data, count } = await query
-  return { tenants: data ?? [], total: count ?? 0 }
+interface Tenant {
+  id: string
+  name: string
+  email: string
+  plan: string
+  plan_status: string
+  is_active: boolean
+  trial_ends_at: string | null
+  created_at: string
+  industry?: string
 }
 
-const statusBadge: Record<string, string> = {
-  active:    'bg-emerald-100 text-emerald-700',
-  trial:     'bg-amber-100 text-amber-700',
-  expired:   'bg-red-100 text-red-600',
-  cancelled: 'bg-[#F5F0E8] text-[#9A8F82]',
-}
+export default function AdminTenantsPage() {
+  const [tenants, setTenants] = useState<Tenant[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
-export default async function AdminTenantsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ search?: string; page?: string }>
-}) {
-  // ✅ Next.js 16 — await searchParams
-  const { search, page: pageParam } = await searchParams
-  const page = Number(pageParam ?? 1)
-  const { tenants, total } = await getTenants(search, page)
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  // Fetch tenants from database
+  const fetchTenants = async () => {
+    setLoading(true)
+    try {
+      const limit = 15
+      const from = (page - 1) * limit
+
+      let query = supabase
+        .from('companies')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range(from, from + limit - 1)
+
+      if (search) {
+        query = query.ilike('name', `%${search}%`)
+      }
+
+      const { data, count } = await query
+
+      setTenants((data || []) as Tenant[])
+      setTotal(count || 0)
+      setLastRefresh(new Date())
+    } catch (error) {
+      console.error('Error fetching tenants:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch on mount and when search/page changes
+  useEffect(() => {
+    fetchTenants()
+  }, [search, page])
+
+  // Auto-refresh every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchTenants()
+    }, 15000)
+
+    return () => clearInterval(interval)
+  }, [])
+
   const totalPages = Math.ceil(total / 15)
 
-  return (
-    <div className="min-h-screen bg-[#F5F0E8]">
-      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+  const getTrialStatus = (trialEndsAt: string | null, planStatus: string) => {
+    if (!trialEndsAt || planStatus !== 'trial') {
+      return { text: '—', color: 'text-gray-500' }
+    }
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
+    const endDate = new Date(trialEndsAt)
+    const today = new Date()
+    const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+    if (daysLeft < 0) {
+      return { text: 'Expired', color: 'text-red-600' }
+    } else if (daysLeft <= 7) {
+      return { text: `${daysLeft} days`, color: 'text-amber-600' }
+    } else {
+      return { text: endDate.toLocaleDateString('en-IN'), color: 'text-green-600' }
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    const badges: Record<string, string> = {
+      active: 'bg-emerald-100 text-emerald-700',
+      trial: 'bg-amber-100 text-amber-700',
+      expired: 'bg-red-100 text-red-600',
+      cancelled: 'bg-gray-100 text-gray-600',
+    }
+    return badges[status] || badges.cancelled
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-amber-50 p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Header Section */}
+        <div className="flex justify-between items-start">
           <div>
-            <p className="text-xs font-bold tracking-widest uppercase text-[#B8860B] mb-1">Super Admin</p>
-            <h1 className="font-serif text-3xl text-[#1C1712]">All Tenants</h1>
-            <p className="text-sm text-[#9A8F82] mt-1">{total} companies registered</p>
+            <p className="text-sm font-semibold text-amber-600 uppercase mb-2">Super Admin</p>
+            <h1 className="text-4xl font-bold text-gray-900">All Tenants</h1>
+            <p className="text-gray-600 mt-2">
+              {total} companies registered
+              {lastRefresh && (
+                <span className="text-xs text-gray-500 ml-3">
+                  • Updated {lastRefresh.toLocaleTimeString('en-IN')}
+                </span>
+              )}
+            </p>
           </div>
+          <button
+            onClick={() => fetchTenants()}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-sm transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
         </div>
 
-        {/* Search */}
-        <form method="GET" className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9A8F82]" />
-          <input 
-            name="search" 
-            defaultValue={search} 
+        {/* Search Bar */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(1)
+            }}
             placeholder="Search companies..."
-            className="w-full bg-white border border-[#E8E2D8] rounded-xl pl-9 pr-4 py-2.5 text-sm text-[#1C1712] placeholder-[#B8B0A0] focus:outline-none focus:border-[#B8860B] transition-colors" 
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
           />
-        </form>
+        </div>
 
-        {/* Table */}
-        <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
-            <h2 className="font-serif text-base text-[#1C1712]">Company List</h2>
-          </div>
+        {/* Table Container */}
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-[#F0EBE0] bg-[#FDFAF8] text-left">
-                  <th className="px-5 py-3 text-xs font-semibold text-[#9A8F82] uppercase tracking-wider whitespace-nowrap">Company</th>
-                  <th className="px-5 py-3 text-xs font-semibold text-[#9A8F82] uppercase tracking-wider whitespace-nowrap">Plan</th>
-                  <th className="px-5 py-3 text-xs font-semibold text-[#9A8F82] uppercase tracking-wider whitespace-nowrap">Status</th>
-                  <th className="px-5 py-3 text-xs font-semibold text-[#9A8F82] uppercase tracking-wider whitespace-nowrap">Trial Ends</th>
-                  <th className="px-5 py-3 text-xs font-semibold text-[#9A8F82] uppercase tracking-wider whitespace-nowrap">Joined</th>
-                  <th className="px-5 py-3 text-xs font-semibold text-[#9A8F82] uppercase tracking-wider whitespace-nowrap">Actions</th>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Plan</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Trial Ends</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Joined</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F0EBE0]">
-                {tenants.map((tenant: any) => (
-                  <tr key={tenant.id} className="hover:bg-[#FFFBEF] transition-colors">
-                    <td className="px-5 py-3">
-                      <a href={`/admin/tenants/${tenant.id}`} className="flex items-center gap-3 hover:opacity-75 transition-opacity">
-                        <div className="w-9 h-9 bg-[#F5F0E8] border border-[#E8E2D8] rounded-xl flex items-center justify-center flex-shrink-0">
-                          <Building2 className="w-4 h-4 text-[#B8860B]" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-[#1C1712] truncate">{tenant.name}</p>
-                          <p className="text-xs text-[#9A8F82] truncate">{tenant.email}</p>
-                        </div>
-                      </a>
-                    </td>
-                    <td className="px-5 py-3">
-                      <p className="text-sm font-medium text-[#1C1712] capitalize">{tenant.plan?.name ?? '—'}</p>
-                      {tenant.plan?.price_monthly && (
-                        <p className="text-xs text-[#9A8F82]">₹{Number(tenant.plan.price_monthly).toLocaleString('en-IN')}/mo</p>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold capitalize inline-block ${
-                        statusBadge[tenant.plan_status] ?? statusBadge.cancelled
-                      }`}>
-                        {tenant.plan_status ?? '—'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-xs text-[#9A8F82]">
-                      {tenant.trial_ends_at 
-                        ? new Date(tenant.trial_ends_at).toLocaleDateString('en-IN') 
-                        : '—'}
-                    </td>
-                    <td className="px-5 py-3 text-xs text-[#9A8F82]">
-                      {new Date(tenant.created_at).toLocaleDateString('en-IN')}
-                    </td>
-                    <td className="px-5 py-3">
-                      <TenantActions 
-                        tenantId={tenant.id} 
-                        isActive={tenant.is_active} 
-                        tenantName={tenant.name} 
-                      />
+              <tbody className="divide-y divide-gray-200">
+                {loading && tenants.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex items-center justify-center gap-2 text-gray-500">
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                        <span>Loading tenants...</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
-                {!tenants.length && (
+                ) : tenants.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-5 py-12 text-center text-[#9A8F82] text-sm">
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                       No tenants found
                     </td>
                   </tr>
+                ) : (
+                  tenants.map((tenant) => {
+                    const trial = getTrialStatus(tenant.trial_ends_at, tenant.plan_status)
+                    return (
+                      <tr key={tenant.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <a href={`/admin/tenants/${tenant.id}`} className="flex items-center gap-3 hover:opacity-75">
+                            <div className="flex-shrink-0">
+                              <Building2 className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-900">{tenant.name}</p>
+                              <p className="text-xs text-gray-500">{tenant.email}</p>
+                            </div>
+                          </a>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-medium text-gray-900 capitalize">{tenant.plan || '—'}</p>
+                            <p className="text-xs text-gray-500">{tenant.industry || '—'}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(tenant.plan_status)}`}>
+                            {tenant.plan_status || '—'}
+                          </span>
+                        </td>
+                        <td className={`px-6 py-4 text-sm font-semibold ${trial.color}`}>
+                          <div className="flex items-center gap-1">
+                            {trial.text !== '—' && <Calendar size={13} />}
+                            {trial.text}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">
+                          {new Date(tenant.created_at).toLocaleDateString('en-IN')}
+                        </td>
+                        <td className="px-6 py-4">
+                          <TenantActions 
+                            tenantId={tenant.id} 
+                            isActive={tenant.is_active} 
+                            tenantName={tenant.name} 
+                          />
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
@@ -140,24 +231,26 @@ export default async function AdminTenantsPage({
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-[#9A8F82]">Page {page} of {totalPages}</p>
+          <div className="flex justify-between items-center">
+            <p className="text-sm text-gray-600">
+              Page {page} of {totalPages} • {total} total companies
+            </p>
             <div className="flex gap-2">
               {page > 1 && (
-                <a 
-                  href={`?page=${page - 1}&search=${search ?? ''}`} 
-                  className="px-3 py-1.5 text-xs bg-white border border-[#E8E2D8] text-[#1C1712] rounded-lg hover:border-[#B8860B] transition-colors font-medium"
+                <button
+                  onClick={() => setPage(page - 1)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  ← Prev
-                </a>
+                  ← Previous
+                </button>
               )}
               {page < totalPages && (
-                <a 
-                  href={`?page=${page + 1}&search=${search ?? ''}`} 
-                  className="px-3 py-1.5 text-xs bg-white border border-[#E8E2D8] text-[#1C1712] rounded-lg hover:border-[#B8860B] transition-colors font-medium"
+                <button
+                  onClick={() => setPage(page + 1)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   Next →
-                </a>
+                </button>
               )}
             </div>
           </div>
