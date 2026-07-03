@@ -1,9 +1,7 @@
-// app/(super-admin)/admin/tenants/page.tsx - FRESH VERSION
 'use client'
 
 import { useState, useEffect } from 'react'
 import { Search, Building2, RefreshCw, Calendar } from 'lucide-react'
-import { createBrowserClient } from '@supabase/ssr'
 import TenantActions from '@/components/super-admin/TenantActions'
 
 interface Tenant {
@@ -13,7 +11,7 @@ interface Tenant {
   plan: string
   plan_status: string
   is_active: boolean
-  trial_ends_at: string | null
+  trial_ends: string | null
   created_at: string
   industry?: string
 }
@@ -26,31 +24,16 @@ export default function AdminTenantsPage() {
   const [page, setPage] = useState(1)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  // Fetch tenants from database
   const fetchTenants = async () => {
     setLoading(true)
     try {
-      const limit = 15
-      const from = (page - 1) * limit
-
-      let query = supabase
-        .from('companies')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, from + limit - 1)
-
-      if (search) {
-        query = query.ilike('name', `%${search}%`)
-      }
-
-      const { data, count } = await query
-
-      setTenants((data || []) as Tenant[])
+      const params = new URLSearchParams({
+        page: page.toString(),
+        search: search,
+      })
+      const res = await fetch(`/api/admin/tenants?${params}`)
+      const { data, count } = await res.json()
+      setTenants(data as Tenant[])
       setTotal(count || 0)
       setLastRefresh(new Date())
     } catch (error) {
@@ -60,55 +43,51 @@ export default function AdminTenantsPage() {
     }
   }
 
-  // Fetch on mount and when search/page changes
   useEffect(() => {
     fetchTenants()
   }, [search, page])
 
-  // Auto-refresh every 15 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchTenants()
-    }, 15000)
-
-    return () => clearInterval(interval)
-  }, [])
+  const interval = setInterval(() => {
+    fetchTenants()
+  }, 15000)
+  return () => clearInterval(interval)
+}, [])
 
   const totalPages = Math.ceil(total / 15)
-
-  const getTrialStatus = (trialEndsAt: string | null, planStatus: string) => {
-    if (!trialEndsAt || planStatus !== 'trial') {
-      return { text: '—', color: 'text-gray-500' }
-    }
-
-    const endDate = new Date(trialEndsAt)
-    const today = new Date()
-    const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
-
-    if (daysLeft < 0) {
-      return { text: 'Expired', color: 'text-red-600' }
-    } else if (daysLeft <= 7) {
-      return { text: `${daysLeft} days`, color: 'text-amber-600' }
-    } else {
-      return { text: endDate.toLocaleDateString('en-IN'), color: 'text-green-600' }
-    }
+  
+  const getTrialStatus = (trialEnds: string | null, plan: string) => {
+  if (!trialEnds || plan !== 'trial') {
+    return { text: '—', color: 'text-gray-500' }
   }
+
+  const endDate = new Date(trialEnds)
+  const today = new Date()
+  const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (daysLeft < 0) {
+    return { text: 'Expired', color: 'text-red-600' }
+  } else if (daysLeft <= 7) {
+    return { text: `${daysLeft} days`, color: 'text-amber-600' }
+  } else {
+    return { text: `${daysLeft} days`, color: 'text-green-600' }
+  }
+}
+  
 
   const getStatusBadge = (status: string) => {
-    const badges: Record<string, string> = {
-      active: 'bg-emerald-100 text-emerald-700',
-      trial: 'bg-amber-100 text-amber-700',
-      expired: 'bg-red-100 text-red-600',
-      cancelled: 'bg-gray-100 text-gray-600',
-    }
-    return badges[status] || badges.cancelled
+  const badges: Record<string, string> = {
+    trial: 'bg-amber-100 text-amber-700',
+    active: 'bg-emerald-100 text-emerald-700',
+    lifetime: 'bg-emerald-100 text-emerald-700',
+    inactive: 'bg-gray-100 text-gray-600',
   }
+  return badges[status] || 'bg-gray-100 text-gray-600'
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-amber-50 p-8">
       <div className="max-w-7xl mx-auto space-y-6">
-        
-        {/* Header Section */}
         <div className="flex justify-between items-start">
           <div>
             <p className="text-sm font-semibold text-amber-600 uppercase mb-2">Super Admin</p>
@@ -121,6 +100,9 @@ export default function AdminTenantsPage() {
                 </span>
               )}
             </p>
+            <p className="text-sm text-red-600 font-semibold mt-1">
+  {tenants.filter(t => t.trial_ends && new Date(t.trial_ends) < new Date()).length} trial(s) expired
+</p>
           </div>
           <button
             onClick={() => fetchTenants()}
@@ -132,7 +114,6 @@ export default function AdminTenantsPage() {
           </button>
         </div>
 
-        {/* Search Bar */}
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -147,7 +128,6 @@ export default function AdminTenantsPage() {
           />
         </div>
 
-        {/* Table Container */}
         <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -179,19 +159,17 @@ export default function AdminTenantsPage() {
                   </tr>
                 ) : (
                   tenants.map((tenant) => {
-                    const trial = getTrialStatus(tenant.trial_ends_at, tenant.plan_status)
+                    const trial = getTrialStatus(tenant.trial_ends, tenant.plan)
                     return (
                       <tr key={tenant.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
-                          <a href={`/admin/tenants/${tenant.id}`} className="flex items-center gap-3 hover:opacity-75">
-                            <div className="flex-shrink-0">
-                              <Building2 className="w-5 h-5 text-amber-600" />
-                            </div>
+                          <div className="flex items-center gap-3">
+                            <Building2 className="w-5 h-5 text-amber-600" />
                             <div>
                               <p className="font-semibold text-gray-900">{tenant.name}</p>
                               <p className="text-xs text-gray-500">{tenant.email}</p>
                             </div>
-                          </a>
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div>
@@ -201,7 +179,7 @@ export default function AdminTenantsPage() {
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(tenant.plan_status)}`}>
-                            {tenant.plan_status || '—'}
+                             {!tenant.is_active ? 'Inactive' : tenant.plan === 'trial' ? 'Trial' : 'Active'}
                           </span>
                         </td>
                         <td className={`px-6 py-4 text-sm font-semibold ${trial.color}`}>
@@ -229,7 +207,6 @@ export default function AdminTenantsPage() {
           </div>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex justify-between items-center">
             <p className="text-sm text-gray-600">
@@ -255,7 +232,6 @@ export default function AdminTenantsPage() {
             </div>
           </div>
         )}
-
       </div>
     </div>
   )
