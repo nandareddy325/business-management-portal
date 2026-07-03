@@ -1,9 +1,9 @@
+// app/(super-admin)/admin/users/page.tsx
 'use server'
 
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { Users, Plus } from 'lucide-react'
-import { UserTable } from '@/components/super-admin/users'
+import { UserManagementPanel } from '@/components/super-admin/UserManagementPanel'
 
 export default async function UsersPage() {
   const supabase = await createServerSupabaseClient()
@@ -12,32 +12,32 @@ export default async function UsersPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('company_id')
+    .select('company_id, role')
     .eq('id', user.id)
     .single()
 
   if (!profile) redirect('/login')
 
-  // Fetch users
+  // ── Super Admin: fetch ALL users across ALL companies ──────────────────────
+  // Each new company that buys GK CRM will appear here automatically
   const { data: users } = await supabase
     .from('profiles')
-    .select('id, email, full_name, role, created_at')
-    .eq('company_id', profile.company_id)
+    .select('id, email, full_name, role, created_at, company_id')
+    .order('created_at', { ascending: false })
+
+  // ── Fetch all registered companies ─────────────────────────────────────────
+  // Table name: 'companies' — adjust if yours is named 'tenants' or 'organizations'
+  const { data: companies } = await supabase
+    .from('companies')
+    .select('id, name')
+    .order('name', { ascending: true })
 
   return (
-    <div className="min-h-screen bg-[#F5F0E8]">
-      <div className="sticky top-0 z-10 border-b border-black/8 bg-[#F5F0E8]/95 backdrop-blur-xl px-4 sm:px-8 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-          <h1 className="text-xl font-bold text-[#1C1712]">User Management</h1>
-          <button className="px-4 py-2 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-all flex items-center gap-2 shadow-md">
-            <Plus size={14} /> Add User
-          </button>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
-        <UserTable users={users} />
-      </div>
-    </div>
+    <UserManagementPanel
+      initialUsers={users ?? []}
+      currentUserId={user.id}
+      currentCompanyId={profile.company_id}
+      companies={companies ?? []}
+    />
   )
 }
