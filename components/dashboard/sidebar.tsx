@@ -62,6 +62,7 @@ function buildNavGroups(industrySlug: string) {
         { label: 'HRMS',         icon: '👔', href: '/hr/employees'    },
         { label: 'Attendance',   icon: '📅', href: '/hr/attendance'   },
         { label: 'Work Reports', icon: '📝', href: '/hr/work-reports' },
+        { label: 'Pay Slips',    icon: '💵', href: '/hr/payslips'     },
       ],
     },
     {
@@ -108,6 +109,7 @@ function buildNavGroups(industrySlug: string) {
       items: [
         { label: 'Attendance',   icon: '📅', href: '/hr/attendance'   },
         { label: 'Work Reports', icon: '📝', href: '/hr/work-reports' },
+        { label: 'My Pay Slips', icon: '💵', href: '/hr/payslips/my'  },
       ],
     },
     {
@@ -161,7 +163,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [userInitials, setUserInitials] = useState('U')
   const [userCompany, setUserCompany] = useState('GK Digital')
   const [activeIndustries, setActiveIndustries] = useState<string[]>([])
-  // Now keyed by CanonicalStage ('new' | 'followup' | 'rnr' | 'sitevisit' | 'quotation' | 'won' | 'lost')
   const [stageCounts, setStageCounts] = useState<Record<CanonicalStage, number>>({
     new: 0, followup: 0, rnr: 0, sitevisit: 0, quotation: 0, won: 0, lost: 0,
   })
@@ -182,11 +183,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     return () => { document.body.style.overflow = '' }
   }, [isOpen])
 
-  // Shared fetch+count logic — used on init AND on realtime updates below,
-  // so both paths always compute counts the exact same way as All Leads.
   const refreshStageCounts = async (companyId: string) => {
-    // Paginated fetch — bypasses Supabase's default 1000-row cap.
-    // Confirmed via SQL: actual lead count is 1079, not 1000.
     const leads = await fetchAllLeads(supabase, companyId, 'interior-design', 'pipeline_stage, notes')
     if (!leads) return
     setStageCounts(getStageCounts(leads))
@@ -265,8 +262,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const getBadge = (href: string) => {
     const IND_BASE = `/dashboard/industries/${currentIndustrySlug}`
-    // Values here are CanonicalStage keys from stage-utils — same keys
-    // All-Leads page uses for its filter chips. That's what fixes the mismatch.
     const stageMap: Record<string, CanonicalStage | '__total__'> = {
       [`${IND_BASE}/new-leads`]:  'new',
       [`${IND_BASE}/follow-up`]:  'followup',

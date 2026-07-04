@@ -14,15 +14,47 @@ function SignupForm() {
     phone: '', password: '', confirmPassword: ''
   })
   const [loading, setLoading] = useState(false)
+  const [checkingEmail, setCheckingEmail] = useState(false)
   const [error, setError] = useState('')
 
-  function validateStep2() {
+  async function validateStep2() {
     if (!form.fullName)    { setError('Full name required'); return false }
     if (!form.companyName) { setError('Company name required'); return false }
     if (!form.email)       { setError('Email required'); return false }
     if (!form.password)    { setError('Password required'); return false }
     if (form.password.length < 6) { setError('Password min 6 characters'); return false }
     if (form.password !== form.confirmPassword) { setError('Passwords do not match'); return false }
+
+    // Check if email already exists (super admin / admin / user)
+    setCheckingEmail(true)
+    try {
+      const res = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email }),
+      })
+
+      if (!res.ok) {
+        setError('Could not verify email right now. Please try again.')
+        setCheckingEmail(false)
+        return false
+      }
+
+      const data = await res.json()
+
+      if (data.exists) {
+        setError('This email is already registered. Please sign in instead.')
+        setCheckingEmail(false)
+        return false
+      }
+    } catch (err) {
+      console.error('Email check failed:', err)
+      setError('Could not verify email right now. Please try again.')
+      setCheckingEmail(false)
+      return false
+    }
+
+    setCheckingEmail(false)
     return true
   }
 
@@ -143,10 +175,16 @@ function SignupForm() {
 
                 {error && <p className="text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-xl mb-4">⚠ {error}</p>}
 
-                <button onClick={() => { if (!validateStep2()) return; setError(''); setStep(3) }}
-                  className="w-full py-4 rounded-2xl text-sm font-bold text-white relative overflow-hidden group transition-all hover:scale-[1.02] active:scale-[0.98]"
+                <button
+                  onClick={async () => { if (!(await validateStep2())) return; setError(''); setStep(3) }}
+                  disabled={checkingEmail}
+                  className="w-full py-4 rounded-2xl text-sm font-bold text-white relative overflow-hidden group transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:hover:scale-100"
                   style={{ background: 'linear-gradient(135deg, #1C1712, #2d2822)', boxShadow: '0 8px 28px rgba(28,23,18,0.22)' }}>
-                  <span className="relative z-10">Review & Confirm →</span>
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {checkingEmail
+                      ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Checking email...</>
+                      : 'Review & Confirm →'}
+                  </span>
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                     style={{ background: 'linear-gradient(135deg, #B8860B, #D97706)' }} />
                 </button>
