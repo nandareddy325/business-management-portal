@@ -1,44 +1,16 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-// ── Data ────────────────────────────────────────────────────────
+// ── DATA ──────────────────────────────────────────────────────────────────
+
 const INDUSTRIES = [
-  {
-    id: "interior",
-    label: "Interior Design",
-    desc: "Lead pipeline, projects, designs & materials tracking",
-    icon: "🎨",
-    locked: false,
-  },
-  {
-    id: "realestate",
-    label: "Real Estate",
-    desc: "Property leads, site visits & deal management",
-    icon: "🏠",
-    locked: true,
-  },
-  {
-    id: "hospital",
-    label: "Hospital",
-    desc: "Patients, doctors, appointments & billing",
-    icon: "🏥",
-    locked: true,
-  },
-  {
-    id: "b2b",
-    label: "B2B Business",
-    desc: "Clients, deals, invoices & pipeline management",
-    icon: "💼",
-    locked: true,
-  },
-  {
-    id: "clinic",
-    label: "Clinics",
-    desc: "Patients, prescriptions, doctors & billing",
-    icon: "🩺",
-    locked: true,
-  },
+  { id: "interior",   label: "Interior Design", desc: "Lead pipeline, projects, designs & materials",  icon: "🛋️", locked: false, color: "from-purple-500 to-violet-700" },
+  { id: "realestate", label: "Real Estate",      desc: "Property leads, site visits & deal management", icon: "🏠", locked: true,  color: "from-blue-500 to-cyan-700" },
+  { id: "hospital",   label: "Hospital",          desc: "Patients, doctors, appointments & billing",     icon: "🏥", locked: true,  color: "from-red-500 to-rose-700" },
+  { id: "b2b",        label: "B2B Business",      desc: "Clients, deals, invoices & pipeline",          icon: "🤝", locked: true,  color: "from-amber-500 to-orange-700" },
+  { id: "clinic",     label: "Clinics",            desc: "Patients, prescriptions, doctors & billing",  icon: "🩺", locked: true,  color: "from-emerald-500 to-teal-700" },
 ];
 
 const PLANS = [
@@ -46,38 +18,196 @@ const PLANS = [
     id: "pro",
     label: "Professional",
     price: 10000,
-    users: "10 users",
+    users: "Up to 10 users",
     color: "#B8860B",
     bgLight: "#fffbeb",
-    borderLight: "#fcd34d",
-    features: ["Unlimited leads", "Pipeline + HRMS", "Priority support"],
+    features: ["Unlimited leads", "7-stage pipeline", "HRMS & attendance", "GST billing", "Priority support", "Real-time dashboard"],
   },
 ];
 
 const BUNDLE_DISCOUNT = 0.1;
+
+const INCLUDED_FEATURES = [
+  { icon: "🎯", title: "7-Stage Lead Pipeline", desc: "New → RNR → Follow-up → Site Visit → Quotation → Won → Lost" },
+  { icon: "⚡", title: "Real-time Dashboard",   desc: "Live lead activity, pipeline stats and team performance" },
+  { icon: "👥", title: "Role-Based Access",     desc: "Admin sees all. CRE sees only their assigned leads" },
+  { icon: "📅", title: "HRMS & Attendance",     desc: "Clock-in/out, leave requests, salary slips built-in" },
+  { icon: "💳", title: "GST Billing & Invoices", desc: "Razorpay-powered payments, partial payments, overdue tracking" },
+  { icon: "🏗️", title: "Project Management",   desc: "Budgets, timelines, site photos, material tracking" },
+  { icon: "📊", title: "Analytics & Reports",   desc: "Win rates, revenue charts, team leaderboard" },
+  { icon: "🔐", title: "Data Isolation (RLS)",  desc: "Supabase Row Level Security — your data, only yours" },
+];
+
+const AI_INTEGRATIONS = [
+  { icon: "🎙️", name: "Vapi.ai Voice",  desc: "AI calls new leads in 60 seconds", badge: "Coming Soon" },
+  { icon: "💬", name: "WATI WhatsApp",  desc: "Auto follow-up via WhatsApp bot",   badge: "Coming Soon" },
+  { icon: "⚙️", name: "N8N Automation", desc: "Meta Ads → CRM auto-capture",       badge: "Coming Soon" },
+  { icon: "📘", name: "Meta Ads",        desc: "Facebook lead forms auto-sync",     badge: "Coming Soon" },
+  { icon: "🔍", name: "Google Ads",      desc: "Google lead gen → instant entry",   badge: "Coming Soon" },
+];
+
+const PRICING_FAQS = [
+  { q: "What happens after the 14-day trial?",     a: "Your account stays active but locked. You can subscribe to any plan without losing your data. No auto-charges — you choose when to upgrade." },
+  { q: "Is there a setup fee or hidden charges?",  a: "Zero setup fee. Price shown is all-inclusive — pipeline, HRMS, billing, reports, support. No per-seat fees beyond the plan limit." },
+  { q: "Can I add more team members later?",       a: "Professional plan supports up to 10 users. Need more? Contact us for a custom plan — we accommodate growing teams." },
+  { q: "What payment methods do you accept?",      a: "UPI, credit/debit cards, net banking via Razorpay. Monthly billing with auto-renewal. Cancel anytime from account settings." },
+  { q: "Do AI integrations cost extra?",           a: "No. When N8N, Vapi.ai, and WhatsApp integrations launch, they will be included in your existing plan at no extra cost." },
+];
+
 function fmt(n: number) {
   return "₹" + n.toLocaleString("en-IN");
 }
 
-// ── Component ───────────────────────────────────────────────────
+// ── HOOKS ─────────────────────────────────────────────────────────────────
+
+function useInView(threshold = 0.15) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisible(true); }, { threshold });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, visible };
+}
+
+// ── SUBCOMPONENTS ─────────────────────────────────────────────────────────
+
+function WhatIncludedSection() {
+  const { ref, visible } = useInView();
+  return (
+    <div ref={ref} className="py-16 md:py-20 bg-[#F5F0E8]">
+      <div className="max-w-5xl mx-auto px-4 md:px-6">
+        <div className="text-center mb-10 md:mb-14">
+          <p className="text-xs font-bold text-[#B8860B] uppercase tracking-[4px] mb-3">Every Plan Includes</p>
+          <h2 className="font-serif text-3xl md:text-4xl text-[#1C1712] mb-3">
+            No hidden features. <em className="italic font-normal text-[#B8860B]">Everything's in.</em>
+          </h2>
+          <p className="text-[#7A6E60] text-sm md:text-base max-w-md mx-auto">
+            One plan, all features. No Starter vs Pro feature gates. Everything below is included from day one.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          {INCLUDED_FEATURES.map((f, i) => (
+            <div key={i}
+              className="bg-white border border-[#E2D9C8] rounded-2xl p-4 md:p-5 hover:-translate-y-1 hover:shadow-lg hover:border-[#B8860B]/30 transition-all duration-300 group"
+              style={{
+                opacity: visible ? 1 : 0,
+                transform: visible ? 'translateY(0)' : 'translateY(16px)',
+                transition: `opacity 0.5s ease ${i * 60}ms, transform 0.5s ease ${i * 60}ms, box-shadow 0.3s, border-color 0.3s`,
+              }}
+            >
+              <div className="w-10 h-10 bg-[#F5F0E8] group-hover:bg-amber-50 rounded-xl flex items-center justify-center text-xl mb-3 transition-colors">{f.icon}</div>
+              <p className="text-xs font-bold text-[#1C1712] mb-1.5">{f.title}</p>
+              <p className="text-[11px] text-[#9A8F82] leading-relaxed">{f.desc}</p>
+              <div className="mt-3 h-0.5 w-0 bg-[#B8860B] group-hover:w-full transition-all duration-500 rounded-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AITeaserSection() {
+  const { ref, visible } = useInView();
+  return (
+    <div ref={ref} className="py-14 md:py-20 bg-white border-y border-[#E2D9C8]">
+      <div className="max-w-5xl mx-auto px-4 md:px-6">
+        <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
+          <div className="flex-1">
+            <span className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-[#B8860B] text-xs font-bold px-4 py-2 rounded-full mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#B8860B] animate-pulse" />
+              Included at no extra cost · Coming Soon
+            </span>
+            <h2 className="font-serif text-2xl md:text-3xl text-[#1C1712] mb-3">
+              AI automation tools,<br />
+              <em className="italic font-normal text-[#B8860B]">built into your plan</em>
+            </h2>
+            <p className="text-sm text-[#7A6E60] leading-relaxed mb-6 max-w-md">
+              When these AI integrations launch, they will be available to all Professional plan subscribers at no extra charge. Your plan price stays the same.
+            </p>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="flex items-center gap-1.5 text-emerald-700 font-semibold bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
+                ✓ No price increase
+              </span>
+              <span className="flex items-center gap-1.5 text-[#B8860B] font-semibold bg-amber-50 border border-amber-100 px-3 py-1.5 rounded-full">
+                ⚡ Auto-enabled
+              </span>
+            </div>
+          </div>
+          <div className="flex-1 w-full">
+            <div className="space-y-2.5">
+              {AI_INTEGRATIONS.map((item, i) => (
+                <div key={i}
+                  className="flex items-center gap-3 bg-[#F5F0E8] border border-[#E2D9C8] rounded-xl p-3 hover:border-[#B8860B]/30 hover:bg-white transition-all"
+                  style={{
+                    opacity: visible ? 1 : 0,
+                    transform: visible ? 'translateX(0)' : 'translateX(20px)',
+                    transition: `opacity 0.5s ease ${i * 80 + 200}ms, transform 0.5s ease ${i * 80 + 200}ms`,
+                  }}
+                >
+                  <span className="text-xl flex-shrink-0">{item.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-[#1C1712]">{item.name}</p>
+                    <p className="text-[10px] text-[#9A8F82]">{item.desc}</p>
+                  </div>
+                  <span className="text-[9px] font-bold text-[#B8860B] bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full uppercase tracking-wide flex-shrink-0">
+                    {item.badge}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PricingFAQ() {
+  const [active, setActive] = useState<number | null>(null);
+  return (
+    <div className="py-14 md:py-20 bg-[#F5F0E8]">
+      <div className="max-w-2xl mx-auto px-4 md:px-6">
+        <div className="text-center mb-10">
+          <p className="text-xs font-bold text-[#B8860B] uppercase tracking-[4px] mb-3">FAQ</p>
+          <h2 className="font-serif text-3xl text-[#1C1712]">Pricing questions</h2>
+        </div>
+        <div className="space-y-2.5">
+          {PRICING_FAQS.map((faq, i) => (
+            <div key={i}
+              className={`border rounded-2xl overflow-hidden transition-all duration-300 ${active === i ? 'border-[#B8860B]/40 bg-white shadow-md' : 'border-[#E2D9C8] bg-white'}`}>
+              <button onClick={() => setActive(active === i ? null : i)}
+                className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-[#FDFAF8] transition-colors">
+                <span className="text-sm font-semibold text-[#1C1712] pr-4">{faq.q}</span>
+                <span className={`text-[#B8860B] text-xl transition-transform duration-300 flex-shrink-0 ${active === i ? 'rotate-45' : ''}`}>+</span>
+              </button>
+              <div className={`overflow-hidden transition-all duration-300 ${active === i ? 'max-h-40' : 'max-h-0'}`}>
+                <p className="text-sm text-[#7A6E60] px-5 pb-5 leading-relaxed">{faq.a}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MAIN COMPONENT ────────────────────────────────────────────────────────
+
 export default function GKCRMPricing() {
   const router = useRouter();
-  const [state, setState] = useState<
-    Record<string, { active: boolean; plan: string | null }>
-  >(() => {
-    const s: Record<string, { active: boolean; plan: string | null }> = {};
+
+  type StateMap = Record<string, { active: boolean; plan: string | null }>;
+  const [state, setState] = useState<StateMap>(() => {
+    const s: StateMap = {};
     INDUSTRIES.forEach((i) => (s[i.id] = { active: false, plan: null }));
     return s;
   });
 
   const [summary, setSummary] = useState<{
-    rows: {
-      plan: (typeof PLANS)[0];
-      industries: { id: string; label: string }[];
-      base: number;
-      discount: number;
-      final: number;
-    }[];
+    rows: { plan: typeof PLANS[0]; industries: { id: string; label: string }[]; base: number; discount: number; final: number }[];
     total: number;
     savings: number;
   }>({ rows: [], total: 0, savings: 0 });
@@ -85,12 +215,11 @@ export default function GKCRMPricing() {
   const [showSummary, setShowSummary] = useState(false);
 
   function toggleInd(id: string) {
-    const industry = INDUSTRIES.find((i) => i.id === id);
-    if (industry?.locked) return; // locked industries — no toggle
+    const ind = INDUSTRIES.find((i) => i.id === id);
+    if (ind?.locked) return;
     setState((prev) => {
-      const isActivating = !prev[id].active;
-      const next = { ...prev, [id]: { active: isActivating, plan: isActivating ? "pro" : null } };
-      return next;
+      const activating = !prev[id].active;
+      return { ...prev, [id]: { active: activating, plan: activating ? "pro" : null } };
     });
   }
 
@@ -99,151 +228,62 @@ export default function GKCRMPricing() {
   }
 
   useEffect(() => {
-    const planGroups: Record<string, { id: string; label: string }[]> = {};
-    PLANS.forEach((p) => (planGroups[p.id] = []));
+    const groups: Record<string, { id: string; label: string }[]> = {};
+    PLANS.forEach((p) => (groups[p.id] = []));
     INDUSTRIES.forEach((ind) => {
       const s = state[ind.id];
-      if (s.active && s.plan)
-        planGroups[s.plan].push({ id: ind.id, label: ind.label });
+      if (s.active && s.plan) groups[s.plan].push({ id: ind.id, label: ind.label });
     });
     const rows: typeof summary.rows = [];
-    let total = 0,
-      totalSavings = 0;
+    let total = 0, savings = 0;
     PLANS.forEach((p) => {
-      const group = planGroups[p.id];
+      const group = groups[p.id];
       if (!group.length) return;
-      const basePrice = p.price * group.length;
-      let discount = 0;
-      if (group.length > 1) {
-        discount = Math.round(basePrice * BUNDLE_DISCOUNT);
-        totalSavings += discount;
-      }
-      const final = basePrice - discount;
-      total += final;
-      rows.push({ plan: p, industries: group, base: basePrice, discount, final });
+      const base = p.price * group.length;
+      const discount = group.length > 1 ? Math.round(base * BUNDLE_DISCOUNT) : 0;
+      savings += discount;
+      total += base - discount;
+      rows.push({ plan: p, industries: group, base, discount, final: base - discount });
     });
-    setSummary({ rows, total, savings: totalSavings });
+    setSummary({ rows, total, savings });
   }, [state]);
 
-  // ── Start Trial handler — direct signup redirect ─────────────
   function handleStartTrial() {
     router.push("/signup?industry=interior&plan=pro");
   }
 
-  // ── Summary Panel (shared) ───────────────────────────────────
-  const SummaryPanel = () => (
-    <div
-      style={{
-        background: "#1C1712",
-        borderRadius: 20,
-        padding: 24,
-        boxShadow: "0 8px 40px rgba(28,23,18,0.18)",
-      }}
-    >
-      <div
-        style={{
-          fontSize: 11,
-          letterSpacing: "0.08em",
-          color: "rgba(255,255,255,0.3)",
-          marginBottom: 18,
-          fontWeight: 600,
-          textTransform: "uppercase",
-        }}
-      >
-        Your plan summary
-      </div>
+  // ── Summary Panel — render function (not a component) to avoid React remount ──
+  function renderSummary() { return (
+    <div className="bg-[#1C1712] rounded-2xl p-6 shadow-2xl shadow-black/20">
+      <p className="text-[10px] font-bold text-white/30 uppercase tracking-[3px] mb-5">Your Plan Summary</p>
 
       {summary.rows.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "32px 0",
-            color: "rgba(255,255,255,0.2)",
-          }}
-        >
-          <div style={{ fontSize: 28, marginBottom: 10 }}>☝️</div>
-          <div style={{ fontSize: 13 }}>Select industries to see pricing</div>
+        <div className="text-center py-10">
+          <p className="text-4xl mb-4">☝️</p>
+          <p className="text-sm text-white/30">Toggle an industry above to build your plan</p>
         </div>
       ) : (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-            marginBottom: 16,
-          }}
-        >
+        <div className="flex flex-col gap-3 mb-5">
           {summary.rows.map((row) => (
-            <div
-              key={row.plan.id}
-              style={{
-                background: "rgba(255,255,255,0.05)",
-                borderRadius: 12,
-                padding: "12px 14px",
-                border: "1px solid rgba(255,255,255,0.08)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  marginBottom: 6,
-                }}
-              >
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      background: row.plan.bgLight,
-                      color: row.plan.color,
-                      padding: "2px 10px",
-                      borderRadius: 20,
-                      fontWeight: 600,
-                    }}
-                  >
+            <div key={row.plan.id} className="bg-white/[0.06] border border-white/[0.08] rounded-xl p-3.5">
+              <div className="flex items-start justify-between mb-2.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: row.plan.bgLight, color: row.plan.color }}>
                     {row.plan.label}
                   </span>
                   {row.discount > 0 && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        background: "#052e16",
-                        color: "#4ade80",
-                        padding: "2px 8px",
-                        borderRadius: 20,
-                      }}
-                    >
-                      Bundle -10%
-                    </span>
+                    <span className="text-[10px] font-bold bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded-full">Bundle −10%</span>
                   )}
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>
-                  {fmt(row.final)}
-                </div>
+                <p className="text-sm font-bold text-white">{fmt(row.final)}</p>
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                {row.industries.map((i) => (
-                  <span
-                    key={i.id}
-                    style={{
-                      fontSize: 11,
-                      color: "rgba(255,255,255,0.4)",
-                      background: "rgba(255,255,255,0.06)",
-                      padding: "2px 8px",
-                      borderRadius: 6,
-                    }}
-                  >
-                    {i.label}
-                  </span>
+              <div className="flex flex-wrap gap-1.5">
+                {row.industries.map((ind) => (
+                  <span key={ind.id} className="text-[10px] text-white/40 bg-white/[0.06] px-2 py-0.5 rounded-md">{ind.label}</span>
                 ))}
               </div>
               {row.discount > 0 && (
-                <div
-                  style={{ fontSize: 11, color: "#4ade80", marginTop: 6 }}
-                >
-                  Save {fmt(row.discount)}
-                </div>
+                <p className="text-[10px] text-emerald-400 mt-2">You save {fmt(row.discount)}/mo</p>
               )}
             </div>
           ))}
@@ -251,397 +291,166 @@ export default function GKCRMPricing() {
       )}
 
       {summary.savings > 0 && (
-        <div
-          style={{
-            background: "rgba(74,222,128,0.08)",
-            border: "1px solid rgba(74,222,128,0.2)",
-            borderRadius: 10,
-            padding: "8px 14px",
-            marginBottom: 14,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <span style={{ fontSize: 12, color: "#4ade80" }}>Total savings</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#4ade80" }}>
-            {fmt(summary.savings)}/mo
-          </span>
+        <div className="bg-emerald-950/50 border border-emerald-500/20 rounded-xl px-4 py-2.5 mb-4 flex items-center justify-between">
+          <span className="text-xs text-emerald-400">Total bundle savings</span>
+          <span className="text-sm font-bold text-emerald-400">{fmt(summary.savings)}/mo</span>
         </div>
       )}
 
-      <div
-        style={{
-          borderTop: "1px solid rgba(255,255,255,0.08)",
-          paddingTop: 16,
-          marginBottom: 16,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
-            Total / month
-          </span>
-          <span
-            style={{
-              fontSize: 28,
-              fontWeight: 700,
-              color: "#fff",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {fmt(summary.total)}
-          </span>
+      <div className="border-t border-white/10 pt-4 mb-5">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-white/40">Total / month</span>
+          <span className="font-serif text-3xl text-white">{summary.total > 0 ? fmt(summary.total) : '—'}</span>
         </div>
         {summary.total > 0 && (
-          <div
-            style={{
-              fontSize: 11,
-              color: "rgba(255,255,255,0.25)",
-              marginTop: 3,
-              textAlign: "right",
-            }}
-          >
-            ≈ {fmt(Math.round(summary.total / 30))}/day
-          </div>
+          <p className="text-[10px] text-white/20 text-right">≈ {fmt(Math.round(summary.total / 30))}/day</p>
         )}
       </div>
 
-      <button
-        onClick={handleStartTrial}
-        style={{
-          width: "100%",
-          padding: 14,
-          borderRadius: 12,
-          border: "none",
-          background: "#B8860B",
-          color: "#fff",
-          fontSize: 15,
-          fontWeight: 700,
-          cursor: "pointer",
-          marginBottom: 10,
-          transition: "all 0.2s",
-        }}
-      >
+      <button onClick={handleStartTrial}
+        className="w-full bg-[#B8860B] text-white py-3.5 rounded-xl text-sm font-bold hover:bg-[#9A7009] transition-all duration-300 shadow-lg shadow-amber-900/30 mb-3">
         Start Free Trial →
       </button>
 
-      <div
-        style={{
-          textAlign: "center",
-          fontSize: 11,
-          color: "rgba(255,255,255,0.2)",
-        }}
-      >
-        14-day free trial
+      <div className="flex items-center justify-center gap-4">
+        {['14-day free', 'No card', 'Cancel anytime'].map((t) => (
+          <span key={t} className="text-[9px] text-white/25 font-medium">✓ {t}</span>
+        ))}
       </div>
     </div>
-  );
+  ); }
 
   return (
     <>
       <style>{`
         @media (max-width: 768px) {
-          .pricing-grid { grid-template-columns: 1fr !important; }
+          .pricing-grid  { grid-template-columns: 1fr !important; }
           .pricing-sticky { display: none !important; }
-          .pricing-inner { padding: 0 16px !important; }
-          .pricing-header { margin-bottom: 40px !important; }
-          .pricing-section { padding: 64px 0 100px !important; }
-          .plan-buttons { gap: 6px !important; }
-          .plan-btn { padding: 10px 4px !important; }
-          .plan-btn-label { font-size: 9px !important; }
-          .plan-btn-price { font-size: 14px !important; }
         }
-        .mobile-summary-btn { display: none; }
-        @media (max-width: 768px) {
-          .mobile-summary-btn { display: flex !important; }
-        }
-        .locked-industry {
-          opacity: 0.55;
-          cursor: not-allowed;
-        }
-        .coming-soon-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 10px;
-          font-weight: 700;
-          color: #9A8F82;
-          background: #E2D9C8;
-          border: 1px solid #CFC8B8;
-          padding: 3px 10px;
-          border-radius: 20px;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-        }
+        .mobile-cta { display: none; }
+        @media (max-width: 768px) { .mobile-cta { display: flex !important; } }
       `}</style>
 
-      <section
-        className="pricing-section"
-        id="pricing"
-        style={{
-          background: "#F5F0E8",
-          padding: "96px 0 96px",
-          fontFamily: "inherit",
-        }}
-      >
-        <link
-          href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&display=swap"
-          rel="stylesheet"
-        />
+      {/* ── PRICING HEADER ────────────────────────────────────────────── */}
+      <section id="pricing" className="bg-[#F5F0E8] pt-16 md:pt-24 pb-0">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 text-center">
+          <p className="text-xs font-bold text-[#B8860B] uppercase tracking-[4px] mb-4">Pricing</p>
+          <h2 className="font-serif text-4xl md:text-[56px] text-[#1C1712] leading-[1.05] mb-4">
+            Build your own{" "}
+            <em className="italic font-normal text-[#B8860B]">perfect plan</em>
+          </h2>
+          <p className="text-[#7A6E60] text-base md:text-lg max-w-xl mx-auto mb-8">
+            Pick exactly which industries you need. Pay only for what you use. Every feature included — no tiers.
+          </p>
 
-        <div
-          className="pricing-inner"
-          style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px" }}
-        >
-          {/* Header */}
-          <div
-            className="pricing-header"
-            style={{ textAlign: "center", marginBottom: 56 }}
-          >
-            <p
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: "#B8860B",
-                letterSpacing: "4px",
-                textTransform: "uppercase",
-                marginBottom: 14,
-              }}
-            >
-              Pricing
-            </p>
-            <h2
-              style={{
-                fontFamily: "'DM Serif Display', serif",
-                fontSize: "clamp(28px, 4vw, 52px)",
-                fontWeight: 400,
-                color: "#1C1712",
-                margin: "0 0 14px",
-                lineHeight: 1.1,
-              }}
-            >
-              Build your own{" "}
-              <span style={{ fontStyle: "italic", color: "#B8860B" }}>
-                perfect plan
+          {/* Trust strip */}
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 md:gap-3 mb-10 md:mb-14">
+            {[
+              { icon: '🎁', text: '14-day free trial' },
+              { icon: '💳', text: 'No credit card' },
+              { icon: '⚡', text: '5-min setup' },
+              { icon: '🔐', text: 'Data fully isolated' },
+              { icon: '❌', text: 'Cancel anytime' },
+            ].map((item) => (
+              <span key={item.text}
+                className="flex items-center gap-1.5 bg-white border border-[#E2D9C8] text-[#7A6E60] text-xs font-medium px-3 py-1.5 rounded-full">
+                <span>{item.icon}</span> {item.text}
               </span>
-            </h2>
-            <p style={{ color: "#7A6E60", fontSize: 15, margin: 0 }}>
-              Pick exactly which industries you need. Pay only for what you use.
-            </p>
+            ))}
           </div>
+        </div>
+      </section>
 
-          <div
-            className="pricing-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 360px",
-              gap: 28,
-              alignItems: "start",
-            }}
-          >
-            {/* Left: Industry list */}
+      {/* ── MAIN PRICING GRID ─────────────────────────────────────────── */}
+      <section className="bg-[#F5F0E8] pb-16 md:pb-20">
+        <div className="max-w-5xl mx-auto px-4 md:px-6">
+          <div className="pricing-grid grid gap-6 md:gap-8" style={{ gridTemplateColumns: '1fr 340px' }}>
+
+            {/* LEFT: Industry selector */}
             <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  letterSpacing: "0.08em",
-                  color: "#9A8F82",
-                  marginBottom: 16,
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                }}
-              >
-                Select industries & plans
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <p className="text-[10px] font-bold text-[#9A8F82] uppercase tracking-[3px] mb-4">
+                Select industries &amp; plan
+              </p>
+
+              <div className="flex flex-col gap-3">
                 {INDUSTRIES.map((ind) => {
                   const s = state[ind.id];
-                  const isLocked = ind.locked;
+                  const locked = ind.locked;
+                  const plan = PLANS[0];
 
                   return (
-                    <div
-                      key={ind.id}
-                      className={isLocked ? "locked-industry" : ""}
-                      style={{
-                        background: s.active ? "#fff" : "#EDE8DC",
-                        border: `1px solid ${isLocked ? "#DDD6C8" : "#E2D9C8"}`,
-                        borderRadius: 16,
-                        padding: "16px 18px",
-                        transition: "all 0.2s",
-                        boxShadow:
-                          s.active && !isLocked
-                            ? "0 2px 12px rgba(28,23,18,0.06)"
-                            : "none",
-                        position: "relative",
-                      }}
+                    <div key={ind.id}
+                      className={`border rounded-2xl transition-all duration-300 overflow-hidden ${
+                        locked
+                          ? 'border-[#E2D9C8] bg-[#F0EBE0] opacity-60'
+                          : s.active
+                          ? 'border-[#B8860B]/50 bg-white shadow-lg shadow-amber-100/50'
+                          : 'border-[#E2D9C8] bg-[#EDEADD] hover:border-[#B8860B]/30 hover:bg-white cursor-pointer'
+                      }`}
+                      onClick={() => { if (!locked && !s.active) toggleInd(ind.id); }}
                     >
-                      {/* Industry header row */}
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 12,
-                          marginBottom: s.active && !isLocked ? 14 : 0,
-                        }}
-                      >
-                        <span style={{ fontSize: 22 }}>{ind.icon}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div
-                            style={{
-                              fontSize: 14,
-                              fontWeight: 600,
-                              color: isLocked
-                                ? "#9A8F82"
-                                : s.active
-                                ? "#1C1712"
-                                : "#9A8F82",
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                            }}
-                          >
+                      {/* Card header */}
+                      <div className="flex items-center gap-3 p-4 md:p-5">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 transition-colors ${
+                          s.active && !locked ? 'bg-amber-50' : 'bg-[#F5F0E8]'
+                        }`}>
+                          {ind.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-bold truncate ${locked ? 'text-[#9A8F82]' : s.active ? 'text-[#1C1712]' : 'text-[#7A6E60]'}`}>
                             {ind.label}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: "#9A8F82",
-                              marginTop: 2,
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {ind.desc}
-                          </div>
+                          </p>
+                          <p className="text-[11px] text-[#9A8F82] truncate">{ind.desc}</p>
                         </div>
 
-                        {/* Toggle OR Coming Soon badge */}
-                        {isLocked ? (
-                          <span className="coming-soon-badge">
-                            🔒 Coming Soon
+                        {/* Toggle or badge */}
+                        {locked ? (
+                          <span className="flex-shrink-0 text-[9px] font-bold text-[#9A8F82] bg-[#E2D9C8] border border-[#CFC8B8] px-2.5 py-1 rounded-full uppercase tracking-wide">
+                            🔒 Soon
                           </span>
                         ) : (
                           <div
-                            onClick={() => toggleInd(ind.id)}
-                            style={{
-                              width: 42,
-                              height: 22,
-                              borderRadius: 22,
-                              background: s.active ? "#B8860B" : "#D5CFC3",
-                              border: `1px solid ${
-                                s.active ? "#B8860B" : "#C5BFB3"
-                              }`,
-                              position: "relative",
-                              cursor: "pointer",
-                              transition: "all 0.2s",
-                              flexShrink: 0,
-                            }}
+                            onClick={(e) => { e.stopPropagation(); toggleInd(ind.id); }}
+                            className={`flex-shrink-0 w-11 h-6 rounded-full border transition-all duration-200 relative cursor-pointer ${
+                              s.active ? 'bg-[#B8860B] border-[#B8860B]' : 'bg-[#D5CFC3] border-[#C5BFB3]'
+                            }`}
                           >
-                            <div
-                              style={{
-                                width: 16,
-                                height: 16,
-                                borderRadius: "50%",
-                                background: "#fff",
-                                position: "absolute",
-                                top: 2,
-                                left: s.active ? 21 : 2,
-                                transition: "left 0.2s",
-                                boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
-                              }}
-                            />
+                            <div className={`absolute top-[3px] w-[18px] h-[18px] bg-white rounded-full shadow-sm transition-all duration-200 ${
+                              s.active ? 'left-[22px]' : 'left-[3px]'
+                            }`} />
                           </div>
                         )}
                       </div>
 
-                      {/* Plan buttons — only for unlocked + active */}
-                      {s.active && !isLocked && (
-                        <div className="plan-buttons" style={{ display: "flex", gap: 8 }}>
+                      {/* Plan selection — expands when active */}
+                      {s.active && !locked && (
+                        <div className="px-4 md:px-5 pb-4 md:pb-5 border-t border-[#F0EBE0] pt-4">
                           {PLANS.map((p) => {
                             const sel = s.plan === p.id;
                             return (
-                              <button
-                                key={p.id}
-                                className="plan-btn"
+                              <button key={p.id}
                                 onClick={() => selectPlan(ind.id, p.id)}
-                                style={{
-                                  flex: 1,
-                                  padding: "11px 6px",
-                                  borderRadius: 12,
-                                  border: sel
-                                    ? `2px solid ${p.color}`
-                                    : "1.5px solid #E2D9C8",
-                                  background: sel ? p.bgLight : "#F5F0E8",
-                                  cursor: "pointer",
-                                  transition: "all 0.15s",
-                                  textAlign: "center",
-                                }}
+                                className={`w-full rounded-xl border-2 p-3 md:p-4 text-left transition-all duration-200 ${
+                                  sel ? 'border-[#B8860B] bg-amber-50' : 'border-[#E2D9C8] bg-[#F5F0E8] hover:border-[#B8860B]/40'
+                                }`}
                               >
-                                <div
-                                  className="plan-btn-label"
-                                  style={{
-                                    fontSize: 10,
-                                    fontWeight: 600,
-                                    color: sel ? p.color : "#9A8F82",
-                                    marginBottom: 3,
-                                    textTransform: "uppercase",
-                                    letterSpacing: "0.04em",
-                                  }}
-                                >
-                                  {p.label}
-                                </div>
-                                <div
-                                  className="plan-btn-price"
-                                  style={{
-                                    fontSize: 16,
-                                    fontWeight: 700,
-                                    color: sel ? "#1C1712" : "#7A6E60",
-                                  }}
-                                >
-                                  {fmt(p.price)}
-                                </div>
-                                <div
-                                  style={{
-                                    fontSize: 10,
-                                    color: sel ? "#7A6E60" : "#9A8F82",
-                                    marginTop: 2,
-                                  }}
-                                >
-                                  {p.users}
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-xs font-bold uppercase tracking-wide ${sel ? 'text-[#B8860B]' : 'text-[#9A8F82]'}`}>
+                                      {p.label}
+                                    </span>
+                                    {sel && <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Selected ✓</span>}
+                                  </div>
+                                  <div className="text-right">
+                                    <p className={`text-lg font-bold ${sel ? 'text-[#1C1712]' : 'text-[#7A6E60]'}`}>{fmt(p.price)}</p>
+                                    <p className="text-[10px] text-[#9A8F82]">/month · {p.users}</p>
+                                  </div>
                                 </div>
                                 {sel && (
-                                  <div
-                                    style={{
-                                      marginTop: 8,
-                                      display: "flex",
-                                      flexDirection: "column",
-                                      gap: 3,
-                                    }}
-                                  >
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3 pt-3 border-t border-amber-200/50">
                                     {p.features.map((f) => (
-                                      <div
-                                        key={f}
-                                        style={{
-                                          fontSize: 9,
-                                          color: p.color,
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "center",
-                                          gap: 3,
-                                        }}
-                                      >
-                                        <span style={{ fontWeight: 700 }}>✓</span>{" "}
-                                        {f}
+                                      <div key={f} className="flex items-center gap-1.5 text-[10px] text-[#B8860B] font-medium">
+                                        <span className="font-bold text-xs">✓</span> {f}
                                       </div>
                                     ))}
                                   </div>
@@ -656,172 +465,114 @@ export default function GKCRMPricing() {
                 })}
               </div>
 
-              {/* Mobile: Quick CTA below list */}
-              <div
-                className="mobile-summary-btn"
-                style={{
-                  display: "none",
-                  marginTop: 20,
-                  flexDirection: "column",
-                  gap: 10,
-                }}
-              >
+              {/* Bundle discount note */}
+              <div className="mt-5 flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                <span className="text-emerald-600 text-lg">🎉</span>
+                <div>
+                  <p className="text-xs font-bold text-emerald-800">Bundle discount available</p>
+                  <p className="text-[11px] text-emerald-700">Select 2+ industries on the same plan → save 10% automatically</p>
+                </div>
+              </div>
+
+              {/* Mobile CTA */}
+              <div className="mobile-cta hidden mt-5 flex-col gap-3">
                 {summary.total > 0 && (
-                  <div
-                    style={{
-                      background: "#1C1712",
-                      borderRadius: 14,
-                      padding: "14px 18px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
+                  <div className="bg-[#1C1712] rounded-2xl p-4 flex items-center justify-between">
                     <div>
-                      <div
-                        style={{
-                          fontSize: 10,
-                          color: "rgba(255,255,255,0.4)",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.06em",
-                          marginBottom: 2,
-                        }}
-                      >
-                        Total / month
-                      </div>
-                      <div
-                        style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}
-                      >
-                        {fmt(summary.total)}
-                      </div>
-                      {summary.savings > 0 && (
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#4ade80",
-                            marginTop: 2,
-                          }}
-                        >
-                          Saving {fmt(summary.savings)}
-                        </div>
-                      )}
+                      <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Total / month</p>
+                      <p className="font-serif text-2xl text-white">{fmt(summary.total)}</p>
+                      {summary.savings > 0 && <p className="text-xs text-emerald-400 mt-0.5">Saving {fmt(summary.savings)}</p>}
                     </div>
-                    <button
-                      onClick={() => setShowSummary(true)}
-                      style={{
-                        fontSize: 12,
-                        color: "#B8860B",
-                        background: "rgba(184,134,11,0.12)",
-                        border: "1px solid rgba(184,134,11,0.2)",
-                        padding: "8px 14px",
-                        borderRadius: 10,
-                        cursor: "pointer",
-                        fontWeight: 600,
-                      }}
-                    >
+                    <button onClick={() => setShowSummary(true)}
+                      className="text-xs font-bold text-[#B8860B] bg-[#B8860B]/10 border border-[#B8860B]/20 px-4 py-2 rounded-xl">
                       View Plan →
                     </button>
                   </div>
                 )}
-
-                <button
-                  onClick={handleStartTrial}
-                  style={{
-                    width: "100%",
-                    padding: 16,
-                    borderRadius: 14,
-                    border: "none",
-                    background: "#B8860B",
-                    color: "#fff",
-                    fontSize: 15,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
+                <button onClick={handleStartTrial}
+                  className="w-full bg-[#B8860B] text-white py-4 rounded-xl font-bold hover:bg-[#9A7009] transition-all">
                   Start Free Trial →
                 </button>
-                <div style={{ textAlign: "center", fontSize: 11, color: "#9A8F82" }}>
-                  14-day free trial
+                <p className="text-center text-xs text-[#9A8F82]">14-day free · No credit card</p>
+              </div>
+            </div>
+
+            {/* RIGHT: Sticky summary */}
+            <div className="pricing-sticky" style={{ position: 'sticky', top: 24, alignSelf: 'start' }}>
+              { renderSummary() }
+
+              {/* Guarantee badge */}
+              <div className="mt-4 bg-white border border-[#E2D9C8] rounded-2xl p-4 flex items-center gap-3">
+                <span className="text-2xl flex-shrink-0">🛡️</span>
+                <div>
+                  <p className="text-xs font-bold text-[#1C1712]">7-day money-back guarantee</p>
+                  <p className="text-[11px] text-[#9A8F82]">Not satisfied? Full refund, no questions asked.</p>
                 </div>
               </div>
 
-
-            </div>
-
-            {/* Right: Summary sticky (desktop) */}
-            <div className="pricing-sticky" style={{ position: "sticky", top: 24 }}>
-              <SummaryPanel />
-
+              {/* Support note */}
+              <div className="mt-3 text-center">
+                <p className="text-[11px] text-[#9A8F82]">
+                  Need a custom plan?{" "}
+                  <a href="https://wa.me/919876543210" target="_blank" rel="noreferrer"
+                    className="text-[#B8860B] font-semibold hover:underline">
+                    WhatsApp us →
+                  </a>
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Mobile: Bottom sheet summary modal */}
-      {showSummary && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 100,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-end",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "rgba(0,0,0,0.5)",
-            }}
-            onClick={() => setShowSummary(false)}
-          />
-          <div
-            style={{
-              position: "relative",
-              background: "#1C1712",
-              borderRadius: "20px 20px 0 0",
-              padding: "20px 16px 32px",
-              maxHeight: "85vh",
-              overflowY: "auto",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 16,
-              }}
-            >
-              <p
-                style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: "rgba(255,255,255,0.7)",
-                  margin: 0,
-                }}
-              >
-                Plan Summary
-              </p>
-              <button
-                onClick={() => setShowSummary(false)}
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "50%",
-                  background: "rgba(255,255,255,0.1)",
-                  border: "none",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontSize: 16,
-                }}
-              >
-                ✕
-              </button>
+      {/* ── WHAT'S INCLUDED ───────────────────────────────────────────── */}
+      <WhatIncludedSection />
+
+      {/* ── AI TOOLS TEASER ───────────────────────────────────────────── */}
+      <AITeaserSection />
+
+      {/* ── PRICING FAQ ───────────────────────────────────────────────── */}
+      <PricingFAQ />
+
+      {/* ── BOTTOM CTA ────────────────────────────────────────────────── */}
+      <div className="bg-[#F5F0E8] pb-16 md:pb-24">
+        <div className="max-w-5xl mx-auto px-4 md:px-6">
+          <div className="bg-[#1C1712] rounded-3xl p-8 md:p-12 relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10" style={{
+              backgroundImage: 'radial-gradient(circle at 30% 50%, #B8860B, transparent 50%), radial-gradient(circle at 70% 50%, #7C3AED, transparent 50%)',
+            }} />
+            <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
+              <div>
+                <p className="text-xs font-bold text-[#B8860B] uppercase tracking-[4px] mb-2">Questions?</p>
+                <h3 className="font-serif text-2xl md:text-3xl text-white mb-2">We're here before you sign up</h3>
+                <p className="text-sm text-white/50">Talk to our team — no sales pitch, just honest answers.</p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+                <a href="https://wa.me/919876543210" target="_blank" rel="noreferrer"
+                  className="flex items-center gap-2 bg-[#25D366] text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-[#1ea952] transition-all">
+                  💬 WhatsApp Us
+                </a>
+                <a href="mailto:support@gkcrm.in"
+                  className="flex items-center gap-2 border-2 border-white/20 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-white/10 transition-all">
+                  📧 Email Support
+                </a>
+              </div>
             </div>
-            <SummaryPanel />
+          </div>
+        </div>
+      </div>
+
+      {/* ── MOBILE SUMMARY BOTTOM SHEET ───────────────────────────────── */}
+      {showSummary && (
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowSummary(false)} />
+          <div className="relative bg-[#1C1712] rounded-t-3xl p-5 pb-8 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <p className="text-sm font-bold text-white/70">Plan Summary</p>
+              <button onClick={() => setShowSummary(false)}
+                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white text-sm">✕</button>
+            </div>
+            { renderSummary() }
           </div>
         </div>
       )}
