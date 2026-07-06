@@ -78,7 +78,8 @@ function buildNavGroups(industrySlug: string) {
     {
       section: 'SYSTEM', icon: '⚙️',
       items: [
-        { label: 'Settings', icon: '⚙️', href: '/dashboard/settings' },
+        { label: 'Settings',         icon: '⚙️', href: '/dashboard/settings'         },
+        { label: 'Company Settings', icon: '🏢', href: '/dashboard/settings/company' },
       ],
     },
   ]

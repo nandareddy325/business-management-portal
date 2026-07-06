@@ -12,15 +12,45 @@ export default async function RNRPage() {
   const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
   if (!profile?.company_id) redirect('/login')
 
-  const { data: rnrLeads } = await supabase
-    .from('leads').select('*')
-    .eq('company_id', profile.company_id)
-    .eq('industry', 'interior-design')
-    .eq('pipeline_stage', 'rnr')
-    .order('created_at', { ascending: false })
+  // ── Pagination fix — bypass Supabase 1000 row limit ──
+  let leads: any[] = []
+  let page = 0
+  const PAGE_SIZE = 1000
 
-  const leads = rnrLeads ?? []
+  while (true) {
+    const { data: batch, error } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('company_id', profile.company_id)
+      .eq('industry', 'interior-design')
+      .eq('pipeline_stage', 'rnr')
+      .order('created_at', { ascending: false })
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+
+    if (error || !batch || batch.length === 0) break
+    leads = [...leads, ...batch]
+    if (batch.length < PAGE_SIZE) break
+    page++
+  }
+
   const count = leads.length
+
+  // ── IST date helpers ──
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+  const nowUTC = Date.now()
+  const istDateStr = new Date(nowUTC + IST_OFFSET_MS).toISOString().split('T')[0]
+  const todayStart = new Date(`${istDateStr}T00:00:00+05:30`)
+  const todayEnd   = new Date(`${istDateStr}T23:59:59+05:30`)
+  const tomorrowStr = new Date(nowUTC + IST_OFFSET_MS + 86400000).toISOString().split('T')[0]
+  const tomorrowStart = new Date(`${tomorrowStr}T00:00:00+05:30`)
+  const tomorrowEnd   = new Date(`${tomorrowStr}T23:59:59+05:30`)
+
+  // ── Grouping ──
+  const overdueLeads   = leads.filter((l: any) => l.rnr_callback_date && new Date(l.rnr_callback_date) < todayStart)
+  const todayLeads     = leads.filter((l: any) => l.rnr_callback_date && new Date(l.rnr_callback_date) >= todayStart && new Date(l.rnr_callback_date) <= todayEnd)
+  const tomorrowLeads  = leads.filter((l: any) => l.rnr_callback_date && new Date(l.rnr_callback_date) >= tomorrowStart && new Date(l.rnr_callback_date) <= tomorrowEnd)
+  const upcomingLeads  = leads.filter((l: any) => l.rnr_callback_date && new Date(l.rnr_callback_date) > tomorrowEnd)
+  const noDateLeads    = leads.filter((l: any) => !l.rnr_callback_date)
 
   return (
     <div className="space-y-5 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
@@ -34,15 +64,17 @@ export default async function RNRPage() {
         </div>
         <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
           style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
-          <Phone className="w-4 h-4" />RNR Stage
+          <Phone className="w-4 h-4" /> RNR Stage
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Total RNR',     value: count,                                              color: '#DC2626' },
-          { label: 'With Budget',   value: leads.filter((l: any) => l.budget).length,          color: '#B8860B' },
-          { label: 'High Interest', value: leads.filter((l: any) => l.interest === 'High').length, color: '#059669' },
+          { label: 'Total RNR',   value: count,                color: '#DC2626' },
+          { label: 'Overdue',     value: overdueLeads.length,  color: '#B91C1C' },
+          { label: 'Today',       value: todayLeads.length,    color: '#D97706' },
+          { label: 'With Budget', value: leads.filter((l: any) => l.budget).length, color: '#B8860B' },
         ].map((s, i) => (
           <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
             <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
@@ -51,15 +83,26 @@ export default async function RNRPage() {
         ))}
       </div>
 
-      {count > 0 && (
+      {/* Overdue alert */}
+      {overdueLeads.length > 0 && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
           style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
           <Phone className="w-4 h-4 text-red-600 flex-shrink-0" />
-          <p className="text-sm font-bold text-red-700">{count} leads not responding — retry calling them!</p>
+          <p className="text-sm font-bold text-red-700">
+            {overdueLeads.length} callback{overdueLeads.length > 1 ? 's' : ''} overdue — retry calling them!
+          </p>
         </div>
       )}
 
-      <RnrClient leads={leads} count={count} />
+      <RnrClient
+        leads={leads}
+        count={count}
+        overdueLeads={overdueLeads}
+        todayLeads={todayLeads}
+        tomorrowLeads={tomorrowLeads}
+        upcomingLeads={upcomingLeads}
+        noDateLeads={noDateLeads}
+      />
     </div>
   )
 }

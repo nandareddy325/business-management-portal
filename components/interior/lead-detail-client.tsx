@@ -29,6 +29,7 @@ const ACTIVITY_ICONS: Record<string, { icon: string; color: string; bg: string }
   quotation:    { icon: '💰', color: '#DB2777', bg: '#FCE7F3' },
   followup:     { icon: '🔔', color: '#D97706', bg: '#FEF3C7' },
   won:          { icon: '🏆', color: '#059669', bg: '#D1FAE5' },
+  rnr:          { icon: '📵', color: '#DC2626', bg: '#FEF2F2' },
 }
 
 const C = {
@@ -57,13 +58,19 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const [activities, setActivities] = useState(initialActivities)
   const [savingStage, setSavingStage] = useState<string | null>(null)
 
-  // ✅ NEW: current user's employee id (used for assigned_to so it satisfies RLS with_check)
   const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null)
 
   const [showModal, setShowModal] = useState(false)
   const [noteText, setNoteText] = useState('')
   const [noteType, setNoteType] = useState<'note'|'call'|'sitevisit'|'quotation'>('call')
   const [savingNote, setSavingNote] = useState(false)
+
+  // ── RNR Popup State (NEW) ──
+  const [showRnrPopup, setShowRnrPopup] = useState(false)
+  const [rnrNote, setRnrNote] = useState('')
+  const [rnrCallBackDate, setRnrCallBackDate] = useState(getTomorrow())
+  const [rnrCallBackTime, setRnrCallBackTime] = useState(getNextHour())
+  const [savingRnr, setSavingRnr] = useState(false)
 
   const [showFollowUpPopup, setShowFollowUpPopup] = useState(false)
   const [followUpDate, setFollowUpDate] = useState(getTomorrow())
@@ -78,7 +85,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const [svNote, setSvNote] = useState('')
   const [savingSV, setSavingSV] = useState(false)
 
-  // ✅ NEW: Mark Visit Completed state
   const [markingComplete, setMarkingComplete] = useState(false)
 
   const [showQuotationPopup, setShowQuotationPopup] = useState(false)
@@ -122,7 +128,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     setLoadingRevisions(false)
   }
 
-  // ✅ NEW: load the logged-in user's employee id (used as assigned_to)
   const loadEmployeeId = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -136,9 +141,11 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
 
   useEffect(() => { loadRevisions(); loadEmployeeId() }, [])
 
-  // ── Stage Change — auto logs call ──
+  // ── Stage Change ──
   const handleStageChange = async (stageKey: string) => {
     if (savingStage) return
+    // ✅ RNR — show popup instead of direct save
+    if (stageKey === 'rnr')       { setRnrNote(''); setRnrCallBackDate(getTomorrow()); setRnrCallBackTime(getNextHour()); setShowRnrPopup(true); return }
     if (stageKey === 'followup')  { setFollowUpDate(getTomorrow()); setFollowUpTime(getNextHour()); setFollowUpNote(''); setShowFollowUpPopup(true); return }
     if (stageKey === 'sitevisit') { setSvDate(getTomorrow()); setSvTime('10:00'); setSvType('before_quotation'); setSvNote(''); setShowSiteVisitPopup(true); return }
     if (stageKey === 'quotation') { setQtDate(getTomorrow()); setQtTime('11:00'); setQtType('after_sitevisit'); setQtAmount(''); setQtNote(''); setQtPdfFile(null); setShowQuotationPopup(true); return }
@@ -151,9 +158,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     await supabase.from('leads').update({ pipeline_stage: stageKey, assigned_to: myEmployeeId }).eq('id', leadId)
     try {
       const now = new Date().toISOString()
-      // ✅ Auto log call for RNR and Lost — CRE called the client
       const callDescMap: Record<string, string> = {
-        rnr:  'Called — Ring No Response',
         lost: 'Called — Not interested / dropped',
       }
       const callDesc = callDescMap[stageKey]
@@ -173,7 +178,53 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     setSavingStage(null)
   }
 
-  // ── Follow Up — auto logs call ──
+  // ── RNR Save (NEW) ──
+  const handleSaveRnr = async () => {
+    setSavingRnr(true)
+    const prev = lead.pipeline_stage
+    const { data: { user } } = await supabase.auth.getUser()
+    const callBackDt = rnrCallBackDate && rnrCallBackTime
+      ? new Date(`${rnrCallBackDate}T${rnrCallBackTime}:00`).toISOString()
+      : null
+    try {
+      await supabase.from('leads').update({
+        pipeline_stage: 'rnr',
+        assigned_to: myEmployeeId,
+      }).eq('id', leadId)
+      setLead((l: any) => ({ ...l, pipeline_stage: 'rnr' }))
+
+      const nowRnr = new Date().toISOString()
+      // Auto call log
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'call', title: '📞 Call Logged',
+        description: `Called — Ring No Response${rnrNote.trim() ? ` · ${rnrNote.trim()}` : ''}`,
+        user_id: user?.id, created_at: nowRnr,
+      })
+      // RNR activity
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'rnr', title: '📵 RNR Marked',
+        description: [
+          'Ring No Response',
+          rnrNote.trim() ? rnrNote.trim() : null,
+          callBackDt ? `🔁 Try again: ${fmtDateTime(callBackDt)}` : null,
+        ].filter(Boolean).join(' · '),
+        stage_from: prev, stage_to: 'rnr',
+        user_id: user?.id, created_at: nowRnr,
+      })
+      if (prev !== 'rnr') {
+        await supabase.from('lead_activities').insert({
+          lead_id: leadId, type: 'stage_change', title: 'Stage Updated',
+          description: `${prev} → rnr`, stage_from: prev, stage_to: 'rnr',
+          user_id: user?.id, created_at: nowRnr,
+        })
+      }
+      await refreshActivities()
+      setShowRnrPopup(false)
+    } catch (e) { console.error(e) }
+    setSavingRnr(false)
+  }
+
+  // ── Follow Up ──
   const handleSaveFollowUp = async () => {
     if (!followUpDate || !followUpTime) return
     setSavingFollowUp(true)
@@ -188,7 +239,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       }).eq('id', leadId)
       setLead((l: any) => ({ ...l, pipeline_stage: 'followup', followup_date: dt, followup_note: followUpNote.trim()||null }))
       const nowFU = new Date().toISOString()
-      // ✅ Auto call log
       await supabase.from('lead_activities').insert({
         lead_id: leadId, type: 'call', title: '📞 Call Logged',
         description: `Called — Follow Up scheduled for ${fmtDateTime(dt)}`,
@@ -210,7 +260,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     setSavingFollowUp(false)
   }
 
-  // ── Site Visit — auto logs call ──
+  // ── Site Visit ──
   const handleSaveSiteVisit = async () => {
     if (!svDate || !svTime) return
     setSavingSV(true)
@@ -226,7 +276,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       }).eq('id', leadId)
       setLead((l: any) => ({ ...l, pipeline_stage: 'sitevisit', sitevisit_date: dt, sitevisit_type: svType, sitevisit_note: svNote.trim()||null, sitevisit_status: 'scheduled' }))
       const nowSV = new Date().toISOString()
-      // ✅ Auto call log
       await supabase.from('lead_activities').insert({
         lead_id: leadId, type: 'call', title: '📞 Call Logged',
         description: `Called — Site Visit confirmed for ${fmtDateTime(dt)}`,
@@ -248,7 +297,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     setSavingSV(false)
   }
 
-  // ✅ NEW: Mark Site Visit as Completed
   const handleMarkVisitCompleted = async () => {
     setMarkingComplete(true)
     const { data: { user } } = await supabase.auth.getUser()
@@ -278,7 +326,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     } catch { setQtPdfUploading(false); return null }
   }
 
-  // ── Quotation — auto logs call ──
+  // ── Quotation ──
   const handleSaveQuotation = async () => {
     if (!qtDate || !qtTime) return
     setSavingQT(true)
@@ -311,7 +359,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       setLead((l: any) => ({ ...l, pipeline_stage: 'quotation', quotation_date: dt, quotation_type: qtType, quotation_amount: qtAmount.trim()||null, quotation_note: qtNote.trim()||null, quotation_pdf_url: pdfUrl || l.quotation_pdf_url }))
 
       const nowQT = new Date().toISOString()
-      // ✅ Auto call log
       await supabase.from('lead_activities').insert({
         lead_id: leadId, type: 'call', title: '📞 Call Logged',
         description: `Called — Quotation discussed${qtAmount.trim()?` ₹${Number(qtAmount).toLocaleString('en-IN')}` : ''}`,
@@ -337,7 +384,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     setSavingQT(false)
   }
 
-  // ── Won — auto logs call ──
+  // ── Won ──
   const handleSaveWon = async () => {
     setSavingWon(true)
     const prev = lead.pipeline_stage
@@ -352,7 +399,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       }).eq('id', leadId)
       setLead((l: any) => ({ ...l, pipeline_stage: 'won', won_amount: wonAmount.trim()||null, won_note: wonNote.trim()||null }))
       const nowWon = new Date().toISOString()
-      // ✅ Auto call log
       await supabase.from('lead_activities').insert({
         lead_id: leadId, type: 'call', title: '📞 Call Logged',
         description: `Called — Deal closed!${wonAmount.trim()?` ₹${Number(wonAmount).toLocaleString('en-IN')}` : ''}`,
@@ -384,7 +430,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
         title: noteType==='note'?'Note added':noteType==='call'?'Call logged':noteType==='sitevisit'?'Site Visit':'Quotation',
         description: noteText.trim(), user_id: user?.id, created_at: new Date().toISOString(),
       })
-      // ✅ Any activity (call/note/sitevisit/quotation) claims the lead for this CRE
       const leadUpdate: any = { assigned_to: myEmployeeId }
       if (noteType === 'note') leadUpdate.notes = noteText.trim()
       await supabase.from('leads').update(leadUpdate).eq('id', leadId)
@@ -394,7 +439,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     setSavingNote(false)
   }
 
-  // Forward-only stage logic
   const STAGE_ORDER = ['new', 'rnr', 'followup', 'sitevisit', 'quotation', 'won', 'lost']
   const currentStageIdx = STAGE_ORDER.indexOf(lead.pipeline_stage)
   const isStageDisabled = (stageKey: string) => {
@@ -506,18 +550,11 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
                 <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background:lead.sitevisit_type==='before_quotation'?'#FEF3C7':'#FCE7F3',color:lead.sitevisit_type==='before_quotation'?'#92400E':'#9D174D',border:`1px solid ${lead.sitevisit_type==='before_quotation'?'#FDE68A':'#FBCFE8'}` }}>{lead.sitevisit_type==='before_quotation'?'📋 Before Quotation':'✅ After Quotation'}</span>
                 <button onClick={()=>{setSvDate(new Date(lead.sitevisit_date).toISOString().split('T')[0]);setSvTime(new Date(lead.sitevisit_date).toTimeString().slice(0,5));setSvType(lead.sitevisit_type||'before_quotation');setSvNote(lead.sitevisit_note||'');setShowSiteVisitPopup(true)}} className="text-[9px] font-bold px-2.5 py-1 rounded-lg" style={{ background:'#BAE6FD',color:'#0369A1',border:'1px solid #7DD3FC' }}>✏️ Edit</button>
                 {lead.sitevisit_status !== 'completed' ? (
-                  <button
-                    onClick={handleMarkVisitCompleted}
-                    disabled={markingComplete}
-                    className="text-[9px] font-bold px-2.5 py-1 rounded-lg disabled:opacity-50"
-                    style={{ background:'#059669', color:'#fff', border:'1px solid #059669' }}
-                  >
+                  <button onClick={handleMarkVisitCompleted} disabled={markingComplete} className="text-[9px] font-bold px-2.5 py-1 rounded-lg disabled:opacity-50" style={{ background:'#059669', color:'#fff', border:'1px solid #059669' }}>
                     {markingComplete ? '⏳ Saving...' : '✅ Mark Completed'}
                   </button>
                 ) : (
-                  <span className="text-[9px] font-bold px-2.5 py-1 rounded-full" style={{ background:'#D1FAE5', color:'#065F46', border:'1px solid #6EE7B7' }}>
-                    ✅ Completed
-                  </span>
+                  <span className="text-[9px] font-bold px-2.5 py-1 rounded-full" style={{ background:'#D1FAE5', color:'#065F46', border:'1px solid #6EE7B7' }}>✅ Completed</span>
                 )}
               </div>
             </div>
@@ -542,7 +579,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
           </div>
         )}
 
-        {/* Quotation card with version history */}
+        {/* Quotation card */}
         {lead.pipeline_stage==='quotation'&&(
           <div className="rounded-2xl overflow-hidden" style={{ background:'#FDF2F8',border:'1px solid #FBCFE8',boxShadow:'0 2px 8px rgba(219,39,119,0.1)' }}>
             <div className="p-4">
@@ -565,7 +602,6 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
                 </a>
               )}
             </div>
-
             {revisions.length > 0 && (
               <div style={{ borderTop:'1px solid #FBCFE8' }}>
                 <button onClick={() => setShowRevisions(!showRevisions)} className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold" style={{ color:'#9D174D',background:showRevisions?'#FCE7F3':'transparent' }}>
@@ -666,6 +702,101 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
           )}
         </div>
       </div>
+
+      {/* ════════════════════════════════════════
+          RNR POPUP  (NEW)
+      ════════════════════════════════════════ */}
+      {showRnrPopup&&(
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{ animation:'fadeIn 0.2s ease' }}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowRnrPopup(false)}/>
+          <div className="relative w-full max-w-sm scale-in" style={{ background:'#FFF5F5',border:'1px solid #FECACA',borderRadius:24,boxShadow:'0 24px 60px rgba(220,38,38,0.18)' }}>
+            {/* Header */}
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #FECACA' }}>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{ background:'#FEF2F2',border:'1px solid #FECACA' }}>📵</div>
+                <div>
+                  <p className="text-sm font-black" style={{ color:'#7F1D1D' }}>Mark RNR</p>
+                  <p className="text-[10px]" style={{ color:'#DC2626' }}>{lead.lead_name}</p>
+                </div>
+              </div>
+              <button onClick={()=>setShowRnrPopup(false)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:'#FEF2F2',color:'#DC2626' }}>✕</button>
+            </div>
+
+            <div className="p-5 space-y-4">
+
+              {/* Info banner */}
+              <div className="flex items-start gap-3 px-3 py-3 rounded-xl" style={{ background:'#FEF2F2',border:'1px solid #FECACA' }}>
+                <span className="text-base mt-0.5">📞</span>
+                <p className="text-[11px] leading-relaxed" style={{ color:'#991B1B' }}>
+                  Call will be logged automatically as <strong>Ring No Response</strong>.
+                </p>
+              </div>
+
+              {/* Call Back Date & Time */}
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'#DC2626' }}>🔁 Try Again (Optional)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DC2626' }}>📅 Date</label>
+                    <input type="date" value={rnrCallBackDate} min={new Date().toISOString().split('T')[0]}
+                      onChange={e=>setRnrCallBackDate(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none"
+                      style={{ background:'#FEF2F2',border:'1px solid #FECACA',color:'#7F1D1D' }}/>
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DC2626' }}>🕐 Time</label>
+                    <input type="time" value={rnrCallBackTime}
+                      onChange={e=>setRnrCallBackTime(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none"
+                      style={{ background:'#FEF2F2',border:'1px solid #FECACA',color:'#7F1D1D' }}/>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick pick */}
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'#DC2626' }}>Quick Pick</p>
+                <QuickTimes value={rnrCallBackTime} onChange={setRnrCallBackTime} color="#DC2626"/>
+              </div>
+
+              {/* Note */}
+              <div>
+                <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DC2626' }}>📝 Note (Optional)</label>
+                <textarea rows={2} value={rnrNote} onChange={e=>setRnrNote(e.target.value)}
+                  placeholder="E.g. Called 3 times, busy tone..."
+                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
+                  style={{ background:'#FEF2F2',border:'1px solid #FECACA',color:'#7F1D1D' }}
+                  onFocus={e=>(e.target.style.borderColor='#FCA5A5')}
+                  onBlur={e=>(e.target.style.borderColor='#FECACA')}/>
+              </div>
+
+              {/* Summary preview */}
+              {rnrCallBackDate&&rnrCallBackTime&&(
+                <div className="px-3 py-2.5 rounded-xl" style={{ background:'#FEF2F2',border:'1px solid #FECACA' }}>
+                  <p className="text-[9px] font-bold uppercase tracking-wider mb-0.5" style={{ color:'#B91C1C' }}>Try Again At</p>
+                  <p className="text-sm font-black" style={{ color:'#7F1D1D' }}>
+                    {fmtDateTime(new Date(`${rnrCallBackDate}T${rnrCallBackTime}:00`).toISOString())}
+                  </p>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-1">
+                <button onClick={()=>setShowRnrPopup(false)}
+                  className="flex-1 py-3 rounded-xl text-sm font-medium"
+                  style={{ background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA' }}>
+                  Cancel
+                </button>
+                <button onClick={handleSaveRnr} disabled={savingRnr}
+                  className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40"
+                  style={{ background:'linear-gradient(135deg,#B91C1C,#DC2626)',boxShadow:'0 6px 18px rgba(220,38,38,0.3)' }}>
+                  {savingRnr ? '⏳ Saving...' : '📵 Mark RNR'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FOLLOW UP POPUP */}
       {showFollowUpPopup&&(

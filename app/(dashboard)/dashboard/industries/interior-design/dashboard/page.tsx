@@ -24,10 +24,24 @@ export default async function InteriorDesignDashboard() {
   const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
   if (!profile?.company_id) redirect('/login')
 
-  // ── Leads data ──
-  const { data: allLeads } = await supabase
-    .from('leads').select('id, pipeline_stage, budget, created_at, lead_name, phone, notes')
-    .eq('company_id', profile.company_id).eq('industry', 'interior-design')
+  // ── Leads data — FIXED: Pagination to bypass Supabase 1000 row limit ──
+  let allLeads: any[] = []
+  let page = 0
+  const PAGE_SIZE = 1000
+
+  while (true) {
+    const { data: batch, error } = await supabase
+      .from('leads')
+      .select('id, pipeline_stage, budget, created_at, lead_name, phone, notes')
+      .eq('company_id', profile.company_id)
+      .eq('industry', 'interior-design')
+      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
+
+    if (error || !batch || batch.length === 0) break
+    allLeads = [...allLeads, ...batch]
+    if (batch.length < PAGE_SIZE) break
+    page++
+  }
 
   const stageCounts: Record<string, number> = {}
   STAGES.forEach(s => { stageCounts[s.key] = 0 })
@@ -203,7 +217,8 @@ export default async function InteriorDesignDashboard() {
             })}
           </div>
         </div>
-{/* TEAM PERFORMANCE */}
+
+        {/* TEAM PERFORMANCE */}
         <div className="fade-up">
           <TodayCallsSection
             todayCalls={todayCalls}
@@ -212,7 +227,6 @@ export default async function InteriorDesignDashboard() {
             companyId={profile.company_id}
           />
         </div>
-        
 
         <p className="text-center text-[10px] pb-2" style={{ color:'#C4BAB0' }}>
           Interior Design Pipeline · GK CRM · Live data
