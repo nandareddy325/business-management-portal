@@ -190,8 +190,9 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       await supabase.from('leads').update({
         pipeline_stage: 'rnr',
         assigned_to: myEmployeeId,
+        rnr_callback_date: callBackDt ?? null,  // ✅ save callback date
       }).eq('id', leadId)
-      setLead((l: any) => ({ ...l, pipeline_stage: 'rnr' }))
+      setLead((l: any) => ({ ...l, pipeline_stage: 'rnr', rnr_callback_date: callBackDt ?? null }))
 
       const nowRnr = new Date().toISOString()
       // Auto call log
