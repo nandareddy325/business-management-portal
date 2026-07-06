@@ -59,6 +59,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const [savingStage, setSavingStage] = useState<string | null>(null)
 
   const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null)
+  const [myRole, setMyRole] = useState<string>('employee')
 
   const [showModal, setShowModal] = useState(false)
   const [noteText, setNoteText] = useState('')
@@ -137,6 +138,12 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const loadEmployeeId = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    if (profile?.role) setMyRole(profile.role)
     const { data } = await supabase
       .from('employees')
       .select('id')
@@ -472,7 +479,12 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
 
   const STAGE_ORDER = ['new', 'rnr', 'followup', 'sitevisit', 'quotation', 'won', 'lost']
   const currentStageIdx = STAGE_ORDER.indexOf(lead.pipeline_stage)
+  const isAdmin = ['admin', 'tenant_admin', 'manager'].includes(myRole)
+
   const isStageDisabled = (stageKey: string) => {
+    // Admin — full freedom, any stage anytime
+    if (isAdmin) return false
+    // Employee — forward only, Lost always allowed
     const targetIdx = STAGE_ORDER.indexOf(stageKey)
     if (stageKey === 'lost') return false
     return targetIdx < currentStageIdx
