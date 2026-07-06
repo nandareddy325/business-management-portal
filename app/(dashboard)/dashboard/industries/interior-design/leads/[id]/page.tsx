@@ -4,13 +4,19 @@ import { LeadDetailClient } from '@/components/interior/lead-detail-client'
 
 export const dynamic = 'force-dynamic'
 
+// Normalize timestamp — ensure UTC (add Z if no timezone info)
+function normalizeTs(ts: string): string {
+  if (!ts) return ts
+  if (ts.includes('+') || ts.endsWith('Z')) return ts
+  return ts + 'Z'
+}
+
 export default async function LeadDetailPage({
   params,
 }: {
   params: Promise<{ id?: string; leadId?: string }> | { id?: string; leadId?: string }
 }) {
   const resolvedParams = params instanceof Promise ? await params : params
-  // Support both [id] and [leadId] folder names
   const leadId = resolvedParams.id || resolvedParams.leadId || ''
 
   const supabase = await createServerSupabaseClient()
@@ -50,6 +56,7 @@ export default async function LeadDetailPage({
 
     activities = (acts ?? []).map((a: any) => ({
       ...a,
+      created_at: normalizeTs(a.created_at),  // ✅ normalize
       user_name: a.user_id ? (userMap[a.user_id] || 'Unknown') : null
     }))
   } catch (e) {
@@ -62,7 +69,7 @@ export default async function LeadDetailPage({
       id: 'created', type: 'created',
       title: 'Lead Created',
       description: `Added via ${lead.source || 'manual entry'}`,
-      created_at: lead.created_at,
+      created_at: normalizeTs(lead.created_at),  // ✅ normalize
     }].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
   }
 

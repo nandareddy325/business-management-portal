@@ -45,6 +45,7 @@ function buildNavGroups(industrySlug: string) {
         { label: 'Quotations',    icon: '💰', href: `${IND}/quotations` },
         { label: 'Won / Closing', icon: '🏆', href: `${IND}/won`        },
         { label: 'Lost',          icon: '❌', href: `${IND}/lost`       },
+        { label: 'Handover',      icon: '📦', href: `${IND}/handover`   },
       ],
     },
     {
