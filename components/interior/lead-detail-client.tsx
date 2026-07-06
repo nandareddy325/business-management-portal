@@ -572,52 +572,50 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
               <a href={`tel:${lead.phone}`} className="text-sm font-bold font-mono block mb-3"
                 style={{ color:curStage.color }}>{lead.phone}</a>
 
-              {/* Stage pill + source */}
-              <div className="flex items-center flex-wrap gap-1.5">
-                <span className="pop-in inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black"
+              {/* All badges — single scrollable line */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth:'none' }}>
+                <span className="pop-in inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black flex-shrink-0"
                   style={{ background:`${curStage.color}18`, color:curStage.color, border:`1.5px solid ${curStage.color}35` }}>
                   {curStage.icon} {curStage.label}
                 </span>
                 {lead.source && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold"
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold flex-shrink-0"
                     style={{ background:'#F5F0E8', color:'#6B5E4E', border:'1px solid rgba(184,134,11,0.15)' }}>
                     📌 {lead.source}
                   </span>
                 )}
                 {lead.budget && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold"
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold flex-shrink-0"
                     style={{ background:'#FFFBEB', color:'#B8860B', border:'1px solid #FDE68A' }}>
                     💰 {lead.budget}
                   </span>
                 )}
-                <span className="text-[10px] ml-auto" style={{ color:'#C4BAB0' }}>{fmtDate(lead.created_at)}</span>
+                {lead.handover_date && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] font-bold flex-shrink-0"
+                    style={{ background:'#ECFEFF', color:'#0891B2', border:'1px solid #A5F3FC' }}>
+                    📦 {fmtDate(lead.handover_date)}
+                  </span>
+                )}
+                {lead.followup_date && lead.pipeline_stage==='followup' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] font-bold flex-shrink-0"
+                    style={{ background:'#FFFBEB', color:'#92400E', border:'1px solid #FDE68A' }}>
+                    🔔 {fmtDateTime(lead.followup_date)}
+                  </span>
+                )}
+                {lead.sitevisit_date && lead.pipeline_stage==='sitevisit' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] font-bold flex-shrink-0"
+                    style={{ background:'#E0F2FE', color:'#0369A1', border:'1px solid #BAE6FD' }}>
+                    🏠 {fmtDateTime(lead.sitevisit_date)}
+                  </span>
+                )}
+                {lead.quotation_date && lead.pipeline_stage==='quotation' && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] font-bold flex-shrink-0"
+                    style={{ background:'#FDF2F8', color:'#9D174D', border:'1px solid #FBCFE8' }}>
+                    💰 {revisions.length > 0 ? `v${revisions[0]?.version} · ` : ''}₹{lead.quotation_amount||'—'}
+                  </span>
+                )}
+                <span className="text-[10px] ml-auto flex-shrink-0 pl-2" style={{ color:'#C4BAB0' }}>{fmtDate(lead.created_at)}</span>
               </div>
-
-              {/* Scheduled badges */}
-              {lead.handover_date && (
-                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold"
-                  style={{ background:'#ECFEFF', color:'#0891B2', border:'1px solid #A5F3FC' }}>
-                  📦 Handover: {fmtDate(lead.handover_date)}
-                </div>
-              )}
-              {lead.followup_date && lead.pipeline_stage==='followup' && (
-                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold"
-                  style={{ background:'#FFFBEB', color:'#92400E', border:'1px solid #FDE68A' }}>
-                  🔔 {fmtDateTime(lead.followup_date)}
-                </div>
-              )}
-              {lead.sitevisit_date && lead.pipeline_stage==='sitevisit' && (
-                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold"
-                  style={{ background:'#E0F2FE', color:'#0369A1', border:'1px solid #BAE6FD' }}>
-                  🏠 {fmtDateTime(lead.sitevisit_date)}
-                </div>
-              )}
-              {lead.quotation_date && lead.pipeline_stage==='quotation' && (
-                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold"
-                  style={{ background:'#FDF2F8', color:'#9D174D', border:'1px solid #FBCFE8' }}>
-                  💰 {revisions.length > 0 ? `v${revisions[0]?.version} · ` : ''}₹{lead.quotation_amount||'—'}
-                </div>
-              )}
             </div>
           </div>
 
