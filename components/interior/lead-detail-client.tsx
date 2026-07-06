@@ -65,6 +65,12 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const [noteType, setNoteType] = useState<'note'|'call'|'sitevisit'|'quotation'>('call')
   const [savingNote, setSavingNote] = useState(false)
 
+  // ── Handover Date State ──
+  const [showHandoverPopup, setShowHandoverPopup] = useState(false)
+  const [handoverDate, setHandoverDate] = useState('')
+  const [handoverNote, setHandoverNote] = useState('')
+  const [savingHandover, setSavingHandover] = useState(false)
+
   // ── RNR Popup State (NEW) ──
   const [showRnrPopup, setShowRnrPopup] = useState(false)
   const [rnrNote, setRnrNote] = useState('')
@@ -176,6 +182,30 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       await refreshActivities()
     } catch {}
     setSavingStage(null)
+  }
+
+  // ── Handover Date Save ──
+  const handleSaveHandover = async () => {
+    if (!handoverDate) return
+    setSavingHandover(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    try {
+      const dt = new Date(`${handoverDate}T00:00:00`).toISOString()
+      await supabase.from('leads').update({
+        handover_date: dt,
+        assigned_to: myEmployeeId,
+      }).eq('id', leadId)
+      setLead((l: any) => ({ ...l, handover_date: dt }))
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'note', title: '📦 Handover Date Set',
+        description: `Handover scheduled for ${fmtDate(dt)}${handoverNote.trim() ? ` — ${handoverNote.trim()}` : ''}`,
+        user_id: user?.id, created_at: new Date().toISOString(),
+      })
+      await refreshActivities()
+      setShowHandoverPopup(false)
+      setHandoverNote('')
+    } catch (e) { console.error(e) }
+    setSavingHandover(false)
   }
 
   // ── RNR Save (NEW) ──
@@ -459,180 +489,305 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
     </div>
   )
 
+
   return (
-    <div style={{ background:C.bg, minHeight:'100vh', fontFamily:"'Inter', sans-serif" }}>
+    <div style={{ background:'#F7F4EF', minHeight:'100vh', fontFamily:"'Inter', sans-serif" }}>
       <style>{`
-        @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes scaleIn{from{opacity:0;transform:scale(0.94) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
-        .slide-up{animation:slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both}
-        .scale-in{animation:scaleIn 0.3s cubic-bezier(0.16,1,0.3,1) both}
-        .stage-btn{transition:all 0.2s ease}.stage-btn:hover{transform:translateY(-2px)}
-        .activity-item:hover{background:rgba(184,134,11,0.04)}.activity-item{transition:background 0.15s ease}
-        input[type="date"],input[type="time"]{color-scheme:light}
-        .pdf-drop:hover{border-color:#F9A8D4!important;background:#FFF5F9!important}
-        .pdf-drop{transition:all 0.2s ease}
-        .rev-row:hover{background:rgba(219,39,119,0.03)}
-        .rev-row{transition:background 0.15s ease}
+        @keyframes fadeUp   { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeIn   { from{opacity:0} to{opacity:1} }
+        @keyframes scaleIn  { from{opacity:0;transform:scale(0.93) translateY(14px)} to{opacity:1;transform:scale(1) translateY(0)} }
+        @keyframes popIn    { from{opacity:0;transform:scale(0.85)} to{opacity:1;transform:scale(1)} }
+        .fu1 { animation: fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) 0.00s both }
+        .fu2 { animation: fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) 0.07s both }
+        .fu3 { animation: fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) 0.14s both }
+        .fu4 { animation: fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) 0.21s both }
+        .fu5 { animation: fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) 0.28s both }
+        .scale-in { animation: scaleIn 0.32s cubic-bezier(0.16,1,0.3,1) both }
+        .pop-in   { animation: popIn  0.28s cubic-bezier(0.34,1.56,0.64,1) both }
+        .hvr { transition: all 0.18s ease }
+        .hvr:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.09) !important }
+        .stg { transition: all 0.18s ease }
+        .stg:hover:not(:disabled) { transform: scale(1.04) }
+        .act:hover { background: rgba(184,134,11,0.04) }
+        .act { transition: background 0.15s }
+        input[type="date"],input[type="time"] { color-scheme: light }
+        .pdf-drop { transition: all 0.2s }
+        .pdf-drop:hover { border-color:#F9A8D4!important; background:#FFF5F9!important }
+        .rev-row:hover { background: rgba(219,39,119,0.03) }
+        .rev-row { transition: background 0.15s }
       `}</style>
 
-      {/* HERO */}
-      <div style={{ background:`linear-gradient(160deg,${g[0]}12 0%,${C.bg} 55%)`, borderBottom:`1px solid ${C.border}` }}>
-        <div className="flex items-center justify-between px-5 pt-5 pb-4">
-          <button onClick={() => router.back()} className="flex items-center gap-2 text-sm font-semibold hover:opacity-70" style={{ color:C.textMuted }}>
-            <ArrowLeft className="w-4 h-4"/> Back
+      {/* ─── TOP BAR ─── */}
+      <div className="fu1 sticky top-0 z-20 px-4 py-3 flex items-center justify-between"
+        style={{ background:'rgba(247,244,239,0.92)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(0,0,0,0.06)' }}>
+        <button onClick={() => router.back()}
+          className="hvr flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold"
+          style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.08)', color:'#555', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+          <ArrowLeft className="w-3.5 h-3.5"/> Back
+        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowHandoverPopup(true)}
+            className="hvr flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold"
+            style={{ background:'#fff', border:'1px solid rgba(8,145,178,0.3)', color:'#0891B2', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+            📦 Handover Date
           </button>
-          <div className="flex items-center gap-2">
-            <a href={`tel:${lead.phone}`} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white hover:scale-105 transition-all"
-              style={{ background:'linear-gradient(135deg,#10B981,#059669)',boxShadow:'0 4px 14px rgba(16,185,129,0.3)' }}>
-              <Phone className="w-3.5 h-3.5"/> Call
-            </a>
-            <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold hover:scale-105 transition-all"
-              style={{ background:C.card,border:`1px solid ${C.border}`,color:C.gold,boxShadow:'0 2px 8px rgba(184,134,11,0.1)' }}>
-              <Plus className="w-3.5 h-3.5"/> Log Activity
-            </button>
-          </div>
+          <a href={`tel:${lead.phone}`}
+            className="hvr flex items-center gap-2 px-5 py-2 rounded-full text-sm font-black text-white"
+            style={{ background:'linear-gradient(135deg,#22C55E,#16A34A)', boxShadow:'0 4px 14px rgba(34,197,94,0.35)' }}>
+            <Phone className="w-3.5 h-3.5"/> Call
+          </a>
         </div>
+      </div>
 
-        <div className="px-5 pb-6 slide-up">
-          <div className="flex items-start gap-4 mb-5">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-xl font-black text-white flex-shrink-0 relative"
-              style={{ background:`linear-gradient(135deg,${g[0]},${g[1]})`,boxShadow:`0 10px 28px ${g[0]}40` }}>
-              {ini(lead.lead_name)}
-              <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px]"
-                style={{ background:curStage.color,border:`2px solid ${C.bg}` }}>{curStage.icon}</div>
+      {/* ─── HERO CARD ─── */}
+      <div className="px-4 pt-5 pb-3 fu2">
+        <div className="rounded-3xl p-5" style={{ background:'#fff', boxShadow:'0 4px 24px rgba(0,0,0,0.07)', border:'1px solid rgba(0,0,0,0.05)' }}>
+          <div className="flex items-start gap-4">
+            {/* Avatar */}
+            <div style={{ position:'relative', flexShrink:0 }}>
+              <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-black text-white"
+                style={{ background:`linear-gradient(135deg,${g[0]},${g[1]})`, boxShadow:`0 8px 24px ${g[0]}40` }}>
+                {ini(lead.lead_name)}
+              </div>
+              <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-xl flex items-center justify-center text-sm border-2 border-white"
+                style={{ background:curStage.color, boxShadow:`0 2px 8px ${curStage.color}50` }}>
+                {curStage.icon}
+              </div>
             </div>
-            <div className="flex-1 min-w-0 pt-1">
-              <h1 className="text-2xl font-black leading-tight" style={{ color:C.text }}>{lead.lead_name}</h1>
-              <a href={`tel:${lead.phone}`} className="text-sm font-mono mt-1 block" style={{ color:C.gold }}>{lead.phone}</a>
-              {lead.email && <p className="text-xs mt-0.5" style={{ color:C.textFaint }}>{lead.email}</p>}
+
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-black mb-0.5" style={{ color:'#1A1612', letterSpacing:'-0.02em' }}>{lead.lead_name}</h1>
+              <a href={`tel:${lead.phone}`} className="text-sm font-bold font-mono block mb-3"
+                style={{ color:curStage.color }}>{lead.phone}</a>
+
+              {/* Stage pill + source */}
+              <div className="flex items-center flex-wrap gap-1.5">
+                <span className="pop-in inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black"
+                  style={{ background:`${curStage.color}18`, color:curStage.color, border:`1.5px solid ${curStage.color}35` }}>
+                  {curStage.icon} {curStage.label}
+                </span>
+                {lead.source && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold"
+                    style={{ background:'#F5F0E8', color:'#6B5E4E', border:'1px solid rgba(184,134,11,0.15)' }}>
+                    📌 {lead.source}
+                  </span>
+                )}
+                {lead.budget && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold"
+                    style={{ background:'#FFFBEB', color:'#B8860B', border:'1px solid #FDE68A' }}>
+                    💰 {lead.budget}
+                  </span>
+                )}
+                <span className="text-[10px] ml-auto" style={{ color:'#C4BAB0' }}>{fmtDate(lead.created_at)}</span>
+              </div>
+
+              {/* Scheduled badges */}
+              {lead.handover_date && (
+                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold"
+                  style={{ background:'#ECFEFF', color:'#0891B2', border:'1px solid #A5F3FC' }}>
+                  📦 Handover: {fmtDate(lead.handover_date)}
+                </div>
+              )}
+              {lead.followup_date && lead.pipeline_stage==='followup' && (
+                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold"
+                  style={{ background:'#FFFBEB', color:'#92400E', border:'1px solid #FDE68A' }}>
+                  🔔 {fmtDateTime(lead.followup_date)}
+                </div>
+              )}
+              {lead.sitevisit_date && lead.pipeline_stage==='sitevisit' && (
+                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold"
+                  style={{ background:'#E0F2FE', color:'#0369A1', border:'1px solid #BAE6FD' }}>
+                  🏠 {fmtDateTime(lead.sitevisit_date)}
+                </div>
+              )}
+              {lead.quotation_date && lead.pipeline_stage==='quotation' && (
+                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold"
+                  style={{ background:'#FDF2F8', color:'#9D174D', border:'1px solid #FBCFE8' }}>
+                  💰 {revisions.length > 0 ? `v${revisions[0]?.version} · ` : ''}₹{lead.quotation_amount||'—'}
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap mb-3">
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background:`${curStage.color}15`,color:curStage.color,border:`1px solid ${curStage.color}35` }}>{curStage.icon} {curStage.label}</span>
-            {lead.followup_date&&lead.pipeline_stage==='followup'&&<span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background:'#FEF3C7',color:'#92400E',border:'1px solid #FDE68A' }}>🔔 {fmtDateTime(lead.followup_date)}</span>}
-            {lead.sitevisit_date&&lead.pipeline_stage==='sitevisit'&&<span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background:'#E0F2FE',color:'#0369A1',border:'1px solid #BAE6FD' }}>🏠 {fmtDateTime(lead.sitevisit_date)}</span>}
-            {lead.quotation_date&&lead.pipeline_stage==='quotation'&&<span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background:'#FCE7F3',color:'#9D174D',border:'1px solid #FBCFE8' }}>💰 {revisions.length > 0 ? `v${revisions[0]?.version} · ` : ''}₹{lead.quotation_amount||'—'}</span>}
-            {lead.budget&&<span className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background:'#FFFBEB',color:C.gold,border:'1px solid #FDE68A' }}>💰 {lead.budget}</span>}
-            {lead.source&&<span className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold" style={{ background:'rgba(184,134,11,0.08)',color:C.textMuted,border:`1px solid ${C.border}` }}>📌 {lead.source}</span>}
-            <span className="text-xs ml-auto" style={{ color:C.textFaint }}>{fmtDate(lead.created_at)}</span>
+          {/* Info row — 5 items in one line */}
+          <div className="flex items-center justify-between gap-2 mt-4 pt-4"
+            style={{ borderTop:'1px solid rgba(0,0,0,0.05)' }}>
+            {[
+              { icon:'📍', label:'City',        val:lead.city },
+              { icon:'🏗️', label:'Property',    val:lead.property_type },
+              { icon:'📅', label:'Added',       val:fmtDate(lead.created_at) },
+              { icon:'💰', label:'Budget',      val:lead.budget },
+              { icon:'💡', label:'Requirement', val:lead.interest },
+            ].map((x,i) => x.val ? (
+              <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-2xl flex-1"
+                style={{ background:'#F7F4EF' }}>
+                <span className="text-sm flex-shrink-0">{x.icon}</span>
+                <div className="min-w-0">
+                  <p className="text-[8px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ color:'#B8B0A0' }}>{x.label}</p>
+                  <p className="text-xs font-black truncate" style={{ color:'#1A1612' }}>{x.val}</p>
+                </div>
+              </div>
+            ) : null)}
           </div>
         </div>
       </div>
 
-      {/* BODY */}
-      <div className="p-5 space-y-4 max-w-4xl mx-auto">
-
-        {/* Info grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 slide-up">
-          {[{icon:MapPin,label:'City',value:lead.city},{icon:User,label:'Property',value:lead.property_type},{icon:Calendar,label:'Added',value:fmtDate(lead.created_at)},{icon:DollarSign,label:'Budget',value:lead.budget}]
-            .map((x,i)=>x.value?(<div key={i} className="rounded-2xl p-4" style={{ background:C.card,border:`1px solid ${C.border}`,boxShadow:'0 2px 8px rgba(184,134,11,0.06)' }}><div className="flex items-center gap-2 mb-2"><x.icon className="w-3.5 h-3.5" style={{ color:C.textFaint }}/><p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:C.textFaint }}>{x.label}</p></div><p className="text-sm font-bold" style={{ color:C.text }}>{x.value}</p></div>):null)}
+      {/* ─── STAGE SELECTOR ─── */}
+      <div className="px-4 pb-3 fu3">
+        <div className="rounded-3xl p-4" style={{ background:'#fff', boxShadow:'0 4px 24px rgba(0,0,0,0.07)', border:'1px solid rgba(0,0,0,0.05)' }}>
+          <p className="text-[9px] font-black uppercase tracking-[3px] mb-3" style={{ color:'#C4BAB0' }}>Move to Stage</p>
+          <div className="flex items-center gap-2">
+            {PIPELINE_STAGES.map(stage => {
+              const isActive  = lead.pipeline_stage === stage.key
+              const isLoading = savingStage === stage.key
+              const disabled  = !!savingStage || isStageDisabled(stage.key)
+              const isPast    = isStageDisabled(stage.key) && !isActive
+              return (
+                <button key={stage.key}
+                  onClick={() => !disabled && handleStageChange(stage.key)}
+                  disabled={disabled}
+                  className="stg flex items-center justify-center gap-1.5 py-2 rounded-2xl text-xs font-bold relative flex-1"
+                  style={{
+                    background: isActive ? stage.color : isPast ? '#F0EDE8' : `${stage.color}10`,
+                    color: isActive ? '#fff' : isPast ? '#C4BAB0' : stage.color,
+                    border: `1.5px solid ${isActive ? stage.color : isPast ? 'transparent' : stage.color+'25'}`,
+                    boxShadow: isActive ? `0 4px 16px ${stage.color}40` : 'none',
+                    opacity: isPast ? 0.5 : 1,
+                    cursor: isPast ? 'not-allowed' : 'pointer',
+                  }}>
+                  {isLoading
+                    ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"/>
+                    : isPast ? <span style={{ filter:'grayscale(1)' }}>{stage.icon}</span>
+                    : stage.icon}
+                  {stage.label}
+                  {isActive && <span className="text-[10px] opacity-70">✓</span>}
+                  {isPast && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px]"
+                    style={{ background:'#E8E2D8', color:'#B8B0A0' }}>🔒</span>}
+                </button>
+              )
+            })}
+          </div>
         </div>
+      </div>
 
-        {/* Follow Up card */}
-        {lead.followup_date&&lead.pipeline_stage==='followup'&&(
-          <div className="rounded-2xl p-4" style={{ background:'#FFFBEB',border:'1px solid #FDE68A' }}>
+      {/* ─── CONTEXT CARDS ─── */}
+      <div className="px-4 space-y-3 fu4">
+
+        {/* Follow Up */}
+        {lead.followup_date && lead.pipeline_stage==='followup' && (
+          <div className="rounded-3xl p-4" style={{ background:'#FFFBEB', border:'1.5px solid #FDE68A', boxShadow:'0 4px 16px rgba(217,119,6,0.08)' }}>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:'#92400E' }}>🔔 Follow Up Scheduled</p>
-              <button onClick={()=>{setFollowUpDate(new Date(lead.followup_date).toISOString().split('T')[0]);setFollowUpTime(new Date(lead.followup_date).toTimeString().slice(0,5));setFollowUpNote(lead.followup_note||'');setShowFollowUpPopup(true)}} className="text-[9px] font-bold px-2.5 py-1 rounded-lg" style={{ background:'#FEF3C7',color:'#92400E',border:'1px solid #FDE68A' }}>✏️ Edit</button>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background:'#FEF3C7' }}>🔔</div>
+                <p className="text-[9px] font-black uppercase tracking-[3px]" style={{ color:'#B45309' }}>Follow Up</p>
+              </div>
+              <button onClick={()=>{setFollowUpDate(new Date(lead.followup_date).toISOString().split('T')[0]);setFollowUpTime(new Date(lead.followup_date).toTimeString().slice(0,5));setFollowUpNote(lead.followup_note||'');setShowFollowUpPopup(true)}}
+                className="text-[10px] font-bold px-3 py-1.5 rounded-full hvr"
+                style={{ background:'#FEF3C7', color:'#92400E', border:'1px solid #FDE68A' }}>✏️ Edit</button>
             </div>
             <p className="text-base font-black" style={{ color:'#92400E' }}>{fmtDateTime(lead.followup_date)}</p>
-            {lead.followup_note&&<p className="text-xs mt-1" style={{ color:'#B45309' }}>{lead.followup_note}</p>}
+            {lead.followup_note && <p className="text-xs mt-1" style={{ color:'#B45309' }}>{lead.followup_note}</p>}
           </div>
         )}
 
-        {/* Site Visit card */}
-        {lead.sitevisit_date&&lead.pipeline_stage==='sitevisit'&&(
-          <div className="rounded-2xl p-4" style={{ background:lead.sitevisit_status==='completed'?'#ECFDF5':'#E0F2FE',border:lead.sitevisit_status==='completed'?'1px solid #6EE7B7':'1px solid #BAE6FD' }}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:lead.sitevisit_status==='completed'?'#065F46':'#0369A1' }}>{lead.sitevisit_status==='completed'?'✅ Site Visit Completed':'🏠 Site Visit Scheduled'}</p>
+        {/* Site Visit */}
+        {lead.sitevisit_date && lead.pipeline_stage==='sitevisit' && (
+          <div className="rounded-3xl p-4"
+            style={{ background:lead.sitevisit_status==='completed'?'#ECFDF5':'#F0F9FF', border:`1.5px solid ${lead.sitevisit_status==='completed'?'#6EE7B7':'#BAE6FD'}`, boxShadow:`0 4px 16px ${lead.sitevisit_status==='completed'?'rgba(5,150,105,0.08)':'rgba(8,145,178,0.08)'}` }}>
+            <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
               <div className="flex items-center gap-2">
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background:lead.sitevisit_type==='before_quotation'?'#FEF3C7':'#FCE7F3',color:lead.sitevisit_type==='before_quotation'?'#92400E':'#9D174D',border:`1px solid ${lead.sitevisit_type==='before_quotation'?'#FDE68A':'#FBCFE8'}` }}>{lead.sitevisit_type==='before_quotation'?'📋 Before Quotation':'✅ After Quotation'}</span>
-                <button onClick={()=>{setSvDate(new Date(lead.sitevisit_date).toISOString().split('T')[0]);setSvTime(new Date(lead.sitevisit_date).toTimeString().slice(0,5));setSvType(lead.sitevisit_type||'before_quotation');setSvNote(lead.sitevisit_note||'');setShowSiteVisitPopup(true)}} className="text-[9px] font-bold px-2.5 py-1 rounded-lg" style={{ background:'#BAE6FD',color:'#0369A1',border:'1px solid #7DD3FC' }}>✏️ Edit</button>
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background:lead.sitevisit_status==='completed'?'#A7F3D0':'#BAE6FD' }}>{lead.sitevisit_status==='completed'?'✅':'🏠'}</div>
+                <p className="text-[9px] font-black uppercase tracking-[3px]" style={{ color:lead.sitevisit_status==='completed'?'#065F46':'#0369A1' }}>{lead.sitevisit_status==='completed'?'Visit Completed':'Site Visit'}</p>
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background:lead.sitevisit_type==='before_quotation'?'#FEF3C7':'#FCE7F3', color:lead.sitevisit_type==='before_quotation'?'#92400E':'#9D174D' }}>{lead.sitevisit_type==='before_quotation'?'Before Qt':'After Qt'}</span>
+              </div>
+              <div className="flex gap-1.5">
+                <button onClick={()=>{setSvDate(new Date(lead.sitevisit_date).toISOString().split('T')[0]);setSvTime(new Date(lead.sitevisit_date).toTimeString().slice(0,5));setSvType(lead.sitevisit_type||'before_quotation');setSvNote(lead.sitevisit_note||'');setShowSiteVisitPopup(true)}}
+                  className="text-[10px] font-bold px-2.5 py-1.5 rounded-full hvr" style={{ background:lead.sitevisit_status==='completed'?'#A7F3D0':'#BAE6FD', color:lead.sitevisit_status==='completed'?'#065F46':'#0369A1' }}>✏️</button>
                 {lead.sitevisit_status !== 'completed' ? (
-                  <button onClick={handleMarkVisitCompleted} disabled={markingComplete} className="text-[9px] font-bold px-2.5 py-1 rounded-lg disabled:opacity-50" style={{ background:'#059669', color:'#fff', border:'1px solid #059669' }}>
-                    {markingComplete ? '⏳ Saving...' : '✅ Mark Completed'}
+                  <button onClick={handleMarkVisitCompleted} disabled={markingComplete}
+                    className="text-[10px] font-bold px-3 py-1.5 rounded-full hvr disabled:opacity-50"
+                    style={{ background:'#059669', color:'#fff' }}>
+                    {markingComplete?'⏳':'✅'} Done
                   </button>
                 ) : (
-                  <span className="text-[9px] font-bold px-2.5 py-1 rounded-full" style={{ background:'#D1FAE5', color:'#065F46', border:'1px solid #6EE7B7' }}>✅ Completed</span>
+                  <span className="text-[9px] font-bold px-2.5 py-1.5 rounded-full" style={{ background:'#D1FAE5', color:'#065F46' }}>✅ Completed</span>
                 )}
               </div>
             </div>
             <p className="text-base font-black" style={{ color:lead.sitevisit_status==='completed'?'#065F46':'#0369A1' }}>{fmtDateTime(lead.sitevisit_date)}</p>
-            {lead.sitevisit_note&&<p className="text-xs mt-1" style={{ color:lead.sitevisit_status==='completed'?'#059669':'#0891B2' }}>{lead.sitevisit_note}</p>}
+            {lead.sitevisit_note && <p className="text-xs mt-1" style={{ color:lead.sitevisit_status==='completed'?'#059669':'#0891B2' }}>{lead.sitevisit_note}</p>}
           </div>
         )}
 
-        {/* Won card */}
-        {lead.pipeline_stage==='won'&&(
-          <div className="rounded-2xl p-5" style={{ background:'linear-gradient(135deg,#ECFDF5,#D1FAE5)',border:'2px solid #6EE7B7',boxShadow:'0 4px 16px rgba(5,150,105,0.15)' }}>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ background:'linear-gradient(135deg,#059669,#047857)',boxShadow:'0 6px 18px rgba(5,150,105,0.35)' }}>🏆</div>
+        {/* Won */}
+        {lead.pipeline_stage==='won' && (
+          <div className="rounded-3xl p-5" style={{ background:'linear-gradient(135deg,#ECFDF5,#D1FAE5)', border:'2px solid #6EE7B7', boxShadow:'0 8px 28px rgba(5,150,105,0.15)' }}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ background:'linear-gradient(135deg,#059669,#047857)', boxShadow:'0 6px 18px rgba(5,150,105,0.4)' }}>🏆</div>
               <div>
-                <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:'#065F46' }}>Deal Won! 🎉</p>
-                {lead.won_amount&&<p className="text-2xl font-black" style={{ color:'#059669' }}>₹ {Number(lead.won_amount).toLocaleString('en-IN')}</p>}
+                <p className="text-[9px] font-black uppercase tracking-[3px]" style={{ color:'#065F46' }}>Deal Won 🎉</p>
+                {lead.won_amount && <p className="text-2xl font-black" style={{ color:'#059669' }}>₹ {Number(lead.won_amount).toLocaleString('en-IN')}</p>}
               </div>
-              <button onClick={()=>{setWonAmount(lead.won_amount||'');setWonNote(lead.won_note||'');setShowWonPopup(true)}} className="ml-auto text-[9px] font-bold px-2.5 py-1 rounded-lg" style={{ background:'#A7F3D0',color:'#065F46',border:'1px solid #6EE7B7' }}>✏️ Edit</button>
+              <button onClick={()=>{setWonAmount(lead.won_amount||'');setWonNote(lead.won_note||'');setShowWonPopup(true)}} className="ml-auto text-[10px] font-bold px-3 py-1.5 rounded-full hvr" style={{ background:'#A7F3D0', color:'#065F46' }}>✏️ Edit</button>
             </div>
-            {lead.won_note&&<p className="text-sm" style={{ color:'#047857' }}>{lead.won_note}</p>}
-            {lead.won_date&&<p className="text-[10px] mt-1" style={{ color:'#059669' }}>Closed on {fmtDate(lead.won_date)}</p>}
+            {lead.won_note && <p className="text-sm" style={{ color:'#047857' }}>{lead.won_note}</p>}
+            {lead.won_date && <p className="text-[10px] mt-1" style={{ color:'#6EE7B7' }}>Closed {fmtDate(lead.won_date)}</p>}
           </div>
         )}
 
-        {/* Quotation card */}
-        {lead.pipeline_stage==='quotation'&&(
-          <div className="rounded-2xl overflow-hidden" style={{ background:'#FDF2F8',border:'1px solid #FBCFE8',boxShadow:'0 2px 8px rgba(219,39,119,0.1)' }}>
+        {/* Quotation */}
+        {lead.pipeline_stage==='quotation' && (
+          <div className="rounded-3xl overflow-hidden" style={{ background:'#FDF2F8', border:'1.5px solid #FBCFE8', boxShadow:'0 4px 16px rgba(219,39,119,0.08)' }}>
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <p className="text-[9px] font-bold uppercase tracking-wider" style={{ color:'#9D174D' }}>💰 Quotation</p>
-                  {revisions.length > 0 && <span className="text-[9px] font-black px-2 py-0.5 rounded-full" style={{ background:'#9D174D',color:'#fff' }}>v{revisions[0]?.version} — Latest</span>}
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background:'#FCE7F3' }}>💰</div>
+                  <p className="text-[9px] font-black uppercase tracking-[3px]" style={{ color:'#9D174D' }}>Quotation</p>
+                  {revisions.length > 0 && <span className="text-[9px] font-black px-2 py-0.5 rounded-full text-white" style={{ background:'#9D174D' }}>v{revisions[0]?.version}</span>}
                 </div>
-                <div className="flex items-center gap-2">
-                  {lead.quotation_type && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background:lead.quotation_type==='before_sitevisit'?'#E0F2FE':'#FEF3C7',color:lead.quotation_type==='before_sitevisit'?'#0369A1':'#92400E',border:`1px solid ${lead.quotation_type==='before_sitevisit'?'#BAE6FD':'#FDE68A'}` }}>{lead.quotation_type==='before_sitevisit'?'📋 Before SV':'🏠 After SV'}</span>}
-                  <button onClick={()=>{setQtDate(getTomorrow());setQtTime('11:00');setQtType(lead.quotation_type||'after_sitevisit');setQtAmount('');setQtNote('');setQtPdfFile(null);setShowQuotationPopup(true)}} className="text-[9px] font-bold px-2.5 py-1 rounded-lg" style={{ background:'#FCE7F3',color:'#9D174D',border:'1px solid #FBCFE8' }}>+ New Revision</button>
-                </div>
+                <button onClick={()=>{setQtDate(getTomorrow());setQtTime('11:00');setQtType(lead.quotation_type||'after_sitevisit');setQtAmount('');setQtNote('');setQtPdfFile(null);setShowQuotationPopup(true)}}
+                  className="text-[10px] font-bold px-3 py-1.5 rounded-full hvr" style={{ background:'#FCE7F3', color:'#9D174D', border:'1px solid #FBCFE8' }}>+ New Rev</button>
               </div>
-              {lead.quotation_amount && <p className="text-2xl font-black mb-1" style={{ color:'#9D174D' }}>₹ {Number(lead.quotation_amount).toLocaleString('en-IN')}</p>}
-              {lead.quotation_date && <p className="text-xs" style={{ color:'#DB2777' }}>{fmtDateTime(lead.quotation_date)}</p>}
+              {lead.quotation_amount && <p className="text-2xl font-black" style={{ color:'#9D174D' }}>₹ {Number(lead.quotation_amount).toLocaleString('en-IN')}</p>}
+              {lead.quotation_date && <p className="text-xs mt-0.5" style={{ color:'#DB2777' }}>{fmtDateTime(lead.quotation_date)}</p>}
               {lead.quotation_note && <p className="text-xs mt-1" style={{ color:'#DB2777' }}>{lead.quotation_note}</p>}
               {lead.quotation_pdf_url && (
-                <a href={lead.quotation_pdf_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-3 px-3 py-2 rounded-xl text-xs font-bold hover:scale-105 transition-all" style={{ background:'#FCE7F3',color:'#9D174D',border:'1px solid #FBCFE8' }}>
-                  <FileText className="w-3.5 h-3.5"/> View Latest PDF
+                <a href={lead.quotation_pdf_url} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 mt-3 px-3 py-2 rounded-2xl text-xs font-bold hvr"
+                  style={{ background:'#FCE7F3', color:'#9D174D', border:'1px solid #FBCFE8' }}>
+                  <FileText className="w-3.5 h-3.5"/> View PDF
                 </a>
               )}
             </div>
             {revisions.length > 0 && (
               <div style={{ borderTop:'1px solid #FBCFE8' }}>
-                <button onClick={() => setShowRevisions(!showRevisions)} className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold" style={{ color:'#9D174D',background:showRevisions?'#FCE7F3':'transparent' }}>
-                  <span className="flex items-center gap-2">📋 Quotation History <span className="px-1.5 py-0.5 rounded-full text-[9px]" style={{ background:'#9D174D',color:'white' }}>{revisions.length}</span></span>
+                <button onClick={() => setShowRevisions(!showRevisions)}
+                  className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold"
+                  style={{ color:'#9D174D', background:showRevisions?'#FCE7F3':'transparent' }}>
+                  <span className="flex items-center gap-2">📋 History <span className="px-1.5 py-0.5 rounded-full text-[9px] text-white" style={{ background:'#9D174D' }}>{revisions.length}</span></span>
                   {showRevisions ? <ChevronUp className="w-3.5 h-3.5"/> : <ChevronDown className="w-3.5 h-3.5"/>}
                 </button>
                 {showRevisions && (
                   <div style={{ borderTop:'1px solid #FBCFE8' }}>
                     {loadingRevisions ? <div className="p-4 text-center text-xs" style={{ color:'#DB2777' }}>Loading...</div> : (
                       revisions.map((rev, i) => (
-                        <div key={rev.id} className="rev-row px-4 py-3 flex items-center gap-3" style={{ borderBottom: i < revisions.length-1 ? '1px solid #FBCFE8' : 'none' }}>
-                          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black flex-shrink-0" style={{ background:i===0?'#9D174D':'#FCE7F3', color:i===0?'white':'#9D174D', border:'1px solid #FBCFE8' }}>v{rev.version}</div>
+                        <div key={rev.id} className="rev-row px-4 py-3 flex items-center gap-3" style={{ borderBottom: i < revisions.length-1?'1px solid #FBCFE8':'none' }}>
+                          <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black flex-shrink-0" style={{ background:i===0?'#9D174D':'#FCE7F3', color:i===0?'white':'#9D174D' }}>v{rev.version}</div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5">
                               {rev.amount ? <p className="text-sm font-black" style={{ color:'#831843' }}>₹ {Number(rev.amount).toLocaleString('en-IN')}</p> : <p className="text-xs font-bold" style={{ color:'#DB2777' }}>No amount</p>}
-                              {i===0 && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:'#9D174D',color:'white' }}>Latest</span>}
+                              {i===0 && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background:'#9D174D' }}>Latest</span>}
                               {i < revisions.length-1 && rev.amount && revisions[i+1]?.amount && (
                                 <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:Number(rev.amount)<Number(revisions[i+1].amount)?'#FEF3C7':'#FCE7F3', color:Number(rev.amount)<Number(revisions[i+1].amount)?'#92400E':'#9D174D' }}>
                                   {Number(rev.amount)<Number(revisions[i+1].amount)?'↓':'↑'}₹{Math.abs(Number(rev.amount)-Number(revisions[i+1].amount)).toLocaleString('en-IN')}
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-[9px]" style={{ color:'#DB2777' }}>{fmtDateTime(rev.created_at)}</p>
-                              {rev.quotation_type && <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background:'rgba(219,39,119,0.1)',color:'#DB2777' }}>{rev.quotation_type==='before_sitevisit'?'Before SV':'After SV'}</span>}
-                              {rev.note && <p className="text-[9px] w-full mt-0.5" style={{ color:'#DB2777' }}>{rev.note}</p>}
-                            </div>
+                            <p className="text-[9px]" style={{ color:'#DB2777' }}>{fmtDateTime(rev.created_at)}</p>
+                            {rev.note && <p className="text-[9px] mt-0.5" style={{ color:'#DB2777' }}>{rev.note}</p>}
                           </div>
                           {rev.pdf_url && (
-                            <a href={rev.pdf_url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center hover:scale-110 transition-all" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8' }} title="View PDF">
+                            <a href={rev.pdf_url} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-xl flex items-center justify-center hvr flex-shrink-0" style={{ background:'#FCE7F3' }}>
                               <FileText className="w-3.5 h-3.5" style={{ color:'#9D174D' }}/>
                             </a>
                           )}
@@ -646,152 +801,130 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
           </div>
         )}
 
-        {/* Req + Notes */}
-        {(lead.interest||lead.notes)&&(
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {lead.interest&&<div className="rounded-2xl p-4" style={{ background:C.card,border:`1px solid ${C.border}` }}><p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:C.textFaint }}>💡 Requirement</p><p className="text-sm leading-relaxed" style={{ color:C.textMuted }}>{lead.interest}</p></div>}
-            {lead.notes&&<div className="rounded-2xl p-4" style={{ background:C.card,border:`1px solid ${C.border}` }}><p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:C.textFaint }}>📝 Notes</p><p className="text-sm leading-relaxed" style={{ color:C.textMuted }}>{lead.notes}</p></div>}
+        {/* ─── ACTIVITY TIMELINE ─── */}
+        <div className="rounded-3xl overflow-hidden fu5" style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.05)', boxShadow:'0 4px 20px rgba(0,0,0,0.06)' }}>
+          <div className="px-4 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid rgba(0,0,0,0.05)' }}>
+            <div className="flex items-center gap-3">
+              <p className="text-[9px] font-black uppercase tracking-[3px]" style={{ color:'#C4BAB0' }}>Activity</p>
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-full" style={{ background:'#F5F0E8', color:'#B8860B' }}>{activities.length}</span>
+            </div>
+            <button onClick={() => setShowModal(true)}
+              className="hvr flex items-center gap-1.5 text-[11px] font-black px-4 py-2 rounded-full text-white"
+              style={{ background:'linear-gradient(135deg,#B8860B,#D97706)', boxShadow:'0 3px 12px rgba(184,134,11,0.3)' }}>
+              <Plus className="w-3 h-3"/> Add
+            </button>
           </div>
-        )}
 
-        {/* Move to Stage */}
-        <div className="rounded-2xl overflow-hidden" style={{ background:C.card,border:`1px solid ${C.border}` }}>
-          <div className="px-4 py-3" style={{ borderBottom:`1px solid ${C.border}` }}><p className="text-[10px] font-black uppercase tracking-[3px]" style={{ color:C.textFaint }}>Move to Stage</p></div>
-          <div className="p-4 flex flex-wrap gap-2">
-            {PIPELINE_STAGES.map(stage=>{
-              const isActive = lead.pipeline_stage === stage.key
-              const isLoading = savingStage === stage.key
-              const disabled = !!savingStage || isStageDisabled(stage.key)
-              const isPast = isStageDisabled(stage.key) && !isActive
-              return(
-                <button key={stage.key} onClick={() => !disabled && handleStageChange(stage.key)} disabled={disabled}
-                  title={isPast ? 'Cannot go back to a previous stage' : ''}
-                  className="stage-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold relative"
-                  style={{ background:isActive?`linear-gradient(135deg,${stage.color},${stage.color}cc)`:isPast?'rgba(0,0,0,0.04)':`${stage.color}12`, color:isActive?'#fff':isPast?'#C4B89A':stage.color, border:`1px solid ${isActive?stage.color:isPast?'rgba(184,134,11,0.1)':stage.color+'30'}`, boxShadow:isActive?`0 4px 14px ${stage.color}35`:'none', opacity:isPast?0.45:1, cursor:isPast?'not-allowed':'pointer' }}>
-                  {isLoading ? <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"/> : isPast ? <span style={{ filter:'grayscale(1)',opacity:0.5 }}>{stage.icon}</span> : stage.icon}
-                  {stage.label}
-                  {isActive && <span className="text-[10px] opacity-70">✓</span>}
-                  {isPast && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px]" style={{ background:'rgba(184,134,11,0.2)',color:'#A89880' }}>🔒</span>}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+          {activities.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="text-4xl mb-3">🗒️</div>
+              <p className="text-sm font-bold" style={{ color:'#C4BAB0' }}>No activity yet</p>
+            </div>
+          ) : (
+            <div>
+              {activities.map((act: any, i: number) => {
+                const cfg = ACTIVITY_ICONS[act.type] || ACTIVITY_ICONS.note
+                const isLast = i === activities.length - 1
+                return (
+                  <div key={act.id} className="act flex gap-3 px-4 py-3.5" style={{ borderBottom: isLast ? 'none' : '1px solid rgba(0,0,0,0.04)' }}>
+                    {/* Icon + line */}
+                    <div className="flex flex-col items-center gap-0 flex-shrink-0" style={{ width:36 }}>
+                      <div className="w-9 h-9 rounded-2xl flex items-center justify-center text-sm" style={{ background:cfg.bg, border:`1.5px solid ${cfg.color}20`, flexShrink:0 }}>
+                        {cfg.icon}
+                      </div>
+                      {!isLast && <div className="w-px flex-1 mt-1" style={{ background:'rgba(0,0,0,0.06)', minHeight:8 }}/>}
+                    </div>
 
-        {/* Activity */}
-        <div className="rounded-2xl overflow-hidden" style={{ background:C.card,border:`1px solid ${C.border}` }}>
-          <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom:`1px solid ${C.border}` }}>
-            <div className="flex items-center gap-2"><p className="text-[10px] font-black uppercase tracking-[3px]" style={{ color:C.textFaint }}>Activity History</p><span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background:C.goldLight,color:C.gold }}>{activities.length}</span></div>
-            <button onClick={()=>setShowModal(true)} className="flex items-center gap-1.5 text-[10px] font-bold px-3 py-1.5 rounded-lg" style={{ background:C.goldLight,color:C.gold,border:'1px solid #FDE68A' }}><Plus className="w-3 h-3"/> Add</button>
-          </div>
-          {activities.length===0?(<div className="p-10 text-center"><div className="text-3xl mb-3">📋</div><p className="text-sm font-bold" style={{ color:C.textFaint }}>No activity yet</p></div>):(
-            <div className="relative">
-              <div className="absolute left-[42px] top-0 bottom-0 w-px" style={{ background:`linear-gradient(to bottom,${C.border},transparent)` }}/>
-              {activities.map((act:any,i:number)=>{
-                const cfg=ACTIVITY_ICONS[act.type]||ACTIVITY_ICONS.note
-                return(<div key={act.id} className="activity-item flex gap-4 px-4 py-4 relative" style={{ borderBottom:i<activities.length-1?`1px solid ${C.border}`:'none' }}>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0 relative z-10" style={{ background:cfg.bg,border:`1px solid ${cfg.color}25` }}>{cfg.icon}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-0.5"><p className="text-xs font-bold" style={{ color:C.text }}>{act.title}</p><p className="text-[9px] flex-shrink-0" style={{ color:C.textFaint }}>{timeAgo(act.created_at)}</p></div>
-                    {act.description&&<p className="text-[11px] leading-relaxed" style={{ color:C.textMuted }}>{act.description}</p>}
-                    {act.user_name&&<span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold" style={{ background:'#EDE9FE',color:'#7C3AED' }}>👤 {act.user_name}</span>}
-                    <p className="text-[9px] mt-1" style={{ color:C.textFaint }}>{fmtDate(act.created_at)}</p>
+                    <div className="flex-1 min-w-0 pt-1">
+                      <div className="flex items-start justify-between gap-2 mb-0.5">
+                        <p className="text-xs font-black" style={{ color:'#1A1612' }}>{act.title}</p>
+                        <span className="text-[9px] font-bold flex-shrink-0 px-2 py-0.5 rounded-full" style={{ background:'#F5F0E8', color:'#A89880' }}>{timeAgo(act.created_at)}</span>
+                      </div>
+                      {act.description && <p className="text-[11px] leading-relaxed" style={{ color:'#6B5E4E' }}>{act.description}</p>}
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        {act.user_name && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background:'#EDE9FE', color:'#7C3AED' }}>👤 {act.user_name}</span>}
+                        <span className="text-[9px]" style={{ color:'#D4CEC8' }}>{fmtDate(act.created_at)}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>)
+                )
               })}
             </div>
           )}
         </div>
+
+        <p className="text-center text-[10px] pb-4" style={{ color:'#D4CEC8' }}>GK CRM · Interior Design</p>
       </div>
 
-      {/* ════════════════════════════════════════
-          RNR POPUP  (NEW)
-      ════════════════════════════════════════ */}
-      {showRnrPopup&&(
+      {/* ═══ HANDOVER DATE POPUP ═══ */}
+      {showHandoverPopup && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{ animation:'fadeIn 0.2s ease' }}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowRnrPopup(false)}/>
-          <div className="relative w-full max-w-sm scale-in" style={{ background:'#FFF5F5',border:'1px solid #FECACA',borderRadius:24,boxShadow:'0 24px 60px rgba(220,38,38,0.18)' }}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowHandoverPopup(false)}/>
+          <div className="relative w-full max-w-sm scale-in"
+            style={{ background:'#F0FFFE', border:'1.5px solid #A5F3FC', borderRadius:28, boxShadow:'0 32px 80px rgba(8,145,178,0.2)' }}>
             {/* Header */}
-            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #FECACA' }}>
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{ background:'#FEF2F2',border:'1px solid #FECACA' }}>📵</div>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #A5F3FC' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl"
+                  style={{ background:'#CFFAFE', border:'1.5px solid #A5F3FC' }}>📦</div>
                 <div>
-                  <p className="text-sm font-black" style={{ color:'#7F1D1D' }}>Mark RNR</p>
-                  <p className="text-[10px]" style={{ color:'#DC2626' }}>{lead.lead_name}</p>
+                  <p className="text-sm font-black" style={{ color:'#164E63' }}>Set Handover Date</p>
+                  <p className="text-[10px] font-medium" style={{ color:'#0891B2' }}>{lead.lead_name}</p>
                 </div>
               </div>
-              <button onClick={()=>setShowRnrPopup(false)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:'#FEF2F2',color:'#DC2626' }}>✕</button>
+              <button onClick={() => setShowHandoverPopup(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center hvr"
+                style={{ background:'#CFFAFE', color:'#0891B2' }}>✕</button>
             </div>
 
             <div className="p-5 space-y-4">
-
-              {/* Info banner */}
-              <div className="flex items-start gap-3 px-3 py-3 rounded-xl" style={{ background:'#FEF2F2',border:'1px solid #FECACA' }}>
-                <span className="text-base mt-0.5">📞</span>
-                <p className="text-[11px] leading-relaxed" style={{ color:'#991B1B' }}>
-                  Call will be logged automatically as <strong>Ring No Response</strong>.
-                </p>
-              </div>
-
-              {/* Call Back Date & Time */}
+              {/* Date picker */}
               <div>
-                <p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'#DC2626' }}>🔁 Try Again (Optional)</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DC2626' }}>📅 Date</label>
-                    <input type="date" value={rnrCallBackDate} min={new Date().toISOString().split('T')[0]}
-                      onChange={e=>setRnrCallBackDate(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none"
-                      style={{ background:'#FEF2F2',border:'1px solid #FECACA',color:'#7F1D1D' }}/>
-                  </div>
-                  <div>
-                    <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DC2626' }}>🕐 Time</label>
-                    <input type="time" value={rnrCallBackTime}
-                      onChange={e=>setRnrCallBackTime(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none"
-                      style={{ background:'#FEF2F2',border:'1px solid #FECACA',color:'#7F1D1D' }}/>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick pick */}
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'#DC2626' }}>Quick Pick</p>
-                <QuickTimes value={rnrCallBackTime} onChange={setRnrCallBackTime} color="#DC2626"/>
+                <label className="text-[9px] font-black uppercase tracking-[3px] block mb-1.5"
+                  style={{ color:'#0891B2' }}>📅 Handover Date</label>
+                <input type="date"
+                  value={handoverDate}
+                  onChange={e => setHandoverDate(e.target.value)}
+                  className="w-full px-4 py-3 rounded-2xl text-sm font-bold outline-none"
+                  style={{ background:'#CFFAFE', border:'1.5px solid #A5F3FC', color:'#164E63' }}/>
               </div>
 
               {/* Note */}
               <div>
-                <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DC2626' }}>📝 Note (Optional)</label>
-                <textarea rows={2} value={rnrNote} onChange={e=>setRnrNote(e.target.value)}
-                  placeholder="E.g. Called 3 times, busy tone..."
-                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
-                  style={{ background:'#FEF2F2',border:'1px solid #FECACA',color:'#7F1D1D' }}
-                  onFocus={e=>(e.target.style.borderColor='#FCA5A5')}
-                  onBlur={e=>(e.target.style.borderColor='#FECACA')}/>
+                <label className="text-[9px] font-black uppercase tracking-[3px] block mb-1.5"
+                  style={{ color:'#0891B2' }}>📝 Note (Optional)</label>
+                <textarea rows={2} value={handoverNote}
+                  onChange={e => setHandoverNote(e.target.value)}
+                  placeholder="E.g. Keys handover at site..."
+                  className="w-full rounded-2xl px-4 py-2.5 text-sm outline-none resize-none"
+                  style={{ background:'#CFFAFE', border:'1px solid #A5F3FC', color:'#164E63' }}
+                  onFocus={e => (e.target.style.borderColor='#67E8F9')}
+                  onBlur={e => (e.target.style.borderColor='#A5F3FC')}/>
               </div>
 
-              {/* Summary preview */}
-              {rnrCallBackDate&&rnrCallBackTime&&(
-                <div className="px-3 py-2.5 rounded-xl" style={{ background:'#FEF2F2',border:'1px solid #FECACA' }}>
-                  <p className="text-[9px] font-bold uppercase tracking-wider mb-0.5" style={{ color:'#B91C1C' }}>Try Again At</p>
-                  <p className="text-sm font-black" style={{ color:'#7F1D1D' }}>
-                    {fmtDateTime(new Date(`${rnrCallBackDate}T${rnrCallBackTime}:00`).toISOString())}
+              {/* Preview */}
+              {handoverDate && (
+                <div className="px-4 py-3 rounded-2xl"
+                  style={{ background:'#CFFAFE', border:'1px solid #A5F3FC' }}>
+                  <p className="text-[9px] font-black uppercase tracking-[3px] mb-0.5" style={{ color:'#0891B2' }}>Handover On</p>
+                  <p className="text-base font-black" style={{ color:'#164E63' }}>
+                    {fmtDate(new Date(`${handoverDate}T00:00:00`).toISOString())}
                   </p>
                 </div>
               )}
 
               {/* Buttons */}
               <div className="flex gap-3 pt-1">
-                <button onClick={()=>setShowRnrPopup(false)}
-                  className="flex-1 py-3 rounded-xl text-sm font-medium"
-                  style={{ background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA' }}>
+                <button onClick={() => setShowHandoverPopup(false)}
+                  className="flex-1 py-3 rounded-2xl text-sm font-bold"
+                  style={{ background:'#CFFAFE', color:'#0891B2', border:'1px solid #A5F3FC' }}>
                   Cancel
                 </button>
-                <button onClick={handleSaveRnr} disabled={savingRnr}
-                  className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40"
-                  style={{ background:'linear-gradient(135deg,#B91C1C,#DC2626)',boxShadow:'0 6px 18px rgba(220,38,38,0.3)' }}>
-                  {savingRnr ? '⏳ Saving...' : '📵 Mark RNR'}
+                <button onClick={handleSaveHandover}
+                  disabled={!handoverDate || savingHandover}
+                  className="flex-1 py-3 rounded-2xl text-sm font-black text-white disabled:opacity-40"
+                  style={{ background:'linear-gradient(135deg,#0369A1,#0891B2)', boxShadow:'0 6px 18px rgba(8,145,178,0.3)' }}>
+                  {savingHandover ? '⏳ Saving...' : '📦 Save Date'}
                 </button>
               </div>
             </div>
@@ -799,107 +932,161 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
         </div>
       )}
 
-      {/* FOLLOW UP POPUP */}
-      {showFollowUpPopup&&(
+      {/* ═══ RNR POPUP ═══ */}
+      {showRnrPopup && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{ animation:'fadeIn 0.2s ease' }}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowFollowUpPopup(false)}/>
-          <div className="relative w-full max-w-sm scale-in" style={{ background:'#FFFDF8',border:'1px solid #FDE68A',borderRadius:24,boxShadow:'0 24px 60px rgba(184,134,11,0.2)' }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #FDE68A' }}><div className="flex items-center gap-2.5"><div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{ background:'#FEF3C7',border:'1px solid #FDE68A' }}>🔔</div><div><p className="text-sm font-black" style={{ color:C.text }}>Schedule Follow Up</p><p className="text-[10px]" style={{ color:C.textFaint }}>{lead.lead_name}</p></div></div><button onClick={()=>setShowFollowUpPopup(false)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:'#F5F0E8',color:C.textMuted }}>✕</button></div>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowRnrPopup(false)}/>
+          <div className="relative w-full max-w-sm scale-in" style={{ background:'#FFF5F5', border:'1.5px solid #FECACA', borderRadius:28, boxShadow:'0 32px 80px rgba(220,38,38,0.2)' }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #FECACA' }}>
+              <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg" style={{ background:'#FEF2F2' }}>📵</div><div><p className="text-sm font-black" style={{ color:'#7F1D1D' }}>Mark RNR</p><p className="text-[10px]" style={{ color:'#DC2626' }}>{lead.lead_name}</p></div></div>
+              <button onClick={() => setShowRnrPopup(false)} className="w-8 h-8 rounded-full flex items-center justify-center hvr" style={{ background:'#FEF2F2', color:'#DC2626' }}>✕</button>
+            </div>
             <div className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3"><div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:C.textFaint }}>📅 Date</label><input type="date" value={followUpDate} min={new Date().toISOString().split('T')[0]} onChange={e=>setFollowUpDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#FFFBEB',border:'1px solid #FDE68A',color:'#92400E' }}/></div><div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:C.textFaint }}>🕐 Time</label><input type="time" value={followUpTime} onChange={e=>setFollowUpTime(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#FFFBEB',border:'1px solid #FDE68A',color:'#92400E' }}/></div></div>
-              <div><p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:C.textFaint }}>Quick Pick</p><QuickTimes value={followUpTime} onChange={setFollowUpTime} color="#D97706"/></div>
-              <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:C.textFaint }}>📝 Note</label><textarea rows={2} value={followUpNote} onChange={e=>setFollowUpNote(e.target.value)} placeholder="E.g. Client busy, call after 5 PM..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#F5F0E8',border:`1px solid ${C.border}`,color:C.text }} onFocus={e=>(e.target.style.borderColor='#FDE68A')} onBlur={e=>(e.target.style.borderColor=C.border)}/></div>
-              {followUpDate&&followUpTime&&<div className="px-3 py-2.5 rounded-xl" style={{ background:'#FEF3C7',border:'1px solid #FDE68A' }}><p className="text-[9px] font-bold uppercase tracking-wider mb-0.5" style={{ color:'#B45309' }}>Scheduled For</p><p className="text-sm font-black" style={{ color:'#92400E' }}>{fmtDateTime(new Date(`${followUpDate}T${followUpTime}:00`).toISOString())}</p></div>}
-              <div className="flex gap-3 pt-1"><button onClick={()=>setShowFollowUpPopup(false)} className="flex-1 py-3 rounded-xl text-sm font-medium" style={{ background:'#F5F0E8',color:C.textMuted,border:`1px solid ${C.border}` }}>Cancel</button><button onClick={handleSaveFollowUp} disabled={!followUpDate||!followUpTime||savingFollowUp} className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#B45309,#D97706)',boxShadow:'0 6px 18px rgba(184,134,11,0.3)' }}>{savingFollowUp?'⏳ Saving...':'🔔 Schedule'}</button></div>
+              <div className="flex items-start gap-3 px-3 py-3 rounded-2xl" style={{ background:'#FEF2F2', border:'1px solid #FECACA' }}>
+                <span>📞</span><p className="text-[11px]" style={{ color:'#991B1B' }}>Call will be logged automatically as <strong>Ring No Response</strong>.</p>
+              </div>
+              <div><p className="text-[9px] font-black uppercase tracking-[3px] mb-2" style={{ color:'#DC2626' }}>🔁 Try Again (Optional)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#DC2626' }}>Date</label><input type="date" value={rnrCallBackDate} min={new Date().toISOString().split('T')[0]} onChange={e=>setRnrCallBackDate(e.target.value)} className="w-full px-3 py-2.5 rounded-2xl text-sm font-bold outline-none" style={{ background:'#FEF2F2', border:'1px solid #FECACA', color:'#7F1D1D' }}/></div>
+                  <div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#DC2626' }}>Time</label><input type="time" value={rnrCallBackTime} onChange={e=>setRnrCallBackTime(e.target.value)} className="w-full px-3 py-2.5 rounded-2xl text-sm font-bold outline-none" style={{ background:'#FEF2F2', border:'1px solid #FECACA', color:'#7F1D1D' }}/></div>
+                </div>
+              </div>
+              <div><p className="text-[9px] font-black uppercase tracking-[3px] mb-2" style={{ color:'#DC2626' }}>Quick Pick</p><QuickTimes value={rnrCallBackTime} onChange={setRnrCallBackTime} color="#DC2626"/></div>
+              <div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#DC2626' }}>Note (Optional)</label><textarea rows={2} value={rnrNote} onChange={e=>setRnrNote(e.target.value)} placeholder="E.g. Called 3 times, busy tone..." className="w-full rounded-2xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#FEF2F2', border:'1px solid #FECACA', color:'#7F1D1D' }} onFocus={e=>(e.target.style.borderColor='#FCA5A5')} onBlur={e=>(e.target.style.borderColor='#FECACA')}/></div>
+              {rnrCallBackDate && rnrCallBackTime && <div className="px-3 py-2.5 rounded-2xl" style={{ background:'#FEF2F2', border:'1px solid #FECACA' }}><p className="text-[9px] font-black uppercase tracking-[3px] mb-0.5" style={{ color:'#B91C1C' }}>Try Again At</p><p className="text-sm font-black" style={{ color:'#7F1D1D' }}>{fmtDateTime(new Date(`${rnrCallBackDate}T${rnrCallBackTime}:00`).toISOString())}</p></div>}
+              <div className="flex gap-3"><button onClick={() => setShowRnrPopup(false)} className="flex-1 py-3 rounded-2xl text-sm font-bold" style={{ background:'#FEF2F2', color:'#DC2626', border:'1px solid #FECACA' }}>Cancel</button><button onClick={handleSaveRnr} disabled={savingRnr} className="flex-1 py-3 rounded-2xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#B91C1C,#DC2626)', boxShadow:'0 6px 20px rgba(220,38,38,0.3)' }}>{savingRnr?'⏳...':'📵 Mark RNR'}</button></div>
             </div>
           </div>
         </div>
       )}
 
-      {/* SITE VISIT POPUP */}
-      {showSiteVisitPopup&&(
+      {/* FOLLOW UP */}
+      {showFollowUpPopup && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{ animation:'fadeIn 0.2s ease' }}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowSiteVisitPopup(false)}/>
-          <div className="relative w-full max-w-sm scale-in" style={{ background:'#F0F9FF',border:'1px solid #BAE6FD',borderRadius:24,boxShadow:'0 24px 60px rgba(8,145,178,0.18)' }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #BAE6FD' }}><div className="flex items-center gap-2.5"><div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{ background:'#E0F2FE',border:'1px solid #BAE6FD' }}>🏠</div><div><p className="text-sm font-black" style={{ color:'#0C4A6E' }}>Schedule Site Visit</p><p className="text-[10px]" style={{ color:'#0891B2' }}>{lead.lead_name}</p></div></div><button onClick={()=>setShowSiteVisitPopup(false)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:'#E0F2FE',color:'#0891B2' }}>✕</button></div>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowFollowUpPopup(false)}/>
+          <div className="relative w-full max-w-sm scale-in" style={{ background:'#FFFDF8', border:'1.5px solid #FDE68A', borderRadius:28, boxShadow:'0 32px 80px rgba(184,134,11,0.2)' }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #FDE68A' }}>
+              <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg" style={{ background:'#FEF3C7' }}>🔔</div><div><p className="text-sm font-black" style={{ color:'#1C1712' }}>Schedule Follow Up</p><p className="text-[10px]" style={{ color:'#9A8F82' }}>{lead.lead_name}</p></div></div>
+              <button onClick={() => setShowFollowUpPopup(false)} className="w-8 h-8 rounded-full flex items-center justify-center hvr" style={{ background:'#F5F0E8', color:'#6B5E4E' }}>✕</button>
+            </div>
             <div className="p-5 space-y-4">
-              <div><p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'#0891B2' }}>Visit Type</p><div className="grid grid-cols-2 gap-2">{([{v:'before_quotation',label:'📋 Before',sub:'Quotation',bg:'#FEF3C7',color:'#92400E',border:'#FDE68A'},{v:'after_quotation',label:'✅ After',sub:'Quotation',bg:'#FCE7F3',color:'#9D174D',border:'#FBCFE8'}] as const).map(opt=>(<button key={opt.v} onClick={()=>setSvType(opt.v as any)} className="py-3 px-2 rounded-xl text-xs font-bold text-center transition-all" style={{ background:svType===opt.v?opt.bg:'#E0F2FE',color:svType===opt.v?opt.color:'#0369A1',border:`2px solid ${svType===opt.v?opt.border:'#BAE6FD'}`,boxShadow:svType===opt.v?`0 4px 12px ${opt.color}20`:'none' }}>{opt.label}<br/><span className="text-[9px] opacity-70">{opt.sub}</span></button>))}</div></div>
-              <div className="grid grid-cols-2 gap-3"><div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#0891B2' }}>📅 Date</label><input type="date" value={svDate} min={new Date().toISOString().split('T')[0]} onChange={e=>setSvDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#E0F2FE',border:'1px solid #BAE6FD',color:'#0369A1' }}/></div><div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#0891B2' }}>🕐 Time</label><input type="time" value={svTime} onChange={e=>setSvTime(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#E0F2FE',border:'1px solid #BAE6FD',color:'#0369A1' }}/></div></div>
-              <div><p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'#0891B2' }}>Quick Pick</p><QuickTimes value={svTime} onChange={setSvTime} color="#0891B2"/></div>
-              <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#0891B2' }}>📝 Note</label><textarea rows={2} value={svNote} onChange={e=>setSvNote(e.target.value)} placeholder="Client available after 11 AM..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#E0F2FE',border:'1px solid #BAE6FD',color:'#0C4A6E' }} onFocus={e=>(e.target.style.borderColor='#7DD3FC')} onBlur={e=>(e.target.style.borderColor='#BAE6FD')}/></div>
-              <div className="flex gap-3 pt-1"><button onClick={()=>setShowSiteVisitPopup(false)} className="flex-1 py-3 rounded-xl text-sm font-medium" style={{ background:'#E0F2FE',color:'#0891B2',border:'1px solid #BAE6FD' }}>Cancel</button><button onClick={handleSaveSiteVisit} disabled={!svDate||!svTime||savingSV} className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#0369A1,#0891B2)',boxShadow:'0 6px 18px rgba(8,145,178,0.3)' }}>{savingSV?'⏳ Saving...':'🏠 Schedule Visit'}</button></div>
+              <div className="grid grid-cols-2 gap-3"><div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#9A8F82' }}>Date</label><input type="date" value={followUpDate} min={new Date().toISOString().split('T')[0]} onChange={e=>setFollowUpDate(e.target.value)} className="w-full px-3 py-2.5 rounded-2xl text-sm font-bold outline-none" style={{ background:'#FFFBEB', border:'1px solid #FDE68A', color:'#92400E' }}/></div><div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#9A8F82' }}>Time</label><input type="time" value={followUpTime} onChange={e=>setFollowUpTime(e.target.value)} className="w-full px-3 py-2.5 rounded-2xl text-sm font-bold outline-none" style={{ background:'#FFFBEB', border:'1px solid #FDE68A', color:'#92400E' }}/></div></div>
+              <div><p className="text-[9px] font-black uppercase tracking-[3px] mb-2" style={{ color:'#9A8F82' }}>Quick Pick</p><QuickTimes value={followUpTime} onChange={setFollowUpTime} color="#D97706"/></div>
+              <div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#9A8F82' }}>Note</label><textarea rows={2} value={followUpNote} onChange={e=>setFollowUpNote(e.target.value)} placeholder="E.g. Client busy, call after 5 PM..." className="w-full rounded-2xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#F5F0E8', border:'1px solid rgba(184,134,11,0.2)', color:'#1C1712' }} onFocus={e=>(e.target.style.borderColor='#FDE68A')} onBlur={e=>(e.target.style.borderColor='rgba(184,134,11,0.2)')}/></div>
+              {followUpDate&&followUpTime&&<div className="px-3 py-2.5 rounded-2xl" style={{ background:'#FEF3C7', border:'1px solid #FDE68A' }}><p className="text-[9px] font-black uppercase tracking-[3px] mb-0.5" style={{ color:'#B45309' }}>Scheduled For</p><p className="text-sm font-black" style={{ color:'#92400E' }}>{fmtDateTime(new Date(`${followUpDate}T${followUpTime}:00`).toISOString())}</p></div>}
+              <div className="flex gap-3"><button onClick={() => setShowFollowUpPopup(false)} className="flex-1 py-3 rounded-2xl text-sm font-bold" style={{ background:'#F5F0E8', color:'#6B5E4E' }}>Cancel</button><button onClick={handleSaveFollowUp} disabled={!followUpDate||!followUpTime||savingFollowUp} className="flex-1 py-3 rounded-2xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#B45309,#D97706)', boxShadow:'0 6px 18px rgba(184,134,11,0.3)' }}>{savingFollowUp?'⏳...':'🔔 Schedule'}</button></div>
             </div>
           </div>
         </div>
       )}
 
-      {/* QUOTATION POPUP */}
-      {showQuotationPopup&&(
+      {/* SITE VISIT */}
+      {showSiteVisitPopup && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{ animation:'fadeIn 0.2s ease' }}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowQuotationPopup(false)}/>
-          <div className="relative w-full max-w-sm scale-in" style={{ background:'#FFF5F9',border:'1px solid #FBCFE8',borderRadius:24,boxShadow:'0 24px 60px rgba(219,39,119,0.15)',maxHeight:'90vh',overflowY:'auto' }}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowSiteVisitPopup(false)}/>
+          <div className="relative w-full max-w-sm scale-in" style={{ background:'#F0F9FF', border:'1.5px solid #BAE6FD', borderRadius:28, boxShadow:'0 32px 80px rgba(8,145,178,0.18)' }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #BAE6FD' }}>
+              <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg" style={{ background:'#E0F2FE' }}>🏠</div><div><p className="text-sm font-black" style={{ color:'#0C4A6E' }}>Schedule Site Visit</p><p className="text-[10px]" style={{ color:'#0891B2' }}>{lead.lead_name}</p></div></div>
+              <button onClick={() => setShowSiteVisitPopup(false)} className="w-8 h-8 rounded-full flex items-center justify-center hvr" style={{ background:'#E0F2FE', color:'#0891B2' }}>✕</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div><p className="text-[9px] font-black uppercase tracking-[3px] mb-2" style={{ color:'#0891B2' }}>Visit Type</p><div className="grid grid-cols-2 gap-2">{([{v:'before_quotation',label:'📋 Before',sub:'Quotation',bg:'#FEF3C7',color:'#92400E',border:'#FDE68A'},{v:'after_quotation',label:'✅ After',sub:'Quotation',bg:'#FCE7F3',color:'#9D174D',border:'#FBCFE8'}] as const).map(opt=>(<button key={opt.v} onClick={()=>setSvType(opt.v as any)} className="py-3 px-2 rounded-2xl text-xs font-bold text-center transition-all" style={{ background:svType===opt.v?opt.bg:'#E0F2FE', color:svType===opt.v?opt.color:'#0369A1', border:`2px solid ${svType===opt.v?opt.border:'#BAE6FD'}` }}>{opt.label}<br/><span className="text-[9px] opacity-70">{opt.sub}</span></button>))}</div></div>
+              <div className="grid grid-cols-2 gap-3"><div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#0891B2' }}>Date</label><input type="date" value={svDate} min={new Date().toISOString().split('T')[0]} onChange={e=>setSvDate(e.target.value)} className="w-full px-3 py-2.5 rounded-2xl text-sm font-bold outline-none" style={{ background:'#E0F2FE', border:'1px solid #BAE6FD', color:'#0369A1' }}/></div><div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#0891B2' }}>Time</label><input type="time" value={svTime} onChange={e=>setSvTime(e.target.value)} className="w-full px-3 py-2.5 rounded-2xl text-sm font-bold outline-none" style={{ background:'#E0F2FE', border:'1px solid #BAE6FD', color:'#0369A1' }}/></div></div>
+              <div><p className="text-[9px] font-black uppercase tracking-[3px] mb-2" style={{ color:'#0891B2' }}>Quick Pick</p><QuickTimes value={svTime} onChange={setSvTime} color="#0891B2"/></div>
+              <div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#0891B2' }}>Note</label><textarea rows={2} value={svNote} onChange={e=>setSvNote(e.target.value)} placeholder="Client available after 11 AM..." className="w-full rounded-2xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#E0F2FE', border:'1px solid #BAE6FD', color:'#0C4A6E' }} onFocus={e=>(e.target.style.borderColor='#7DD3FC')} onBlur={e=>(e.target.style.borderColor='#BAE6FD')}/></div>
+              <div className="flex gap-3"><button onClick={() => setShowSiteVisitPopup(false)} className="flex-1 py-3 rounded-2xl text-sm font-bold" style={{ background:'#E0F2FE', color:'#0891B2', border:'1px solid #BAE6FD' }}>Cancel</button><button onClick={handleSaveSiteVisit} disabled={!svDate||!svTime||savingSV} className="flex-1 py-3 rounded-2xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#0369A1,#0891B2)', boxShadow:'0 6px 18px rgba(8,145,178,0.3)' }}>{savingSV?'⏳...':'🏠 Schedule'}</button></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QUOTATION */}
+      {showQuotationPopup && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{ animation:'fadeIn 0.2s ease' }}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowQuotationPopup(false)}/>
+          <div className="relative w-full max-w-sm scale-in" style={{ background:'#FFF5F9', border:'1.5px solid #FBCFE8', borderRadius:28, boxShadow:'0 32px 80px rgba(219,39,119,0.15)', maxHeight:'90vh', overflowY:'auto' }}>
             <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #FBCFE8' }}>
-              <div className="flex items-center gap-2.5"><div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8' }}>💰</div><div><p className="text-sm font-black" style={{ color:'#831843' }}>{revisions.length > 0 ? `New Revision (v${revisions[0]?.version + 1})` : 'Send Quotation (v1)'}</p><p className="text-[10px]" style={{ color:'#DB2777' }}>{lead.lead_name}</p></div></div>
-              <button onClick={()=>setShowQuotationPopup(false)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:'#FCE7F3',color:'#DB2777' }}>✕</button>
+              <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg" style={{ background:'#FCE7F3' }}>💰</div><div><p className="text-sm font-black" style={{ color:'#831843' }}>{revisions.length > 0 ? `New Revision (v${revisions[0]?.version + 1})` : 'Send Quotation (v1)'}</p><p className="text-[10px]" style={{ color:'#DB2777' }}>{lead.lead_name}</p></div></div>
+              <button onClick={() => setShowQuotationPopup(false)} className="w-8 h-8 rounded-full flex items-center justify-center hvr" style={{ background:'#FCE7F3', color:'#DB2777' }}>✕</button>
             </div>
             <div className="p-5 space-y-4">
-              <div><p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'#DB2777' }}>Quotation Type</p><div className="grid grid-cols-2 gap-2">{([{v:'before_sitevisit',label:'📋 Before',sub:'Site Visit',bg:'#E0F2FE',color:'#0369A1',border:'#BAE6FD'},{v:'after_sitevisit',label:'🏠 After',sub:'Site Visit',bg:'#FEF3C7',color:'#92400E',border:'#FDE68A'}] as const).map(opt=>(<button key={opt.v} onClick={()=>setQtType(opt.v as any)} className="py-3 px-2 rounded-xl text-xs font-bold text-center transition-all" style={{ background:qtType===opt.v?opt.bg:'#FCE7F3',color:qtType===opt.v?opt.color:'#DB2777',border:`2px solid ${qtType===opt.v?opt.border:'#FBCFE8'}`,boxShadow:qtType===opt.v?`0 4px 12px ${opt.color}20`:'none' }}>{opt.label}<br/><span className="text-[9px] opacity-70">{opt.sub}</span></button>))}</div></div>
-              {revisions.length > 0 && revisions[0]?.amount && (<div className="px-3 py-2 rounded-xl flex items-center justify-between" style={{ background:'rgba(219,39,119,0.06)',border:'1px solid #FBCFE8' }}><p className="text-[9px] font-bold" style={{ color:'#DB2777' }}>Previous (v{revisions[0].version})</p><p className="text-sm font-black" style={{ color:'#9D174D' }}>₹ {Number(revisions[0].amount).toLocaleString('en-IN')}</p></div>)}
-              <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DB2777' }}>₹ New Amount</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-black" style={{ color:'#DB2777' }}>₹</span><input type="number" value={qtAmount} onChange={e=>setQtAmount(e.target.value)} placeholder={revisions[0]?.amount||'450000'} className="w-full pl-7 pr-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8',color:'#831843' }} onFocus={e=>(e.target.style.borderColor='#F9A8D4')} onBlur={e=>(e.target.style.borderColor='#FBCFE8')}/></div>{qtAmount && revisions[0]?.amount && (<p className="text-[10px] mt-1 font-bold" style={{ color: Number(qtAmount) < Number(revisions[0].amount) ? '#059669' : '#DC2626' }}>{Number(qtAmount) < Number(revisions[0].amount) ? '↓ Reduced by' : '↑ Increased by'} ₹{Math.abs(Number(qtAmount)-Number(revisions[0].amount)).toLocaleString('en-IN')}</p>)}</div>
-              <div className="grid grid-cols-2 gap-3"><div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DB2777' }}>📅 Date</label><input type="date" value={qtDate} min={new Date().toISOString().split('T')[0]} onChange={e=>setQtDate(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8',color:'#831843' }}/></div><div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DB2777' }}>🕐 Time</label><input type="time" value={qtTime} onChange={e=>setQtTime(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-sm font-bold outline-none" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8',color:'#831843' }}/></div></div>
-              <div><p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'#DB2777' }}>Quick Pick</p><QuickTimes value={qtTime} onChange={setQtTime} color="#DB2777"/></div>
-              <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DB2777' }}>📝 Note</label><textarea rows={2} value={qtNote} onChange={e=>setQtNote(e.target.value)} placeholder="E.g. Revised after negotiation..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8',color:'#831843' }} onFocus={e=>(e.target.style.borderColor='#F9A8D4')} onBlur={e=>(e.target.style.borderColor='#FBCFE8')}/></div>
-              <div>
-                <label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#DB2777' }}>📄 PDF (optional)</label>
-                {!qtPdfFile?(
-                  <div className="pdf-drop rounded-xl border-2 border-dashed p-4 text-center cursor-pointer" style={{ borderColor:'#FBCFE8',background:'#FFF5F9' }} onClick={()=>pdfInputRef.current?.click()} onDragOver={e=>{e.preventDefault();(e.currentTarget as HTMLElement).style.borderColor='#F9A8D4'}} onDragLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='#FBCFE8'}} onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f&&f.type==='application/pdf')setQtPdfFile(f)}}>
-                    <Upload className="w-5 h-5 mx-auto mb-1.5" style={{ color:'#FBCFE8' }}/><p className="text-xs font-bold" style={{ color:'#DB2777' }}>Click or drag PDF</p><p className="text-[9px] mt-0.5" style={{ color:'#F9A8D4' }}>PDF only · Max 10MB</p>
+              <div><p className="text-[9px] font-black uppercase tracking-[3px] mb-2" style={{ color:'#DB2777' }}>Type</p><div className="grid grid-cols-2 gap-2">{([{v:'before_sitevisit',label:'📋 Before',sub:'Site Visit',bg:'#E0F2FE',color:'#0369A1',border:'#BAE6FD'},{v:'after_sitevisit',label:'🏠 After',sub:'Site Visit',bg:'#FEF3C7',color:'#92400E',border:'#FDE68A'}] as const).map(opt=>(<button key={opt.v} onClick={()=>setQtType(opt.v as any)} className="py-3 px-2 rounded-2xl text-xs font-bold text-center transition-all" style={{ background:qtType===opt.v?opt.bg:'#FCE7F3', color:qtType===opt.v?opt.color:'#DB2777', border:`2px solid ${qtType===opt.v?opt.border:'#FBCFE8'}` }}>{opt.label}<br/><span className="text-[9px] opacity-70">{opt.sub}</span></button>))}</div></div>
+              {revisions.length > 0 && revisions[0]?.amount && (<div className="px-3 py-2 rounded-2xl flex items-center justify-between" style={{ background:'rgba(219,39,119,0.06)', border:'1px solid #FBCFE8' }}><p className="text-[9px] font-bold" style={{ color:'#DB2777' }}>Previous (v{revisions[0].version})</p><p className="text-sm font-black" style={{ color:'#9D174D' }}>₹ {Number(revisions[0].amount).toLocaleString('en-IN')}</p></div>)}
+              <div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#DB2777' }}>Amount</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-black" style={{ color:'#DB2777' }}>₹</span><input type="number" value={qtAmount} onChange={e=>setQtAmount(e.target.value)} placeholder="450000" className="w-full pl-7 pr-3 py-2.5 rounded-2xl text-sm font-bold outline-none" style={{ background:'#FCE7F3', border:'1px solid #FBCFE8', color:'#831843' }}/></div>{qtAmount && revisions[0]?.amount && (<p className="text-[10px] mt-1 font-bold" style={{ color: Number(qtAmount) < Number(revisions[0].amount) ? '#059669' : '#DC2626' }}>{Number(qtAmount) < Number(revisions[0].amount) ? '↓ Reduced' : '↑ Increased'} by ₹{Math.abs(Number(qtAmount)-Number(revisions[0].amount)).toLocaleString('en-IN')}</p>)}</div>
+              <div className="grid grid-cols-2 gap-3"><div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#DB2777' }}>Date</label><input type="date" value={qtDate} min={new Date().toISOString().split('T')[0]} onChange={e=>setQtDate(e.target.value)} className="w-full px-3 py-2.5 rounded-2xl text-sm font-bold outline-none" style={{ background:'#FCE7F3', border:'1px solid #FBCFE8', color:'#831843' }}/></div><div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#DB2777' }}>Time</label><input type="time" value={qtTime} onChange={e=>setQtTime(e.target.value)} className="w-full px-3 py-2.5 rounded-2xl text-sm font-bold outline-none" style={{ background:'#FCE7F3', border:'1px solid #FBCFE8', color:'#831843' }}/></div></div>
+              <div><p className="text-[9px] font-black uppercase tracking-[3px] mb-2" style={{ color:'#DB2777' }}>Quick Pick</p><QuickTimes value={qtTime} onChange={setQtTime} color="#DB2777"/></div>
+              <div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#DB2777' }}>Note</label><textarea rows={2} value={qtNote} onChange={e=>setQtNote(e.target.value)} placeholder="E.g. Revised after negotiation..." className="w-full rounded-2xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#FCE7F3', border:'1px solid #FBCFE8', color:'#831843' }} onFocus={e=>(e.target.style.borderColor='#F9A8D4')} onBlur={e=>(e.target.style.borderColor='#FBCFE8')}/></div>
+              <div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#DB2777' }}>PDF (optional)</label>
+                {!qtPdfFile ? (
+                  <div className="pdf-drop rounded-2xl border-2 border-dashed p-4 text-center cursor-pointer" style={{ borderColor:'#FBCFE8', background:'#FFF5F9' }} onClick={()=>pdfInputRef.current?.click()} onDragOver={e=>{e.preventDefault();(e.currentTarget as HTMLElement).style.borderColor='#F9A8D4'}} onDragLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor='#FBCFE8'}} onDrop={e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f&&f.type==='application/pdf')setQtPdfFile(f)}}>
+                    <Upload className="w-5 h-5 mx-auto mb-1.5" style={{ color:'#FBCFE8' }}/><p className="text-xs font-bold" style={{ color:'#DB2777' }}>Click or drag PDF</p>
                   </div>
-                ):(
-                  <div className="rounded-xl p-3 flex items-center gap-3" style={{ background:'#FCE7F3',border:'1px solid #FBCFE8' }}>
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background:'#FFF5F9',border:'1px solid #FBCFE8' }}><FileText className="w-4 h-4" style={{ color:'#DB2777' }}/></div>
-                    <div className="flex-1 min-w-0"><p className="text-xs font-bold truncate" style={{ color:'#831843' }}>{qtPdfFile.name}</p><p className="text-[10px]" style={{ color:'#DB2777' }}>{(qtPdfFile.size/1024/1024).toFixed(2)} MB</p>{qtPdfUploading&&<div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ background:'#FBCFE8' }}><div className="h-full rounded-full transition-all duration-300" style={{ width:`${qtPdfProgress}%`,background:'linear-gradient(90deg,#DB2777,#BE185D)' }}/></div>}</div>
-                    <button onClick={()=>setQtPdfFile(null)} className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background:'#FFF5F9',color:'#DB2777' }}><X className="w-3 h-3"/></button>
+                ) : (
+                  <div className="rounded-2xl p-3 flex items-center gap-3" style={{ background:'#FCE7F3', border:'1px solid #FBCFE8' }}>
+                    <FileText className="w-4 h-4 flex-shrink-0" style={{ color:'#DB2777' }}/>
+                    <div className="flex-1 min-w-0"><p className="text-xs font-bold truncate" style={{ color:'#831843' }}>{qtPdfFile.name}</p>{qtPdfUploading&&<div className="mt-1 h-1 rounded-full overflow-hidden" style={{ background:'#FBCFE8' }}><div className="h-full rounded-full" style={{ width:`${qtPdfProgress}%`, background:'#DB2777' }}/></div>}</div>
+                    <button onClick={()=>setQtPdfFile(null)} className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background:'#FFF5F9', color:'#DB2777' }}><X className="w-3 h-3"/></button>
                   </div>
                 )}
                 <input ref={pdfInputRef} type="file" accept="application/pdf" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)setQtPdfFile(f);e.target.value=''}}/>
               </div>
-              <div className="flex gap-3 pt-1"><button onClick={()=>setShowQuotationPopup(false)} className="flex-1 py-3 rounded-xl text-sm font-medium" style={{ background:'#FCE7F3',color:'#DB2777',border:'1px solid #FBCFE8' }}>Cancel</button><button onClick={handleSaveQuotation} disabled={!qtDate||!qtTime||savingQT||qtPdfUploading} className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#9D174D,#DB2777)',boxShadow:'0 6px 18px rgba(219,39,119,0.3)' }}>{qtPdfUploading?`⬆️ ${qtPdfProgress}%...`:savingQT?'⏳ Saving...':revisions.length>0?`💰 Save v${revisions[0]?.version+1}`:'💰 Save v1'}</button></div>
+              <div className="flex gap-3"><button onClick={() => setShowQuotationPopup(false)} className="flex-1 py-3 rounded-2xl text-sm font-bold" style={{ background:'#FCE7F3', color:'#DB2777', border:'1px solid #FBCFE8' }}>Cancel</button><button onClick={handleSaveQuotation} disabled={!qtDate||!qtTime||savingQT||qtPdfUploading} className="flex-1 py-3 rounded-2xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#9D174D,#DB2777)', boxShadow:'0 6px 18px rgba(219,39,119,0.3)' }}>{qtPdfUploading?`⬆️ ${qtPdfProgress}%`:savingQT?'⏳...':revisions.length>0?`💰 Save v${revisions[0]?.version+1}`:'💰 Send v1'}</button></div>
             </div>
           </div>
         </div>
       )}
 
-      {/* WON POPUP */}
-      {showWonPopup&&(
+      {/* WON */}
+      {showWonPopup && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{ animation:'fadeIn 0.2s ease' }}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowWonPopup(false)}/>
-          <div className="relative w-full max-w-sm scale-in" style={{ background:'linear-gradient(160deg,#ECFDF5,#F0FDF4)',border:'2px solid #6EE7B7',borderRadius:24,boxShadow:'0 24px 60px rgba(5,150,105,0.2)' }}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowWonPopup(false)}/>
+          <div className="relative w-full max-w-sm scale-in" style={{ background:'linear-gradient(160deg,#ECFDF5,#F0FDF4)', border:'2px solid #6EE7B7', borderRadius:28, boxShadow:'0 32px 80px rgba(5,150,105,0.2)' }}>
             <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #A7F3D0' }}>
-              <div className="flex items-center gap-2.5"><div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background:'linear-gradient(135deg,#059669,#047857)',boxShadow:'0 4px 12px rgba(5,150,105,0.35)' }}>🏆</div><div><p className="text-sm font-black" style={{ color:'#064E3B' }}>Mark as Won</p><p className="text-[10px]" style={{ color:'#059669' }}>{lead.lead_name}</p></div></div>
-              <button onClick={()=>setShowWonPopup(false)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:'#A7F3D0',color:'#059669' }}>✕</button>
+              <div className="flex items-center gap-3"><div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl" style={{ background:'linear-gradient(135deg,#059669,#047857)', boxShadow:'0 4px 14px rgba(5,150,105,0.4)' }}>🏆</div><div><p className="text-sm font-black" style={{ color:'#064E3B' }}>Mark as Won</p><p className="text-[10px]" style={{ color:'#059669' }}>{lead.lead_name}</p></div></div>
+              <button onClick={() => setShowWonPopup(false)} className="w-8 h-8 rounded-full flex items-center justify-center hvr" style={{ background:'#A7F3D0', color:'#059669' }}>✕</button>
             </div>
             <div className="p-5 space-y-4">
-              <div className="rounded-xl py-3 text-center" style={{ background:'linear-gradient(135deg,#059669,#047857)',boxShadow:'0 4px 14px rgba(5,150,105,0.3)' }}><p className="text-white font-black text-base">🎉 Congratulations! 🎉</p><p className="text-green-200 text-xs mt-0.5">Deal Closed Successfully</p></div>
-              <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#059669' }}>₹ Final Deal Amount</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-black" style={{ color:'#059669' }}>₹</span><input type="number" value={wonAmount} onChange={e=>setWonAmount(e.target.value)} placeholder={lead.quotation_amount||'Enter final amount'} className="w-full pl-7 pr-3 py-3 rounded-xl text-base font-black outline-none" style={{ background:'#D1FAE5',border:'2px solid #6EE7B7',color:'#064E3B' }} onFocus={e=>(e.target.style.borderColor='#059669')} onBlur={e=>(e.target.style.borderColor='#6EE7B7')}/></div>{wonAmount && lead.quotation_amount && wonAmount !== lead.quotation_amount && (<p className="text-[10px] mt-1 font-bold" style={{ color: Number(wonAmount) < Number(lead.quotation_amount) ? '#DC2626' : '#059669' }}>{Number(wonAmount) < Number(lead.quotation_amount) ? `↓ ₹${(Number(lead.quotation_amount)-Number(wonAmount)).toLocaleString('en-IN')} less than quoted` : `↑ ₹${(Number(wonAmount)-Number(lead.quotation_amount)).toLocaleString('en-IN')} more than quoted`}</p>)}</div>
-              <div><label className="text-[9px] font-bold uppercase tracking-wider block mb-1.5" style={{ color:'#059669' }}>📝 Closing Note (optional)</label><textarea rows={3} value={wonNote} onChange={e=>setWonNote(e.target.value)} placeholder="E.g. Client happy with design, signed agreement..." className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#D1FAE5',border:'1px solid #A7F3D0',color:'#064E3B' }} onFocus={e=>(e.target.style.borderColor='#059669')} onBlur={e=>(e.target.style.borderColor='#A7F3D0')}/></div>
-              {wonAmount&&(<div className="px-4 py-3 rounded-xl" style={{ background:'#D1FAE5',border:'1px solid #6EE7B7' }}><p className="text-[9px] font-bold uppercase tracking-wider mb-1" style={{ color:'#059669' }}>Deal Summary</p><p className="text-lg font-black" style={{ color:'#064E3B' }}>₹ {Number(wonAmount).toLocaleString('en-IN')}</p>{lead.quotation_amount&&<p className="text-[10px]" style={{ color:'#059669' }}>Quoted: ₹{Number(lead.quotation_amount).toLocaleString('en-IN')}</p>}{wonNote&&<p className="text-xs mt-1" style={{ color:'#047857' }}>{wonNote}</p>}</div>)}
-              <div className="flex gap-3 pt-1"><button onClick={()=>setShowWonPopup(false)} className="flex-1 py-3 rounded-xl text-sm font-medium" style={{ background:'#D1FAE5',color:'#059669',border:'1px solid #A7F3D0' }}>Cancel</button><button onClick={handleSaveWon} disabled={savingWon} className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#047857,#059669)',boxShadow:'0 6px 18px rgba(5,150,105,0.35)' }}>{savingWon?'⏳ Saving...':'🏆 Mark as Won!'}</button></div>
+              <div className="rounded-2xl py-3.5 text-center" style={{ background:'linear-gradient(135deg,#059669,#047857)', boxShadow:'0 4px 16px rgba(5,150,105,0.35)' }}><p className="text-white font-black">🎉 Congratulations! 🎉</p><p className="text-green-200 text-xs mt-0.5">Deal Closed Successfully</p></div>
+              <div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#059669' }}>Final Amount</label><div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 font-black" style={{ color:'#059669' }}>₹</span><input type="number" value={wonAmount} onChange={e=>setWonAmount(e.target.value)} placeholder={lead.quotation_amount||'Enter amount'} className="w-full pl-7 pr-3 py-3 rounded-2xl text-base font-black outline-none" style={{ background:'#D1FAE5', border:'2px solid #6EE7B7', color:'#064E3B' }}/></div></div>
+              <div><label className="text-[9px] font-bold uppercase block mb-1.5" style={{ color:'#059669' }}>Closing Note</label><textarea rows={3} value={wonNote} onChange={e=>setWonNote(e.target.value)} placeholder="E.g. Client happy, signed agreement..." className="w-full rounded-2xl px-3 py-2.5 text-sm outline-none resize-none" style={{ background:'#D1FAE5', border:'1px solid #A7F3D0', color:'#064E3B' }}/></div>
+              {wonAmount && (<div className="px-4 py-3 rounded-2xl" style={{ background:'#D1FAE5', border:'1px solid #6EE7B7' }}><p className="text-[9px] font-black uppercase tracking-[3px] mb-1" style={{ color:'#059669' }}>Deal Summary</p><p className="text-lg font-black" style={{ color:'#064E3B' }}>₹ {Number(wonAmount).toLocaleString('en-IN')}</p>{lead.quotation_amount&&<p className="text-[10px]" style={{ color:'#059669' }}>Quoted: ₹{Number(lead.quotation_amount).toLocaleString('en-IN')}</p>}</div>)}
+              <div className="flex gap-3"><button onClick={() => setShowWonPopup(false)} className="flex-1 py-3 rounded-2xl text-sm font-bold" style={{ background:'#D1FAE5', color:'#059669', border:'1px solid #A7F3D0' }}>Cancel</button><button onClick={handleSaveWon} disabled={savingWon} className="flex-1 py-3 rounded-2xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#047857,#059669)', boxShadow:'0 6px 18px rgba(5,150,105,0.35)' }}>{savingWon?'⏳...':'🏆 Mark as Won!'}</button></div>
             </div>
           </div>
         </div>
       )}
 
-      {/* LOG ACTIVITY MODAL */}
-      {showModal&&(
+      {/* LOG ACTIVITY */}
+      {showModal && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{ animation:'fadeIn 0.2s ease' }}>
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={()=>setShowModal(false)}/>
-          <div className="relative w-full max-w-md rounded-3xl overflow-hidden" style={{ background:'#FFFDF8',border:`1px solid ${C.border}`,boxShadow:'0 24px 60px rgba(0,0,0,0.12)' }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:`1px solid ${C.border}` }}><p className="font-black" style={{ color:C.text }}>Log Activity</p><button onClick={()=>setShowModal(false)} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background:'#F5F0E8',color:C.textMuted }}>✕</button></div>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowModal(false)}/>
+          <div className="relative w-full max-w-md scale-in" style={{ background:'#FFFDF8', border:'1.5px solid rgba(184,134,11,0.2)', borderRadius:28, boxShadow:'0 32px 80px rgba(0,0,0,0.12)' }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid rgba(184,134,11,0.1)' }}>
+              <p className="font-black text-sm" style={{ color:'#1C1712' }}>Log Activity</p>
+              <button onClick={() => setShowModal(false)} className="w-8 h-8 rounded-full flex items-center justify-center hvr" style={{ background:'#F5F0E8', color:'#6B5E4E' }}>✕</button>
+            </div>
             <div className="p-5 space-y-4">
-              <div className="grid grid-cols-4 gap-2">{([{id:'call',label:'📞 Call',color:'#7C3AED'},{id:'note',label:'📝 Note',color:'#64748B'},{id:'sitevisit',label:'🏠 Visit',color:'#0891B2'},{id:'quotation',label:'💰 Quote',color:'#DB2777'}] as const).map(t=>(<button key={t.id} onClick={()=>setNoteType(t.id)} className="py-2.5 px-1 rounded-xl text-[10px] font-bold text-center transition-all" style={{ background:noteType===t.id?`${t.color}15`:'#F5F0E8',color:noteType===t.id?t.color:C.textMuted,border:`1.5px solid ${noteType===t.id?t.color+'50':C.border}` }}>{t.label}</button>))}</div>
-              <textarea rows={4} value={noteText} onChange={e=>setNoteText(e.target.value)} placeholder={noteType==='call'?'Call summary...':noteType==='quotation'?'Quotation details...':noteType==='sitevisit'?'Site visit notes...':'Add a note...'} autoFocus className="w-full rounded-xl px-4 py-3 text-sm outline-none resize-none" style={{ background:'#F5F0E8',border:`1px solid ${C.border}`,color:C.text }} onFocus={e=>(e.target.style.borderColor='#FDE68A')} onBlur={e=>(e.target.style.borderColor=C.border)}/>
-              <div className="flex gap-3"><button onClick={()=>setShowModal(false)} className="flex-1 py-3 rounded-xl text-sm font-medium" style={{ background:'#F5F0E8',color:C.textMuted,border:`1px solid ${C.border}` }}>Cancel</button><button onClick={handleSaveNote} disabled={!noteText.trim()||savingNote} className="flex-1 py-3 rounded-xl text-sm font-black text-white disabled:opacity-40" style={{ background:'linear-gradient(135deg,#B8860B,#D97706)',boxShadow:noteText.trim()?'0 6px 18px rgba(184,134,11,0.3)':'none' }}>{savingNote?'⏳ Saving...':'+ Save Activity'}</button></div>
+              <div className="grid grid-cols-4 gap-2">
+                {([{id:'call',label:'📞 Call',color:'#7C3AED'},{id:'note',label:'📝 Note',color:'#64748B'},{id:'sitevisit',label:'🏠 Visit',color:'#0891B2'},{id:'quotation',label:'💰 Quote',color:'#DB2777'}] as const).map(t=>(
+                  <button key={t.id} onClick={()=>setNoteType(t.id)}
+                    className="py-2.5 px-1 rounded-2xl text-[10px] font-bold text-center transition-all hover:scale-105"
+                    style={{ background:noteType===t.id?`${t.color}15`:'#F5F0E8', color:noteType===t.id?t.color:'#6B5E4E', border:`1.5px solid ${noteType===t.id?t.color+'50':'transparent'}` }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              <textarea rows={4} value={noteText} onChange={e=>setNoteText(e.target.value)} placeholder={noteType==='call'?'Call summary...':noteType==='quotation'?'Quotation details...':noteType==='sitevisit'?'Site visit notes...':'Add a note...'} autoFocus
+                className="w-full rounded-2xl px-4 py-3 text-sm outline-none resize-none"
+                style={{ background:'#F5F0E8', border:'1px solid rgba(184,134,11,0.2)', color:'#1C1712' }}
+                onFocus={e=>(e.target.style.borderColor='#FDE68A')} onBlur={e=>(e.target.style.borderColor='rgba(184,134,11,0.2)')}/>
+              <div className="flex gap-3">
+                <button onClick={() => setShowModal(false)} className="flex-1 py-3 rounded-2xl text-sm font-bold" style={{ background:'#F5F0E8', color:'#6B5E4E' }}>Cancel</button>
+                <button onClick={handleSaveNote} disabled={!noteText.trim()||savingNote}
+                  className="flex-1 py-3 rounded-2xl text-sm font-black text-white disabled:opacity-40"
+                  style={{ background:'linear-gradient(135deg,#B8860B,#D97706)', boxShadow:noteText.trim()?'0 6px 18px rgba(184,134,11,0.3)':'none' }}>
+                  {savingNote?'⏳...':'+ Save'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
