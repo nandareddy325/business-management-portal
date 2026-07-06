@@ -1,9 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, RefreshCw, Users } from 'lucide-react'
+import { ChevronDown, RefreshCw, Users, X, Phone, ArrowRight } from 'lucide-react'
+import { createBrowserClient } from '@supabase/ssr'
+import { useRouter } from 'next/navigation'
 
 const ini = (n: string) => n?.split(' ').map((x: string) => x[0]).join('').slice(0, 2).toUpperCase() || '?'
+const fmtDate = (ds: string) => { if (!ds) return '—'; return new Date(ds).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
 
 interface Call { id: string; lead_id: string; description: string; created_at: string; user_id: string; user_name: string }
 interface CRE  { id: string; name: string }
@@ -27,13 +30,134 @@ const STAGE_PAIRS: (string | null)[][] = [
   ['closing', 'won'],
   ['lost', null],
 ]
+
 const SLABEL: Record<string, string> = {
   rnr: 'RNR', not_interested: 'NOT INTERESTED', going_followup: 'GOING FOLLOWUP',
   visit_scheduled: 'VISIT SCHEDULED', visit_completed: 'VISIT COMPLETED',
   quotation: 'QUOTATION', closing: 'CLOSING', won: 'WON', lost: 'LOST'
 }
 
-function StageGrid({ data, color }: { data: Record<string, SD>; color: string }) {
+// Map stage key → pipeline_stage
+const STAGE_TO_PIPELINE: Record<string, { stage: string }> = {
+  rnr:             { stage: 'rnr' },
+  not_interested:  { stage: 'lost' },
+  going_followup:  { stage: 'followup' },
+  visit_scheduled: { stage: 'sitevisit' },
+  visit_completed: { stage: 'sitevisit' },
+  quotation:       { stage: 'quotation' },
+  closing:         { stage: 'won' },
+  won:             { stage: 'won' },
+  lost:            { stage: 'lost' },
+}
+
+const AVATAR_COLORS = [
+  ['#7C3AED','#4F46E5'],['#0891B2','#0E7490'],['#059669','#047857'],
+  ['#D97706','#B45309'],['#DB2777','#BE185D'],['#DC2626','#B91C1C'],
+]
+function getColors(name: string) {
+  return AVATAR_COLORS[name?.charCodeAt(0) % AVATAR_COLORS.length] ?? AVATAR_COLORS[0]
+}
+
+// ── Leads Modal ──
+function LeadsModal({
+  title, color, leads, loading, onClose
+}: {
+  title: string; color: string; leads: any[]; loading: boolean; onClose: () => void
+}) {
+  const router = useRouter()
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4"
+      style={{ animation:'fadeIn 0.2s ease' }}>
+      <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}}`}</style>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose}/>
+      <div className="relative w-full max-w-md rounded-3xl overflow-hidden"
+        style={{ background:'#fff', border:`1.5px solid ${color}30`, boxShadow:'0 32px 80px rgba(0,0,0,0.15)', maxHeight:'85vh', display:'flex', flexDirection:'column' }}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+          style={{ borderBottom:`1px solid ${color}20`, background:`${color}08` }}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black text-white"
+              style={{ background:color }}>
+              {leads.length}
+            </div>
+            <p className="text-sm font-black" style={{ color:'#1C1712' }}>{title}</p>
+          </div>
+          <button onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ background:'#F5F0E8', color:'#6B5E4E' }}>
+            <X size={14}/>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <div className="flex flex-col items-center gap-3 py-16">
+              <div className="w-7 h-7 rounded-full border-2 border-slate-200 border-t-slate-500 animate-spin"/>
+              <p className="text-xs" style={{ color:'#94A3B8' }}>Loading leads...</p>
+            </div>
+          ) : leads.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-16">
+              <div className="text-3xl">🔍</div>
+              <p className="text-sm font-bold" style={{ color:'#C4BAB0' }}>No leads found</p>
+            </div>
+          ) : (
+            <div>
+              {leads.map((lead: any, i: number) => {
+                const [c1, c2] = getColors(lead.lead_name || '?')
+                return (
+                  <div key={lead.id}
+                    className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-gray-50 transition-colors"
+                    style={{ borderBottom: i < leads.length - 1 ? '1px solid #F5F0E8' : 'none' }}
+                    onClick={() => { onClose(); router.push(`/dashboard/industries/interior-design/leads/${lead.id}`) }}>
+                    {/* Avatar */}
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-black text-white flex-shrink-0"
+                      style={{ background:`linear-gradient(135deg,${c1},${c2})` }}>
+                      {ini(lead.lead_name || '?')}
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold truncate" style={{ color:'#1C1712' }}>{lead.lead_name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-[10px] font-mono" style={{ color:'#9A8F82' }}>{lead.phone}</p>
+                        {lead.city && <p className="text-[10px]" style={{ color:'#C4BAB0' }}>📍 {lead.city}</p>}
+                        {lead.budget && <p className="text-[10px]" style={{ color:'#B8860B' }}>💰 {lead.budget}</p>}
+                      </div>
+                    </div>
+                    {/* Call + Arrow */}
+                    <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                      <a href={`tel:${lead.phone}`}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center"
+                        style={{ background:'#ECFDF5', border:'1px solid #A7F3D0' }}>
+                        <Phone size={13} style={{ color:'#059669' }}/>
+                      </a>
+                      <ArrowRight size={13} style={{ color:'#C4BAB0' }}/>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {leads.length > 0 && !loading && (
+          <div className="px-4 py-2.5 flex-shrink-0 text-center"
+            style={{ borderTop:'1px solid #F5F0E8', background:'#FAFAF8' }}>
+            <p className="text-[10px]" style={{ color:'#C4BAB0' }}>{leads.length} leads · tap to open</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function StageGrid({
+  data, color, onCellClick,
+}: {
+  data: Record<string, SD>; color: string;
+  onCellClick?: (stageKey: string) => void
+}) {
   return (
     <div className="rounded-xl overflow-hidden mb-3" style={{ border: `1px solid ${color}25` }}>
       {STAGE_PAIRS.map((pair, pi) => (
@@ -42,16 +166,31 @@ function StageGrid({ data, color }: { data: Record<string, SD>; color: string })
           {pair.map((key, ki) => {
             if (!key) return <div key={ki} style={{ borderLeft: ki === 1 ? `1px solid ${color}15` : 'none' }} />
             const d = data[key] || { count: 0, calls: 0 }
+            const clickable = d.count > 0 && !!onCellClick
             return (
-              <div key={key} className="px-3 py-2.5" style={{ borderLeft: ki === 1 ? `1px solid ${color}15` : 'none' }}>
+              <div key={key}
+                onClick={() => clickable && onCellClick!(key)}
+                className="px-3 py-2.5 transition-colors"
+                style={{
+                  borderLeft: ki === 1 ? `1px solid ${color}15` : 'none',
+                  cursor: clickable ? 'pointer' : 'default',
+                  background: 'transparent',
+                }}
+                onMouseEnter={e => { if (clickable) (e.currentTarget as HTMLElement).style.background = `${color}08` }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
                 <div className="flex items-start justify-between gap-1">
                   <div className="flex-1 min-w-0">
                     <p className="text-[9px] font-semibold tracking-wide leading-tight"
                       style={{ color: d.count > 0 ? color : '#C4C4C4' }}>{SLABEL[key]}</p>
                     {d.calls > 0 && <p className="text-[8px] mt-0.5" style={{ color: '#B0B0B0' }}>{d.calls} calls</p>}
                   </div>
-                  <span className="text-lg font-bold flex-shrink-0"
-                    style={{ color: d.count > 0 ? color : '#DEDEDE', lineHeight: 1.1 }}>{d.count}</span>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <span className="text-lg font-bold"
+                      style={{ color: d.count > 0 ? color : '#DEDEDE', lineHeight: 1.1 }}>{d.count}</span>
+                    {clickable && (
+                      <span className="text-[10px] opacity-50" style={{ color }}>›</span>
+                    )}
+                  </div>
                 </div>
               </div>
             )
@@ -117,14 +256,10 @@ function OutcomePills({ outcomes, bg, border, color }: {
 }
 
 function PerfHeader({
-  name, perf, perfLoading,
-  onClose, onRefresh,
+  name, perf, perfLoading, onClose, onRefresh,
 }: {
-  name: string
-  perf: PerfData | null
-  perfLoading: boolean
-  onClose: () => void
-  onRefresh: () => void
+  name: string; perf: PerfData | null; perfLoading: boolean
+  onClose: () => void; onRefresh: () => void
 }) {
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #E2E8F0', background: '#fff' }}>
@@ -144,7 +279,6 @@ function PerfHeader({
           <RefreshCw size={11} style={{ color: '#94A3B8' }} className={perfLoading ? 'animate-spin' : ''} />
         </button>
       </div>
-
       <div className="px-4 py-3 flex flex-wrap gap-2">
         <div className="flex items-center gap-2 px-3 py-2 rounded-full" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
           <span className="text-base font-bold leading-none" style={{ color: '#16A34A' }}>{perfLoading ? '—' : (perf?.freshTotal ?? '—')}</span>
@@ -186,6 +320,18 @@ export function TodayCallsSection({
   const [perfLoading, setPerfLoading] = useState(false)
   const [expandedCRE, setExpandedCRE] = useState<string | null>(null)
 
+  // Modal state
+  const [modalOpen, setModalOpen]     = useState(false)
+  const [modalTitle, setModalTitle]   = useState('')
+  const [modalColor, setModalColor]   = useState('#7C3AED')
+  const [modalLeads, setModalLeads]   = useState<any[]>([])
+  const [modalLoading, setModalLoading] = useState(false)
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
   const selectedName = selectedCRE === 'all' ? 'Total CRE'
     : cres.find(c => c.id === selectedCRE)?.name || 'Total CRE'
   const totalCount = todayCalls.length
@@ -199,6 +345,56 @@ export function TodayCallsSection({
       setPerf({ name: creName, ...data })
     } catch (e) { console.error('[Perf]', e) }
     finally { setPerfLoading(false) }
+  }
+
+  const handleStageClick = async (stageKey: string, accentColor: string) => {
+    if (!expandedCRE) return
+    const mapping = STAGE_TO_PIPELINE[stageKey]
+    if (!mapping) return
+
+    const label = SLABEL[stageKey] || stageKey
+    setModalTitle(`${label}`)
+    setModalColor(accentColor)
+    setModalLeads([])
+    setModalLoading(true)
+    setModalOpen(true)
+
+    try {
+      // ✅ TODAY's calls only — with IST date filter
+      const todayStart = new Date(`${istDateStr}T00:00:00+05:30`).toISOString()
+      const todayEnd   = new Date(`${istDateStr}T23:59:59+05:30`).toISOString()
+
+      const { data: todayActs } = await supabase
+        .from('lead_activities')
+        .select('lead_id')
+        .eq('user_id', expandedCRE)
+        .eq('type', 'call')
+        .gte('created_at', todayStart)
+        .lte('created_at', todayEnd)
+
+      const calledLeadIds = [...new Set((todayActs ?? []).map((a: any) => a.lead_id))]
+
+      if (calledLeadIds.length === 0) {
+        setModalLeads([])
+        setModalLoading(false)
+        return
+      }
+
+      let query = supabase
+        .from('leads')
+        .select('id, lead_name, phone, city, budget, pipeline_stage, sitevisit_status, created_at')
+        .eq('company_id', companyId)
+        .eq('pipeline_stage', mapping.stage)
+        .in('id', calledLeadIds)  // ✅ only today's called leads
+        .order('created_at', { ascending: false })
+
+      const { data: leads } = await query
+      setModalLeads(leads ?? [])
+    } catch (e) {
+      console.error('[StageClick]', e)
+      setModalLeads([])
+    }
+    setModalLoading(false)
   }
 
   const selectCRE = (id: string) => {
@@ -215,6 +411,17 @@ export function TodayCallsSection({
 
   return (
     <div className="space-y-3">
+
+      {/* ── Leads Modal ── */}
+      {modalOpen && (
+        <LeadsModal
+          title={modalTitle}
+          color={modalColor}
+          leads={modalLeads}
+          loading={modalLoading}
+          onClose={() => setModalOpen(false)}
+        />
+      )}
 
       {/* ── 1. TEAM SELECTOR ── */}
       <div className="rounded-2xl" style={{ background: '#fff', border: '1px solid #E8E2D8' }}>
@@ -301,7 +508,6 @@ export function TodayCallsSection({
                 <span>{perf.freshCalls + perf.followupCalls} calls · {perf.followupFuDone} fu</span>
               </div>
 
-              {/* ── FRESH + FOLLOWUP: side-by-side on md+, stacked on mobile ── */}
               <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
 
                 {/* FRESH */}
@@ -311,7 +517,11 @@ export function TodayCallsSection({
                     accentColor="#16A34A" bgColor="#F0FDF4" borderColor="#DCFCE7" textColor="#14532D"
                   />
                   <div className="px-3 pt-2">
-                    <StageGrid data={perf.freshStages} color="#DC2626" />
+                    <StageGrid
+                      data={perf.freshStages}
+                      color="#DC2626"
+                      onCellClick={(key) => handleStageClick(key, '#DC2626')}
+                    />
                     <OutcomePills outcomes={perf.freshOutcomes} bg="#F0FDF4" border="#BBF7D0" color="#14532D" />
                     <ExecGrid items={[['Visit done', perf.freshVisitDone], ['Visits created', perf.freshVisitsCreated], ['Quotations sent', perf.freshQuotations]]} />
                   </div>
@@ -324,7 +534,11 @@ export function TodayCallsSection({
                     accentColor="#7C3AED" bgColor="#F5F3FF" borderColor="#EDE9FE" textColor="#4C1D95"
                   />
                   <div className="px-3 pt-2">
-                    <StageGrid data={perf.followupStages} color="#7C3AED" />
+                    <StageGrid
+                      data={perf.followupStages}
+                      color="#7C3AED"
+                      onCellClick={(key) => handleStageClick(key, '#7C3AED')}
+                    />
                     <OutcomePills outcomes={perf.followupOutcomes} bg="#F5F3FF" border="#DDD6FE" color="#4C1D95" />
 
                     {Object.keys(perf.fuCompletionMap).length > 0 && (

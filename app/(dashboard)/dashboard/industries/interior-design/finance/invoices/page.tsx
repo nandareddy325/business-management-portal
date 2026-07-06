@@ -1,14 +1,7 @@
 ﻿import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Receipt, Plus, AlertCircle, ArrowUpRight, Clock, CheckCircle, XCircle } from 'lucide-react'
-
-const statusBadge: Record<string, string> = {
-  paid:    'bg-emerald-100 text-emerald-700',
-  pending: 'bg-amber-100 text-amber-700',
-  overdue: 'bg-red-100 text-red-600',
-  draft:   'bg-[#F5F0E8] text-[#9A8F82]',
-  sent:    'bg-blue-100 text-blue-700',
-}
+import { Receipt, Plus, AlertCircle, Clock, CheckCircle } from 'lucide-react'
+import { InvoiceRow } from './invoice-row'
 
 export default async function InvoicesPage() {
   const supabase = await createServerSupabaseClient()
@@ -19,11 +12,15 @@ export default async function InvoicesPage() {
     .from('profiles').select('company_id').eq('id', user.id).single()
   if (!profile?.company_id) redirect('/login')
 
-  const { data: invoices } = await supabase
+  const { data: invoices, error } = await supabase
     .from('invoices')
     .select('*')
     .eq('company_id', profile.company_id)
     .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Invoice fetch error:', error)
+  }
 
   const all = invoices ?? []
   const totalAmount   = all.reduce((s, i) => s + Number(i.amount || 0), 0)
@@ -53,9 +50,9 @@ export default async function InvoicesPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         {[
-          { label: 'Total Invoiced', value: `â‚¹${totalAmount.toLocaleString('en-IN')}`, icon: Receipt, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
-          { label: 'Amount Received', value: `â‚¹${totalPaid.toLocaleString('en-IN')}`, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-          { label: 'Pending Amount', value: `â‚¹${totalPending.toLocaleString('en-IN')}`, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
+          { label: 'Total Invoiced', value: `₹${totalAmount.toLocaleString('en-IN')}`, icon: Receipt, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+          { label: 'Amount Received', value: `₹${totalPaid.toLocaleString('en-IN')}`, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+          { label: 'Pending Amount', value: `₹${totalPending.toLocaleString('en-IN')}`, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
         ].map(card => {
           const Icon = card.icon
           return (
@@ -112,25 +109,7 @@ export default async function InvoicesPage() {
               </thead>
               <tbody className="divide-y divide-[#F0EBE0]">
                 {all.map((inv: any) => (
-                  <tr key={inv.id} onClick={() => window.location.href=`/dashboard/industries/interior-design/finance/invoices/${inv.id}`} className="hover:bg-[#FFFBEF] transition-colors cursor-pointer">
-                    <td className="px-5 py-3">
-                      <p className="text-sm font-semibold text-[#1C1712]">{inv.invoice_no}</p>
-                      {inv.notes && <p className="text-xs text-[#9A8F82] truncate max-w-xs">{inv.notes}</p>}
-                    </td>
-                    <td className="px-5 py-3 text-sm font-bold text-[#1C1712]">â‚¹{Number(inv.amount).toLocaleString('en-IN')}</td>
-                    <td className="px-5 py-3 text-sm font-semibold text-emerald-600">â‚¹{Number(inv.paid_amount || 0).toLocaleString('en-IN')}</td>
-                    <td className="px-5 py-3 text-xs text-[#9A8F82]">
-                      {inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'â€”'}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full capitalize ${statusBadge[inv.status] ?? statusBadge.draft}`}>
-                        {inv.status ?? 'draft'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-xs text-[#9A8F82]">
-                      {new Date(inv.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    </td>
-                  </tr>
+                  <InvoiceRow key={inv.id} inv={inv} />
                 ))}
               </tbody>
             </table>
