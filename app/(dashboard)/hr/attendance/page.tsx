@@ -194,7 +194,14 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                     </td>
                     <td className="px-4 py-3.5"><p className="text-xs text-[#7A6E60]">{emp.designation ?? '—'}</p></td>
                     <td className="px-4 py-3.5">
-                      <AttendanceStatusDropdown employeeId={emp.id} companyId={profile.company_id} date={today} currentStatus={rec?.status ?? null} recordId={rec?.id ?? null}/>
+                      <AttendanceStatusDropdown
+                        employeeId={emp.id}
+                        companyId={profile.company_id}
+                        date={today}
+                        currentStatus={rec?.status ?? null}
+                        recordId={rec?.id ?? null}
+                        currentLeaveType={rec?.leave_type ?? null}
+                      />
                     </td>
                     <td className="px-4 py-3.5">
                       {rec?.check_in ? <span className="text-xs font-mono font-bold text-emerald-700 px-2 py-1 rounded-lg" style={{ background:'#F0FDF4', border:'1px solid #BBF7D0' }}>🟢 {fmtIST(rec.check_in)}</span>
@@ -242,7 +249,14 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
                 </div>
 
                 {/* Status */}
-                <AttendanceStatusDropdown employeeId={emp.id} companyId={profile.company_id} date={today} currentStatus={rec?.status ?? null} recordId={rec?.id ?? null}/>
+                <AttendanceStatusDropdown
+                  employeeId={emp.id}
+                  companyId={profile.company_id}
+                  date={today}
+                  currentStatus={rec?.status ?? null}
+                  recordId={rec?.id ?? null}
+                  currentLeaveType={rec?.leave_type ?? null}
+                />
 
                 {/* Check in/out */}
                 {(rec?.check_in || rec?.check_out) && (

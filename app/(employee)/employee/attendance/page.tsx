@@ -66,7 +66,6 @@ export default function EmployeeAttendancePage() {
       setRecords(recs ?? [])
       setLeaveApps(leaves ?? [])
 
-      // Check if today already marked
       const todayRec = (recs ?? []).find((r: any) => r.attendance_date === todayStr)
       if (todayRec) setMarkedToday(true)
 
@@ -76,7 +75,6 @@ export default function EmployeeAttendancePage() {
 
   useEffect(() => { loadData() }, [])
 
-  // ── Mark Present Today ──
   const markPresent = async () => {
     if (!employee || marking || markedToday) return
     setMarking(true)
@@ -90,7 +88,6 @@ export default function EmployeeAttendancePage() {
         check_in:        checkIn,
       })
       if (error) {
-        // Duplicate key — already marked
         if (error.code === '23505') {
           setMarkedToday(true)
           setToast('Already marked present today!')
@@ -99,7 +96,7 @@ export default function EmployeeAttendancePage() {
         }
       } else {
         setMarkedToday(true)
-        setToast('✅ Attendance marked — Present!')
+        setToast('Attendance marked — Present')
         await loadData()
       }
     } catch (e) { console.error(e) }
@@ -109,7 +106,6 @@ export default function EmployeeAttendancePage() {
     }
   }
 
-  // ── Build date map ──
   const dateMap: Record<string, { status: string; checkIn?: string }> = {}
 
   for (const r of records) {
@@ -151,119 +147,119 @@ export default function EmployeeAttendancePage() {
   function getStatusStyle(status: string) {
     switch (status) {
       case 'present': return 'bg-emerald-50 text-emerald-700'
-      case 'absent':  return 'bg-red-50 text-red-700'
+      case 'absent':  return 'bg-rose-50 text-rose-600'
       case 'leave':   return 'bg-amber-50 text-amber-700'
-      case 'holiday': return 'bg-[#F5F0E8] text-[#9A8F82]'
+      case 'holiday': return 'bg-[#F0EBE0] text-[#B0A594]'
       default:        return 'text-[#C0B8AF]'
     }
   }
 
   const todayIsWeekend  = isWeekend(today)
   const todayCheckIn    = dateMap[todayStr]?.checkIn
+  const mono = { fontFamily: 'ui-monospace, "JetBrains Mono", monospace' }
+  const serif = { fontFamily: 'Georgia, serif' }
 
   if (loading) return (
-    <div className="min-h-screen bg-[#F7F5F1] flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+    <div className="h-screen bg-[#EFE9DD] flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-[#B8860B] border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-[#F7F5F1]">
+    <div className="min-h-screen bg-[#EFE9DD]">
+      <div className="max-w-3xl mx-auto py-4 px-3 lg:py-6 lg:px-6">
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl text-sm font-medium text-white shadow-lg"
-          style={{ background: '#1C1712' }}>
-          {toast}
-        </div>
-      )}
-
-      {/* Hero */}
-      <div className="bg-[#1C1712] px-6 py-5 relative overflow-hidden">
-        <div className="absolute -right-5 -top-5 w-32 h-32 rounded-full border border-[#B8860B]/10" />
-        <div className="max-w-lg mx-auto">
-          <Link href="/employee" className="text-white/35 text-[11px] flex items-center gap-1 mb-2 w-fit hover:text-white/60 transition-colors">
-            <ArrowLeft className="w-3 h-3" /> Back to portal
-          </Link>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-[20px] font-semibold text-white">My attendance</h1>
-              <p className="text-[12px] text-white/30 mt-0.5">{monthName} · {workingDays} working days</p>
-            </div>
-
-            {/* Mark Present Button */}
-            {!todayIsWeekend && (
-              <button
-                onClick={markPresent}
-                disabled={marking || markedToday}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all disabled:opacity-60"
-                style={{
-                  background: markedToday ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #10B981, #059669)',
-                  border: markedToday ? '1px solid rgba(34,197,94,0.3)' : 'none',
-                  color: markedToday ? '#22c55e' : 'white',
-                  boxShadow: markedToday ? 'none' : '0 4px 12px rgba(16,185,129,0.4)',
-                }}>
-                {marking ? (
-                  <><div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" /> Marking...</>
-                ) : markedToday ? (
-                  <>✅ {todayCheckIn ? `In: ${new Date(todayCheckIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : 'Present'}</>
-                ) : (
-                  <>📍 Mark Present</>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-lg mx-auto px-4 py-4 space-y-2.5">
-
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { label: 'Present', value: presentCount, bg: 'bg-emerald-50 border-emerald-200', num: 'text-emerald-700', lbl: 'text-emerald-600' },
-            { label: 'Absent',  value: absentCount,  bg: 'bg-red-50 border-red-200',         num: 'text-red-700',     lbl: 'text-red-600' },
-            { label: 'Leave',   value: leaveCount,   bg: 'bg-amber-50 border-amber-200',     num: 'text-amber-700',   lbl: 'text-amber-600' },
-            { label: 'Working', value: workingDays,  bg: 'bg-[#F5F0E8] border-[#E2D9C8]',   num: 'text-[#1C1712]',   lbl: 'text-[#7A6E60]' },
-          ].map(s => (
-            <div key={s.label} className={`${s.bg} border rounded-xl p-3 text-center`}>
-              <p className={`text-[24px] font-medium leading-none ${s.num}`}>{s.value}</p>
-              <p className={`text-[10px] mt-1 ${s.lbl}`}>{s.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Today status banner */}
-        {!todayIsWeekend && (
-          <div className={`rounded-2xl p-3.5 flex items-center justify-between border ${
-            markedToday
-              ? 'bg-emerald-50 border-emerald-200'
-              : 'bg-amber-50 border-amber-200'
-          }`}>
-            <div>
-              <p className={`text-[11px] font-medium ${markedToday ? 'text-emerald-700' : 'text-amber-700'}`}>
-                Today — {now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}
-              </p>
-              <p className={`text-[13px] font-medium mt-0.5 ${markedToday ? 'text-emerald-800' : 'text-amber-800'}`}>
-                {markedToday
-                  ? `Present ${todayCheckIn ? `· Check-in: ${new Date(todayCheckIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : ''}`
-                  : 'Not marked yet — tap "Mark Present" to check in'}
-              </p>
-            </div>
-            <span className="text-xl">{markedToday ? '✅' : '⏰'}</span>
+        {toast && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 text-sm font-medium text-white shadow-lg border border-[#B8860B]/40"
+            style={{ background: '#1C1712' }}>
+            {toast}
           </div>
         )}
 
-        {/* Calendar */}
-        <div className="bg-white border border-[#E2D9C8] rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#E2D9C8]">
-            <p className="text-[14px] font-medium text-[#1C1712]">{monthName}</p>
+        <div className="relative border border-[#B8860B]/35">
+          <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#B8860B] pointer-events-none z-10" />
+          <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-[#B8860B] pointer-events-none z-10" />
+          <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-[#B8860B] pointer-events-none z-10" />
+          <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#B8860B] pointer-events-none z-10" />
+
+          {/* Hero */}
+          <div className="bg-[#1C1712] px-6 py-5 lg:px-8 relative overflow-hidden">
+            <div className="absolute inset-0 opacity-[0.05]" style={{
+              backgroundImage: 'linear-gradient(#B8860B 1px, transparent 1px), linear-gradient(90deg, #B8860B 1px, transparent 1px)',
+              backgroundSize: '28px 28px'
+            }} />
+            <div className="relative">
+              <Link href="/employee" className="text-white/40 text-[10px] tracking-[1.5px] uppercase flex items-center gap-1.5 mb-3 w-fit hover:text-[#D4A537] transition-colors" style={mono}>
+                <ArrowLeft className="w-3 h-3" /> Back to portal
+              </Link>
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h1 className="text-[24px] text-white italic" style={{ fontFamily: 'Georgia, serif', fontWeight: 500 }}>My Attendance</h1>
+                  <p className="text-[11px] text-white/40 mt-1 tracking-wide" style={mono}>{monthName.toUpperCase()} · {workingDays} WORKING DAYS</p>
+                </div>
+                {!todayIsWeekend && (
+                  <button
+                    onClick={markPresent}
+                    disabled={marking || markedToday}
+                    className="flex items-center gap-2 px-4 py-2 border text-[11px] tracking-[1px] uppercase transition-all disabled:opacity-70"
+                    style={{
+                      ...mono,
+                      background: markedToday ? 'rgba(16,185,129,0.1)' : 'transparent',
+                      borderColor: markedToday ? 'rgba(16,185,129,0.4)' : '#B8860B',
+                      color: markedToday ? '#34d399' : '#D4A537',
+                    }}>
+                    {marking ? (
+                      <><div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" /> Marking</>
+                    ) : markedToday ? (
+                      <>✓ {todayCheckIn ? `In ${new Date(todayCheckIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : 'Present'}</>
+                    ) : (
+                      <>Mark Present</>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="p-3">
+          {/* §1 — Stats ledger row */}
+          <div className="bg-[#FAF7F2] border-t border-[#B8860B]/25 px-6 py-4 lg:px-8">
+            <p className="text-[9px] tracking-[3px] text-[#8B6914] font-semibold mb-3 uppercase" style={mono}>§1 — This Month</p>
+            <div className="grid grid-cols-4">
+              {[
+                { label: 'Present', value: presentCount, color: 'text-emerald-700' },
+                { label: 'Absent',  value: absentCount,  color: 'text-rose-600' },
+                { label: 'Leave',   value: leaveCount,   color: 'text-amber-700' },
+                { label: 'Working', value: workingDays,  color: 'text-[#1C1712]' },
+              ].map((s, i) => (
+                <div key={s.label} className={`text-center ${i > 0 ? 'border-l border-[#E2D9C8]' : ''}`}>
+                  <p className={`text-2xl ${s.color}`} style={serif}>{s.value}</p>
+                  <p className="text-[9px] tracking-[1px] text-[#9A8F82] uppercase mt-1">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* §2 — Today status */}
+          {!todayIsWeekend && (
+            <div className={`px-6 py-3.5 lg:px-8 border-t border-[#B8860B]/25 flex items-center justify-between ${markedToday ? 'bg-emerald-50/40' : 'bg-amber-50/40'}`}>
+              <div className="flex items-center gap-2.5">
+                <span className={`w-1.5 h-1.5 rounded-full ${markedToday ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                <p className="text-[13px] text-[#1C1712]">
+                  {now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })} —{' '}
+                  {markedToday
+                    ? <span className="text-emerald-700">Present{todayCheckIn ? ` · in at ${new Date(todayCheckIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
+                    : <span className="text-amber-700">Not marked yet</span>}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* §3 — Calendar */}
+          <div className="bg-white border-t border-[#B8860B]/25 px-6 py-4 lg:px-8">
+            <p className="text-[9px] tracking-[3px] text-[#8B6914] font-semibold mb-3 uppercase" style={mono}>§2 — Calendar</p>
             <div className="grid grid-cols-7 gap-1 mb-1">
               {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-                <div key={i} className="text-center text-[10px] font-medium text-[#7A6E60] py-1">{d}</div>
+                <div key={i} className="text-center text-[10px] font-medium text-[#9A8F82] py-1" style={mono}>{d}</div>
               ))}
             </div>
             <div className="grid grid-cols-7 gap-1">
@@ -274,79 +270,68 @@ export default function EmployeeAttendancePage() {
                 const isToday = day === today
                 return (
                   <div key={day}
-                    className={`aspect-square rounded-lg flex items-center justify-center text-[11px] font-medium
-                      ${getStatusStyle(status)}
-                      ${isToday ? 'ring-2 ring-[#B8860B] ring-offset-1' : ''}
-                    `}>
+                    className={`aspect-square flex items-center justify-center text-[11px] ${getStatusStyle(status)} ${isToday ? 'ring-2 ring-[#B8860B] ring-offset-1' : ''}`}
+                    style={serif}>
                     {day}
                   </div>
                 )
               })}
             </div>
-          </div>
-
-          <div className="flex items-center gap-4 px-4 py-3 border-t border-[#E2D9C8]">
-            {[
-              { label: 'Present', color: 'bg-emerald-200' },
-              { label: 'Absent',  color: 'bg-red-200' },
-              { label: 'Leave',   color: 'bg-amber-200' },
-              { label: 'Holiday', color: 'bg-[#E2D9C8]' },
-            ].map(l => (
-              <div key={l.label} className="flex items-center gap-1.5">
-                <div className={`w-2 h-2 rounded-[3px] ${l.color}`} />
-                <span className="text-[10px] text-[#7A6E60]">{l.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Records */}
-        <div className="bg-white border border-[#E2D9C8] rounded-2xl overflow-hidden">
-          <div className="px-4 py-3.5 border-b border-[#E2D9C8]">
-            <p className="text-[14px] font-medium text-[#1C1712]">Recent records</p>
-          </div>
-          <div className="divide-y divide-[#F0EBE0]">
-            {records.slice(0, 10).map((r: any) => {
-              const d      = new Date(r.attendance_date)
-              const status = r.status?.toLowerCase() ?? 'present'
-              const badge  = {
-                present: 'bg-emerald-50 text-emerald-700',
-                absent:  'bg-red-50 text-red-700',
-                leave:   'bg-amber-50 text-amber-700',
-              }[status] ?? 'bg-gray-50 text-gray-600'
-              return (
-                <div key={r.id} className="px-4 py-3.5 flex items-center justify-between">
-                  <div>
-                    <p className="text-[13px] font-medium text-[#1C1712]">
-                      {d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
-                    <p className="text-[11px] text-[#7A6E60] mt-0.5">
-                      {d.toLocaleDateString('en-IN', { weekday: 'long' })}
-                      {r.attendance_date === todayStr && ' · Today'}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-[10px] font-medium px-2.5 py-1 rounded-full capitalize ${badge}`}>
-                      {status}
-                    </span>
-                    {r.check_in && (
-                      <p className="text-[11px] text-[#7A6E60] mt-1">
-                        In: {new Date(r.check_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    )}
-                  </div>
+            <div className="flex items-center gap-4 pt-3 mt-3 border-t border-[#F0EAE0] flex-wrap">
+              {[
+                { label: 'Present', color: 'bg-emerald-300' },
+                { label: 'Absent',  color: 'bg-rose-300' },
+                { label: 'Leave',   color: 'bg-amber-300' },
+                { label: 'Holiday', color: 'bg-[#E2D9C8]' },
+              ].map(l => (
+                <div key={l.label} className="flex items-center gap-1.5">
+                  <div className={`w-2 h-2 ${l.color}`} />
+                  <span className="text-[10px] text-[#9A8F82]">{l.label}</span>
                 </div>
-              )
-            })}
-            {!records.length && (
-              <div className="py-12 text-center">
-                <p className="text-[#9A8F82] text-sm">No attendance records yet</p>
-                <p className="text-[#B8B0A0] text-xs mt-1">Click "Mark Present" above to check in</p>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
-        </div>
 
+          {/* §4 — Recent records */}
+          <div className="bg-[#FAF7F2] border-t border-[#B8860B]/25">
+            <p className="text-[9px] tracking-[3px] text-[#8B6914] font-semibold uppercase px-6 lg:px-8 pt-4 pb-1.5" style={mono}>§3 — Recent Records</p>
+            <div>
+              {records.slice(0, 10).map((r: any, idx) => {
+                const d      = new Date(r.attendance_date)
+                const status = r.status?.toLowerCase() ?? 'present'
+                const color  = { present: 'text-emerald-700', absent: 'text-rose-600', leave: 'text-amber-700' }[status] ?? 'text-[#9A8F82]'
+                return (
+                  <div key={r.id} className={`px-6 lg:px-8 py-3 flex items-center justify-between ${idx > 0 ? 'border-t border-[#F0EAE0]' : ''}`}>
+                    <div>
+                      <p className="text-[13px] text-[#1C1712]" style={serif}>
+                        {d.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                      <p className="text-[10px] text-[#9A8F82] mt-0.5">
+                        {d.toLocaleDateString('en-IN', { weekday: 'long' })}
+                        {r.attendance_date === todayStr && ' · Today'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-[11px] font-medium capitalize ${color}`}>{status}</span>
+                      {r.check_in && (
+                        <p className="text-[10px] text-[#9A8F82] mt-0.5">
+                          In: {new Date(r.check_in).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+              {!records.length && (
+                <div className="py-10 text-center px-6">
+                  <p className="text-[#9A8F82] text-sm">No attendance records yet</p>
+                  <p className="text-[#B8B0A0] text-xs mt-1">Tap "Mark Present" above to check in</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   )

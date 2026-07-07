@@ -26,115 +26,126 @@ export default async function EmployeeProfilePage() {
     .join('')
     .toUpperCase() ?? '?'
 
+  const mono = { fontFamily: 'ui-monospace, "JetBrains Mono", monospace' }
+  const serif = { fontFamily: 'Georgia, serif' }
+
   return (
-    <div className="min-h-screen bg-[#F7F5F1]">
+    <div className="min-h-screen bg-[#EFE9DD]">
+      <div className="max-w-3xl mx-auto py-4 px-3 lg:py-6 lg:px-6">
 
-      {/* Hero */}
-      <div className="bg-[#1C1712] px-6 py-5 relative overflow-hidden">
-        <div className="absolute -right-5 -top-5 w-32 h-32 rounded-full border border-[#B8860B]/10" />
-        <div className="max-w-lg mx-auto">
-          <Link href="/employee" className="text-white/35 text-[11px] flex items-center gap-1 mb-2 w-fit hover:text-white/60 transition-colors">
-            <ArrowLeft className="w-3 h-3" /> Back to portal
-          </Link>
-          <h1 className="text-[20px] font-semibold text-white">My profile</h1>
-          <p className="text-[12px] text-white/30 mt-0.5">Personal & employment details</p>
-        </div>
-      </div>
+        <div className="relative border border-[#B8860B]/35">
+          <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-[#B8860B] pointer-events-none z-10" />
+          <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-[#B8860B] pointer-events-none z-10" />
+          <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-[#B8860B] pointer-events-none z-10" />
+          <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-[#B8860B] pointer-events-none z-10" />
 
-      <div className="max-w-lg mx-auto px-4 py-4 space-y-2.5">
-
-        {/* Avatar Card */}
-        <div className="bg-white border border-[#E2D9C8] rounded-2xl p-5 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-[#F0EBE0] border-2 border-[#E8DFC8] flex items-center justify-center text-[26px] font-medium text-[#B8860B] flex-shrink-0">
-            {initials}
-          </div>
-          <div>
-            <h2 className="text-[18px] font-medium text-[#1C1712]">{employee.full_name}</h2>
-            <p className="text-[12px] text-[#7A6E60] mt-0.5">
-              {employee.designation ?? 'Employee'} · {employee.department ?? '—'}
-            </p>
-            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-              <span className="inline-flex items-center bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5 text-[10px] font-medium text-amber-700">
-                {employee.employee_code ?? employee.employee_id ?? 'N/A'}
-              </span>
-              {employee.is_active && (
-                <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  Active
-                </span>
-              )}
+          {/* Hero */}
+          <div className="bg-[#1C1712] px-6 py-5 lg:px-8 relative overflow-hidden">
+            <div className="absolute inset-0 opacity-[0.05]" style={{
+              backgroundImage: 'linear-gradient(#B8860B 1px, transparent 1px), linear-gradient(90deg, #B8860B 1px, transparent 1px)',
+              backgroundSize: '28px 28px'
+            }} />
+            <div className="relative">
+              <Link href="/employee" className="text-white/40 text-[10px] tracking-[1.5px] uppercase flex items-center gap-1.5 mb-3 w-fit hover:text-[#D4A537] transition-colors" style={mono}>
+                <ArrowLeft className="w-3 h-3" /> Back to portal
+              </Link>
+              <h1 className="text-[24px] text-white italic" style={{ fontFamily: 'Georgia, serif', fontWeight: 500 }}>My Profile</h1>
+              <p className="text-[11px] text-white/40 mt-1 tracking-wide" style={mono}>PERSONAL & EMPLOYMENT DETAILS</p>
             </div>
           </div>
-        </div>
 
-        {/* Personal Info */}
-        <div className="bg-white border border-[#E2D9C8] rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#E2D9C8]">
-            <p className="text-[10px] tracking-[2px] text-[#7A6E60] font-medium uppercase">Personal information</p>
-          </div>
-          {[
-            { label: 'Full name', value: employee.full_name,   Icon: User },
-            { label: 'Email',     value: employee.email,        Icon: Mail },
-            { label: 'Phone',     value: employee.phone ?? '—', Icon: Phone },
-          ].map(item => (
-            <div key={item.label} className="flex items-center justify-between px-4 py-3 border-b border-[#F0EBE0] last:border-0">
-              <span className="text-[11px] text-[#7A6E60] flex items-center gap-1.5">
-                <item.Icon className="w-3.5 h-3.5" /> {item.label}
-              </span>
-              <span className="text-[13px] font-medium text-[#1C1712] max-w-[200px] text-right truncate">{item.value}</span>
+          {/* §1 — Identity */}
+          <div className="bg-[#FAF7F2] border-t border-[#B8860B]/25 px-6 py-5 lg:px-8 flex items-center gap-4">
+            <div className="w-16 h-16 border-2 border-[#B8860B]/40 flex items-center justify-center text-[24px] text-[#8B6914] flex-shrink-0" style={serif}>
+              {initials}
             </div>
-          ))}
-        </div>
-
-        {/* Employment Details */}
-        <div className="bg-white border border-[#E2D9C8] rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#E2D9C8]">
-            <p className="text-[10px] tracking-[2px] text-[#7A6E60] font-medium uppercase">Employment details</p>
-          </div>
-          {[
-            { label: 'Department',  value: employee.department  ?? '—', Icon: Building },
-            { label: 'Designation', value: employee.designation ?? '—', Icon: Briefcase },
-            {
-              label: 'Join date',
-              value: employee.join_date
-                ? new Date(employee.join_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-                : '—',
-              Icon: Calendar,
-            },
-          ].map(item => (
-            <div key={item.label} className="flex items-center justify-between px-4 py-3 border-b border-[#F0EBE0] last:border-0">
-              <span className="text-[11px] text-[#7A6E60] flex items-center gap-1.5">
-                <item.Icon className="w-3.5 h-3.5" /> {item.label}
-              </span>
-              <span className="text-[13px] font-medium text-[#1C1712]">{item.value}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Salary */}
-        {employee.salary && (
-          <div className="bg-[#1C1712] rounded-2xl p-4 flex items-center justify-between">
             <div>
-              <p className="text-[11px] text-white/40 mb-1">Monthly salary</p>
-              <p className="text-[22px] font-medium text-[#B8860B]">
-                ₹{Number(employee.salary).toLocaleString('en-IN')}
+              <h2 className="text-[19px] text-[#1C1712]" style={serif}>{employee.full_name}</h2>
+              <p className="text-[12px] text-[#9A8F82] mt-0.5">
+                {employee.designation ?? 'Employee'} · {employee.department ?? '—'}
               </p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-[#B8860B]/15 flex items-center justify-center">
-              <Wallet className="w-5 h-5 text-[#B8860B]" />
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="text-[10px] tracking-[1px] font-medium text-[#8B6914] border border-[#B8860B]/40 px-2 py-0.5 uppercase" style={mono}>
+                  {employee.employee_code ?? employee.employee_id ?? 'N/A'}
+                </span>
+                {employee.is_active && (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-emerald-700 uppercase tracking-[1px]" style={mono}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Active
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        )}
 
-        {/* ✅ Change Password Card */}
-        <ChangePasswordCard />
+          {/* §2 — Personal Information */}
+          <div className="bg-white border-t border-[#B8860B]/25">
+            <p className="text-[9px] tracking-[3px] text-[#8B6914] font-semibold uppercase px-6 lg:px-8 pt-4 pb-1.5" style={mono}>§2 — Personal Information</p>
+            {[
+              { label: 'Full name', value: employee.full_name,   Icon: User },
+              { label: 'Email',     value: employee.email,        Icon: Mail },
+              { label: 'Phone',     value: employee.phone ?? '—', Icon: Phone },
+            ].map((item, i) => (
+              <div key={item.label} className={`flex items-center justify-between px-6 lg:px-8 py-3 ${i > 0 ? 'border-t border-[#F0EAE0]' : ''}`}>
+                <span className="text-[11px] text-[#9A8F82] flex items-center gap-1.5">
+                  <item.Icon className="w-3.5 h-3.5" /> {item.label}
+                </span>
+                <span className="text-[13px] text-[#1C1712] max-w-[240px] text-right truncate" style={serif}>{item.value}</span>
+              </div>
+            ))}
+          </div>
 
-        {/* Back Button */}
-        <Link href="/employee"
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-[#E2D9C8] text-sm text-[#7A6E60] hover:bg-[#F5F0E8] transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to dashboard
-        </Link>
+          {/* §3 — Employment Details */}
+          <div className="bg-[#FAF7F2] border-t border-[#B8860B]/25">
+            <p className="text-[9px] tracking-[3px] text-[#8B6914] font-semibold uppercase px-6 lg:px-8 pt-4 pb-1.5" style={mono}>§3 — Employment Details</p>
+            {[
+              { label: 'Department',  value: employee.department  ?? '—', Icon: Building },
+              { label: 'Designation', value: employee.designation ?? '—', Icon: Briefcase },
+              {
+                label: 'Join date',
+                value: employee.join_date
+                  ? new Date(employee.join_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+                  : '—',
+                Icon: Calendar,
+              },
+            ].map((item, i) => (
+              <div key={item.label} className={`flex items-center justify-between px-6 lg:px-8 py-3 ${i > 0 ? 'border-t border-[#F0EAE0]' : ''}`}>
+                <span className="text-[11px] text-[#9A8F82] flex items-center gap-1.5">
+                  <item.Icon className="w-3.5 h-3.5" /> {item.label}
+                </span>
+                <span className="text-[13px] text-[#1C1712]" style={serif}>{item.value}</span>
+              </div>
+            ))}
+          </div>
 
+          {/* §4 — Salary */}
+          {employee.salary && (
+            <div className="bg-[#1C1712] border-t border-[#B8860B]/25 px-6 lg:px-8 py-4 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] tracking-[1.5px] text-white/40 uppercase mb-1" style={mono}>Monthly Salary</p>
+                <p className="text-[22px] text-[#D4A537]" style={serif}>
+                  ₹{Number(employee.salary).toLocaleString('en-IN')}
+                </p>
+              </div>
+              <div className="w-9 h-9 rounded-full border border-[#B8860B]/40 flex items-center justify-center">
+                <Wallet className="w-4 h-4 text-[#B8860B]" />
+              </div>
+            </div>
+          )}
+
+          {/* §5 — Change Password */}
+          <div className="bg-white border-t border-[#B8860B]/25 px-6 py-5 lg:px-8">
+            <p className="text-[9px] tracking-[3px] text-[#8B6914] font-semibold mb-3 uppercase" style={mono}>§5 — Security</p>
+            <ChangePasswordCard />
+          </div>
+
+          {/* Back link */}
+          <Link href="/employee"
+            className="flex items-center justify-center gap-2 w-full py-3 border-t border-[#B8860B]/25 text-[11px] tracking-[2px] uppercase text-[#9A8F82] hover:text-[#1C1712] hover:bg-[#FAF7F2] transition-colors"
+            style={mono}>
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Dashboard
+          </Link>
+
+        </div>
       </div>
     </div>
   )
