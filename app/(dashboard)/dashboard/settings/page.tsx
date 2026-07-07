@@ -1,6 +1,6 @@
-'use client'
+﻿'use client'
 // @ts-nocheck
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const GRADIENTS = [
@@ -18,11 +18,55 @@ const ROLE_CONFIG: Record<string, { bg: string; color: string; label: string }> 
 
 const ini = (name: string) => name?.split(' ').map((x: string) => x[0]).join('').slice(0, 2).toUpperCase() || '?'
 
+function useCountUp(target: number, duration = 700) {
+  const [value, setValue] = useState(0)
+  useEffect(() => {
+    let start: number | null = null
+    let raf: number
+    const step = (ts: number) => {
+      if (start === null) start = ts
+      const progress = Math.min((ts - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setValue(Math.round(eased * target))
+      if (progress < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [target, duration])
+  return value
+}
+
+function StatCard({ label, value, color, icon, delay, sub }: any) {
+  const count = useCountUp(value)
+  return (
+    <div
+      className="stat-card relative overflow-hidden bg-white border border-[#E8E2D8] rounded-2xl px-5 py-4 flex items-center justify-between fade-in"
+      style={{
+        animationDelay: `${delay}s`,
+        boxShadow: '0 1px 2px rgba(28,23,18,0.03), 0 4px 14px rgba(28,23,18,0.05)',
+      }}>
+      <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: `linear-gradient(90deg, ${color}, ${color}00)` }} />
+      <div>
+        <p className="text-[10px] text-[#9A8F82] font-semibold uppercase tracking-wide mb-1">{label}</p>
+        <p className="text-[28px] font-black tabular-nums leading-none" style={{ color }}>{count}</p>
+        {sub && <p className="text-[10px] text-[#B8B0A0] mt-1.5">{sub}</p>}
+      </div>
+      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0 icon-pulse"
+        style={{ background: `${color}12` }}>
+        {icon}
+      </div>
+    </div>
+  )
+}
+
 export default function UsersSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState<any[]>([])
   const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'staff'>('all')
   const [companyId, setCompanyId] = useState<string | null>(null)
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null)
+  const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -35,14 +79,12 @@ export default function UsersSettingsPage() {
         if (!profile?.company_id) return
         setCompanyId(profile.company_id)
 
-        // Fetch all profiles in this company
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, full_name, email, role, created_at')
           .eq('company_id', profile.company_id)
           .order('created_at', { ascending: true })
 
-        // Fetch employees for extra info
         const { data: employees } = await supabase
           .from('employees')
           .select('user_id, designation, department, permissions, is_active, employee_code')
@@ -63,73 +105,163 @@ export default function UsersSettingsPage() {
     load()
   }, [])
 
-  const filtered = users.filter(u =>
+  const admins = users.filter(u => ['admin', 'tenant_admin', 'manager'].includes(u.role))
+  const staff = users.filter(u => u.role === 'employee')
+
+  const roleFiltered = roleFilter === 'all' ? users : roleFilter === 'admin' ? admins : staff
+
+  const filtered = roleFiltered.filter(u =>
     u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
     u.email?.toLowerCase().includes(search.toLowerCase()) ||
     u.role?.toLowerCase().includes(search.toLowerCase())
   )
 
-  const admins = users.filter(u => ['admin', 'tenant_admin', 'manager'].includes(u.role)).length
-  const staff = users.filter(u => u.role === 'employee').length
+  const copyEmail = (email: string) => {
+    navigator.clipboard?.writeText(email)
+    setCopiedEmail(email)
+    setTimeout(() => setCopiedEmail(null), 1500)
+  }
+
+  const adminPct = users.length ? Math.round((admins.length / users.length) * 100) : 0
+  const staffPct = 100 - adminPct
 
   if (loading) return (
-    <div className="flex items-center justify-center py-32">
-      <div className="w-8 h-8 border-2 border-[#B8860B] border-t-transparent rounded-full animate-spin" />
-    </div>
+    <main className="flex-1 p-4 md:p-8" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
+      <div className="space-y-5">
+        <div className="skeleton h-9 w-52 rounded-lg" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[0,1,2].map(i => <div key={i} className="skeleton h-[76px] rounded-2xl" />)}
+        </div>
+        <div className="skeleton h-[480px] rounded-2xl" />
+      </div>
+      <style>{`
+        .skeleton {
+          background: linear-gradient(90deg, #EDE8DC 25%, #F5F0E8 50%, #EDE8DC 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.4s ease infinite;
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+      `}</style>
+    </main>
   )
 
   return (
-    <main className="flex-1 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
-      <div className="max-w-4xl mx-auto space-y-5">
+    <main className="flex-1 p-4 md:p-8" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
+      <style>{`
+        @keyframes fadeSlideUp {
+          from { opacity: 0; filter: blur(3px); transform: translateY(10px); }
+          to { opacity: 1; filter: blur(0); transform: translateY(0); }
+        }
+        .fade-in { animation: fadeSlideUp 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+        .row-hover { transition: background 0.18s ease, transform 0.18s ease; }
+        .row-hover:hover { transform: translateX(2px); }
+        .stat-card { transition: transform 0.22s cubic-bezier(0.16,1,0.3,1), box-shadow 0.22s ease; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 18px 36px rgba(28,23,18,0.10) !important; }
+        .avatar-ring { transition: box-shadow 0.2s ease, transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
+        .row-hover:hover .avatar-ring { transform: scale(1.08) rotate(-2deg); }
+        .icon-pulse { transition: transform 0.3s ease; }
+        .stat-card:hover .icon-pulse { transform: scale(1.15); }
+        .email-copy { cursor: pointer; transition: color 0.15s ease; }
+        .email-copy:hover { color: #B8860B !important; }
+        .search-focus { transition: all 0.2s ease; }
+        .search-focus:focus { transform: scale(1.008); }
+        .access-card { transition: transform 0.22s cubic-bezier(0.16,1,0.3,1), box-shadow 0.22s ease; }
+        .access-card:hover { transform: translateY(-3px); box-shadow: 0 12px 24px rgba(28,23,18,0.08); }
+        .access-bar { transition: width 0.8s cubic-bezier(0.16,1,0.3,1) 0.4s; animation: barGrow 0.8s cubic-bezier(0.16,1,0.3,1) 0.4s both; }
+        .sticky-head { position: sticky; top: 0; z-index: 5; backdrop-filter: blur(8px); }
+        .seg-btn { transition: all 0.2s cubic-bezier(0.16,1,0.3,1); }
+        .bar-fill { transition: width 0.8s cubic-bezier(0.16,1,0.3,1); }
+      `}</style>
 
-        {/* ── Header ── */}
-        <div>
-          <p className="text-[10px] font-bold text-[#B8860B] uppercase tracking-[4px] mb-1">Settings</p>
-          <h1 className="text-2xl font-bold text-[#1C1712]">Users & Access</h1>
-          <p className="text-sm text-[#9A8F82] mt-1">All users in your company portal.</p>
+      <div className="max-w-[1400px] mx-auto space-y-6">
+
+        {/* ── Hero Header ── */}
+        <div className="fade-in flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
+          <div>
+            <p className="text-[10px] font-bold text-[#B8860B] uppercase tracking-[4px] mb-1.5">Settings</p>
+            <h1 className="text-[32px] font-bold text-[#1C1712] leading-tight">Users & Access</h1>
+            <p className="text-sm text-[#9A8F82] mt-1.5">All users in your company portal, at a glance.</p>
+          </div>
+
+          {/* Role distribution bar */}
+          {users.length > 0 && (
+            <div className="bg-white border border-[#E8E2D8] rounded-2xl px-5 py-3.5 min-w-[260px]"
+              style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.03), 0 4px 14px rgba(28,23,18,0.05)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[9px] font-bold text-[#9A8F82] uppercase tracking-wide">Team Composition</p>
+                <p className="text-[9px] font-bold text-[#C4BAB0]">{users.length} total</p>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden flex bg-[#F0EBE0]">
+                <div className="bar-fill h-full" style={{ width: `${adminPct}%`, background: '#B8860B' }} />
+                <div className="bar-fill h-full" style={{ width: `${staffPct}%`, background: '#2563EB' }} />
+              </div>
+              <div className="flex items-center gap-4 mt-2">
+                <span className="flex items-center gap-1.5 text-[10px] text-[#7A6E60]">
+                  <span className="w-2 h-2 rounded-full" style={{ background: '#B8860B' }} /> Admins {adminPct}%
+                </span>
+                <span className="flex items-center gap-1.5 text-[10px] text-[#7A6E60]">
+                  <span className="w-2 h-2 rounded-full" style={{ background: '#2563EB' }} /> Staff {staffPct}%
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Stats ── */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Total Users', value: users.length,  color: '#7C3AED' },
-            { label: 'Admins',      value: admins,         color: '#B8860B' },
-            { label: 'Staff',       value: staff,          color: '#2563EB' },
-          ].map((s, i) => (
-            <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
-              <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
-              <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatCard label="Total Users" value={users.length} color="#7C3AED" icon="👥" delay={0.05} sub="Across your company" />
+          <StatCard label="Admins" value={admins.length} color="#B8860B" icon="👑" delay={0.09} sub="Full & managerial access" />
+          <StatCard label="Staff" value={staff.length} color="#2563EB" icon="👤" delay={0.13} sub="Permission-based access" />
         </div>
 
         {/* ── Users Table ── */}
-        <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden fade-in"
+          style={{ animationDelay: '0.18s', boxShadow: '0 1px 2px rgba(28,23,18,0.03), 0 10px 28px rgba(28,23,18,0.06)' }}>
 
-          {/* Search bar */}
-          <div className="px-5 py-4 border-b border-[#F0EBE0] flex items-center gap-3">
+          {/* Toolbar */}
+          <div className="px-5 py-4 border-b border-[#F0EBE0] flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4" style={{ background: '#FEFCF9' }}>
             <div className="relative flex-1 max-w-xs">
               <input type="text" placeholder="Search users..."
                 value={search} onChange={e => setSearch(e.target.value)}
-                className="w-full rounded-xl pl-8 pr-8 py-2 text-xs text-[#1C1712] placeholder:text-[#C4BAB0] outline-none bg-[#F7F5F1] border border-[#E8E2D8] focus:border-[#B8860B] transition-colors" />
+                className="search-focus w-full rounded-xl pl-8 pr-8 py-2.5 text-xs text-[#1C1712] placeholder:text-[#C4BAB0] outline-none bg-[#F7F5F1] border border-[#E8E2D8] focus:border-[#B8860B] focus:shadow-[0_0_0_3px_rgba(184,134,11,0.12)]" />
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9A8F82] text-xs">🔍</span>
               {search && (
                 <button onClick={() => setSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9A8F82] hover:text-red-500 text-xs">✕</button>
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#9A8F82] hover:text-red-500 text-xs transition-colors">✕</button>
               )}
             </div>
-            <p className="text-[10px] text-[#9A8F82]">
-              <span className="font-bold text-[#1C1712]">{filtered.length}</span> of {users.length} users
+
+            {/* Segmented role filter */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-[#F0EBE0] w-fit">
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'admin', label: 'Admins' },
+                { key: 'staff', label: 'Staff' },
+              ].map(opt => (
+                <button key={opt.key} onClick={() => setRoleFilter(opt.key as any)}
+                  className="seg-btn text-[10px] font-bold px-3 py-1.5 rounded-lg"
+                  style={{
+                    background: roleFilter === opt.key ? '#1C1712' : 'transparent',
+                    color: roleFilter === opt.key ? '#fff' : '#9A8F82',
+                  }}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-[10px] text-[#9A8F82] sm:ml-auto">
+              <span className="font-bold text-[#1C1712] tabular-nums">{filtered.length}</span> of {users.length} users
             </p>
           </div>
 
           {/* Table — desktop */}
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto max-h-[600px] overflow-y-auto"
+            onScroll={(e) => setScrolled((e.target as HTMLDivElement).scrollTop > 4)}>
             <table className="w-full">
               <thead>
-                <tr style={{ background: '#FAFAF8', borderBottom: '1px solid #F0EBE0' }}>
+                <tr className="sticky-head" style={{ background: scrolled ? 'rgba(250,250,248,0.92)' : '#FAFAF8', borderBottom: '1px solid #F0EBE0', boxShadow: scrolled ? '0 2px 8px rgba(28,23,18,0.06)' : 'none', transition: 'box-shadow 0.2s ease' }}>
                   {['#', 'User', 'Email', 'Role', 'Dept / Designation', 'Access', 'Joined'].map(h => (
-                    <th key={h} className="text-left text-[9px] font-black text-[#9A8F82] uppercase tracking-[2px] px-4 py-3 whitespace-nowrap first:pl-5 last:pr-5">{h}</th>
+                    <th key={h} className="text-left text-[9px] font-black text-[#9A8F82] uppercase tracking-[2px] px-4 py-3.5 whitespace-nowrap first:pl-5 last:pr-5">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -140,13 +272,14 @@ export default function UsersSettingsPage() {
                   const perms: string[] = u.permissions || []
                   return (
                     <tr key={u.id}
-                      className="border-b border-[#F7F5F1] last:border-0 hover:bg-[#FDFAF8] transition-colors">
-                      <td className="pl-5 pr-2 py-3.5">
+                      className="row-hover border-b border-[#F7F5F1] last:border-0 hover:bg-[#FDFAF8]"
+                      style={{ animation: `fadeSlideUp 0.4s cubic-bezier(0.16,1,0.3,1) both`, animationDelay: `${0.22 + i * 0.03}s` }}>
+                      <td className="pl-5 pr-2 py-4">
                         <span className="text-[10px] font-bold text-[#C4BAB0]">{i + 1}</span>
                       </td>
-                      <td className="pl-2 pr-4 py-3.5">
+                      <td className="pl-2 pr-4 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
+                          <div className="avatar-ring w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
                             style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 3px 10px ${g[0]}40` }}>
                             {ini(u.full_name || u.email)}
                           </div>
@@ -158,23 +291,25 @@ export default function UsersSettingsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3.5">
-                        <p className="text-xs text-[#7A6E60] truncate max-w-[180px]">{u.email}</p>
+                      <td className="px-4 py-4">
+                        <p className="email-copy text-xs text-[#7A6E60] truncate max-w-[200px]" onClick={() => copyEmail(u.email)}>
+                          {copiedEmail === u.email ? '✓ Copied!' : u.email}
+                        </p>
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-4">
                         <span className="inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-full"
                           style={{ background: roleCfg.bg, color: roleCfg.color, border: `1px solid ${roleCfg.color}30` }}>
                           {roleCfg.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-4">
                         <div>
                           {u.designation && <p className="text-xs font-medium text-[#1C1712]">{u.designation}</p>}
                           {u.department && <p className="text-[10px] text-[#9A8F82]">{u.department}</p>}
                           {!u.designation && !u.department && <span className="text-[#C4BAB0]">—</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3.5">
+                      <td className="px-4 py-4">
                         {perms.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {perms.map(p => {
@@ -194,7 +329,7 @@ export default function UsersSettingsPage() {
                           <span className="text-[10px] text-[#B8B0A0] px-2 py-0.5 rounded-full bg-[#F5F0E8]">Full</span>
                         )}
                       </td>
-                      <td className="px-4 py-3.5 pr-5">
+                      <td className="px-4 py-4 pr-5">
                         <p className="text-[10px] text-[#B8B0A0] whitespace-nowrap">
                           {new Date(u.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
                         </p>
@@ -213,10 +348,11 @@ export default function UsersSettingsPage() {
               const roleCfg = ROLE_CONFIG[u.role] ?? { bg: '#F5F0E8', color: '#7A6E60', label: u.role }
               const perms: string[] = u.permissions || []
               return (
-                <div key={u.id} className="px-4 py-4 hover:bg-[#FDFAF8] transition-colors">
+                <div key={u.id} className="row-hover px-4 py-4 hover:bg-[#FDFAF8]"
+                  style={{ animation: `fadeSlideUp 0.4s cubic-bezier(0.16,1,0.3,1) both`, animationDelay: `${0.22 + i * 0.03}s` }}>
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-                      style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})` }}>
+                    <div className="avatar-ring w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white flex-shrink-0"
+                      style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 3px 10px ${g[0]}35` }}>
                       {ini(u.full_name || u.email)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -227,7 +363,9 @@ export default function UsersSettingsPage() {
                           {roleCfg.label}
                         </span>
                       </div>
-                      <p className="text-xs text-[#9A8F82] mt-0.5 truncate">{u.email}</p>
+                      <p className="email-copy text-xs text-[#9A8F82] mt-0.5 truncate" onClick={() => copyEmail(u.email)}>
+                        {copiedEmail === u.email ? '✓ Copied!' : u.email}
+                      </p>
                       {(u.designation || u.department) && (
                         <p className="text-[10px] text-[#B8B0A0] mt-1">{u.designation} {u.department ? `· ${u.department}` : ''}</p>
                       )}
@@ -250,15 +388,15 @@ export default function UsersSettingsPage() {
 
           {/* Empty state */}
           {filtered.length === 0 && (
-            <div className="text-center py-16">
-              <p className="text-3xl mb-3">👥</p>
+            <div className="text-center py-20 fade-in">
+              <p className="text-4xl mb-3">👥</p>
               <p className="text-sm font-bold text-[#1C1712]">{search ? 'No results found' : 'No users yet'}</p>
               <p className="text-xs text-[#9A8F82] mt-1">{search ? 'Try a different search' : 'Add employees from HR section'}</p>
             </div>
           )}
 
           {/* Footer */}
-          <div className="px-5 py-3 border-t border-[#F0EBE0] flex items-center justify-between"
+          <div className="px-5 py-3.5 border-t border-[#F0EBE0] flex items-center justify-between"
             style={{ background: '#FAFAF8' }}>
             <p className="text-[10px] text-[#9A8F82]">
               <span className="font-bold text-[#1C1712]">{users.length}</span> total users
@@ -270,17 +408,36 @@ export default function UsersSettingsPage() {
         </div>
 
         {/* ── Info box ── */}
-        <div className="bg-white border border-[#E8E2D8] rounded-2xl p-5 shadow-sm">
-          <p className="text-xs font-black text-[#9A8F82] uppercase tracking-[2px] mb-3">ℹ️ Access Levels</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {Object.entries(ROLE_CONFIG).filter(([k]) => !['super_admin', 'tenant_admin'].includes(k)).map(([key, cfg]) => (
-              <div key={key} className="rounded-xl p-3" style={{ background: cfg.bg, border: `1px solid ${cfg.color}20` }}>
-                <p className="text-xs font-bold mb-1" style={{ color: cfg.color }}>{cfg.label}</p>
-                <p className="text-[10px] text-[#9A8F82]">
-                  {key === 'admin' ? 'Full access to all modules' :
-                   key === 'manager' ? 'Pipeline + Reports access' :
-                   'Based on permissions set'}
-                </p>
+        <div className="bg-white border border-[#E8E2D8] rounded-2xl p-6 fade-in"
+          style={{ animationDelay: '0.3s', boxShadow: '0 2px 8px rgba(28,23,18,0.04)' }}>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-black text-[#9A8F82] uppercase tracking-[2px]">Access Levels</p>
+            <p className="text-[10px] text-[#C4BAB0]">Roles across your team</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { key: 'admin', icon: '👑', label: 'Admin', color: '#B45309', bg: '#FFFBEB', desc: 'Full access to all modules', count: users.filter(u => ['admin','tenant_admin'].includes(u.role)).length },
+              { key: 'manager', icon: '🎯', label: 'Manager', color: '#7C3AED', bg: '#F5F3FF', desc: 'Pipeline + Reports access', count: users.filter(u => u.role === 'manager').length },
+              { key: 'employee', icon: '👤', label: 'Staff', color: '#2563EB', bg: '#EFF6FF', desc: 'Based on permissions set', count: users.filter(u => u.role === 'employee').length },
+              { key: 'super_admin', icon: '⚡', label: 'Super', color: '#DC2626', bg: '#FEF2F2', desc: 'Platform-wide oversight', count: users.filter(u => u.role === 'super_admin').length },
+            ].map((role, idx) => (
+              <div key={role.key}
+                className="access-card relative overflow-hidden rounded-xl p-4 fade-in"
+                style={{ background: role.bg, border: `1px solid ${role.color}22`, animationDelay: `${0.35 + idx * 0.05}s` }}>
+                <div className="flex items-start justify-between mb-2.5">
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center text-base flex-shrink-0"
+                    style={{ background: '#fff', boxShadow: `0 2px 6px ${role.color}25` }}>
+                    {role.icon}
+                  </div>
+                  <span className="text-lg font-black tabular-nums" style={{ color: role.color, opacity: 0.85 }}>
+                    {role.count}
+                  </span>
+                </div>
+                <p className="text-xs font-bold mb-1" style={{ color: role.color }}>{role.label}</p>
+                <p className="text-[10px] text-[#8A7F70] leading-relaxed">{role.desc}</p>
+                <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: `${role.color}25` }}>
+                  <div className="h-full access-bar" style={{ width: users.length ? `${(role.count / users.length) * 100}%` : '0%', background: role.color }} />
+                </div>
               </div>
             ))}
           </div>
@@ -290,3 +447,4 @@ export default function UsersSettingsPage() {
     </main>
   )
 }
+

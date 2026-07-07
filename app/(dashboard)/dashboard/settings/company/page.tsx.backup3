@@ -1,0 +1,279 @@
+﻿'use client'
+// @ts-nocheck
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+
+const DELETE_OPTIONS = [
+  { value: null,  label: 'Disabled',     desc: 'Lost leads will never be auto-deleted', icon: '🔒', color: '#9A8F82' },
+  { value: 30,   label: 'After 30 days', desc: 'Delete lost leads older than 30 days',  icon: '📅', color: '#D97706' },
+  { value: 60,   label: 'After 60 days', desc: 'Delete lost leads older than 60 days',  icon: '📆', color: '#0891B2' },
+  { value: 90,   label: 'After 90 days', desc: 'Delete lost leads older than 90 days',  icon: '🗓️', color: '#7C3AED' },
+]
+
+const BRAND_COLORS = ['#B8860B', '#7C3AED', '#0891B2', '#059669', '#DB2777', '#DC2626']
+
+function SectionCard({ icon, iconBg, title, desc, children, delay }: any) {
+  return (
+    <div className="fade-in bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden"
+      style={{ animationDelay: `${delay}s`, boxShadow: '0 1px 2px rgba(28,23,18,0.03), 0 6px 18px rgba(28,23,18,0.05)' }}>
+      <div className="px-5 py-4 border-b border-[#F0EBE0] flex items-center gap-3" style={{ background: '#FEFCF9' }}>
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: iconBg }}>{icon}</div>
+        <div>
+          <p className="text-sm font-black text-[#1C1712]">{title}</p>
+          <p className="text-[11px] text-[#9A8F82] mt-0.5">{desc}</p>
+        </div>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  )
+}
+
+function FieldLabel({ children }: any) {
+  return <label className="block text-[10px] font-bold text-[#7A6E60] uppercase tracking-wide mb-1.5">{children}</label>
+}
+
+function TextField({ value, onChange, placeholder }: any) {
+  return (
+    <input type="text" value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+      className="field-focus w-full rounded-xl px-3.5 py-2.5 text-sm text-[#1C1712] placeholder:text-[#C4BAB0] outline-none bg-[#F7F5F1] border border-[#E8E2D8]" />
+  )
+}
+
+export default function CompanySettingsPage() {
+  const [loading, setLoading]       = useState(true)
+  const [saving, setSaving]         = useState(false)
+  const [saved, setSaved]           = useState(false)
+  const [companyId, setCompanyId]   = useState<string | null>(null)
+  const [companyName, setCompanyName] = useState('')
+  const [autoDeleteDays, setAutoDeleteDays] = useState<number | null>(null)
+
+  const [gstNumber, setGstNumber] = useState('')
+  const [businessAddress, setBusinessAddress] = useState('')
+  const [businessPhone, setBusinessPhone] = useState('')
+  const [businessHours, setBusinessHours] = useState('')
+
+  const [brandColor, setBrandColor] = useState('#B8860B')
+  const [invoicePrefix, setInvoicePrefix] = useState('INV')
+
+  const [quotationValidityDays, setQuotationValidityDays] = useState(15)
+  const [defaultSftRate, setDefaultSftRate] = useState('')
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data: profile } = await supabase
+          .from('profiles').select('company_id').eq('id', user.id).single()
+        if (!profile?.company_id) return
+        setCompanyId(profile.company_id)
+
+        const { data: company } = await supabase
+          .from('companies')
+          .select('*')
+          .eq('id', profile.company_id)
+          .single()
+
+        if (company) {
+          setCompanyName(company.name || '')
+          setAutoDeleteDays(company.auto_delete_lost_days ?? null)
+          setGstNumber(company.gst_number || '')
+          setBusinessAddress(company.business_address || '')
+          setBusinessPhone(company.business_phone || '')
+          setBusinessHours(company.business_hours || '')
+          setBrandColor(company.brand_color || '#B8860B')
+          setInvoicePrefix(company.invoice_prefix || 'INV')
+          setQuotationValidityDays(company.quotation_validity_days ?? 15)
+          setDefaultSftRate(company.default_sft_rate ? String(company.default_sft_rate) : '')
+        }
+      } catch (err) { console.error(err) }
+      finally { setLoading(false) }
+    }
+    load()
+  }, [])
+
+  const handleSave = async () => {
+    if (!companyId) return
+    setSaving(true)
+    try {
+      await supabase
+        .from('companies')
+        .update({
+          auto_delete_lost_days: autoDeleteDays,
+          gst_number: gstNumber || null,
+          business_address: businessAddress || null,
+          business_phone: businessPhone || null,
+          business_hours: businessHours || null,
+          brand_color: brandColor,
+          invoice_prefix: invoicePrefix || 'INV',
+          quotation_validity_days: quotationValidityDays,
+          default_sft_rate: defaultSftRate ? Number(defaultSftRate) : null,
+        })
+        .eq('id', companyId)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) { console.error(err) }
+    setSaving(false)
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-32">
+      <div className="w-9 h-9 border-[3px] border-[#B8860B] border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  const selectedOption = DELETE_OPTIONS.find(o => o.value === autoDeleteDays) ?? DELETE_OPTIONS[0]
+
+  return (
+    <main className="flex-1 p-4 md:p-8" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
+      <style>{`
+        @keyframes fadeSlideUp {
+          from { opacity: 0; filter: blur(3px); transform: translateY(10px); }
+          to { opacity: 1; filter: blur(0); transform: translateY(0); }
+        }
+        .fade-in { animation: fadeSlideUp 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+        .field-focus { transition: all 0.18s ease; }
+        .field-focus:focus { border-color: #B8860B !important; box-shadow: 0 0 0 3px rgba(184,134,11,0.12); }
+        .color-swatch { transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1); cursor: pointer; }
+        .color-swatch:hover { transform: scale(1.12); }
+        .color-swatch.active { transform: scale(1.15); }
+        .opt-btn { transition: all 0.18s ease; }
+      `}</style>
+
+      <div className="max-w-[1000px] mx-auto space-y-5">
+
+        {/* Header */}
+        <div className="fade-in">
+          <p className="text-[10px] font-bold text-[#B8860B] uppercase tracking-[4px] mb-1">Settings</p>
+          <h1 className="text-[28px] font-bold text-[#1C1712]">Company Settings</h1>
+          <p className="text-sm text-[#9A8F82] mt-1">{companyName}</p>
+        </div>
+
+        {/* Business Profile */}
+        <SectionCard icon="🏢" iconBg="#EFF6FF" title="Business Profile" desc="Legal & contact details shown on invoices and quotations" delay={0.05}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <FieldLabel>GST Number</FieldLabel>
+              <TextField value={gstNumber} onChange={setGstNumber} placeholder="e.g. 36ABCDE1234F1Z5" />
+            </div>
+            <div>
+              <FieldLabel>Business Phone</FieldLabel>
+              <TextField value={businessPhone} onChange={setBusinessPhone} placeholder="+91 98765 43210" />
+            </div>
+            <div className="sm:col-span-2">
+              <FieldLabel>Business Address</FieldLabel>
+              <TextField value={businessAddress} onChange={setBusinessAddress} placeholder="Shop no, street, city, PIN" />
+            </div>
+            <div className="sm:col-span-2">
+              <FieldLabel>Business Hours</FieldLabel>
+              <TextField value={businessHours} onChange={setBusinessHours} placeholder="Mon–Sat, 10:00 AM – 7:00 PM" />
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* Branding */}
+        <SectionCard icon="🎨" iconBg="#F5F3FF" title="Branding" desc="Your brand identity across quotations and invoices" delay={0.1}>
+          <div className="space-y-5">
+            <div>
+              <FieldLabel>Brand Color</FieldLabel>
+              <div className="flex items-center gap-2.5 mt-1">
+                {BRAND_COLORS.map(c => (
+                  <div key={c} onClick={() => setBrandColor(c)}
+                    className={`color-swatch w-9 h-9 rounded-full ${brandColor === c ? 'active' : ''}`}
+                    style={{ background: c, boxShadow: brandColor === c ? `0 0 0 3px #fff, 0 0 0 5px ${c}` : `0 2px 6px ${c}40` }} />
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <FieldLabel>Invoice Prefix</FieldLabel>
+                <TextField value={invoicePrefix} onChange={setInvoicePrefix} placeholder="INV" />
+                <p className="text-[10px] text-[#B8B0A0] mt-1.5">Example: {invoicePrefix || 'INV'}-2026-0001</p>
+              </div>
+              <div>
+                <FieldLabel>Logo</FieldLabel>
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0" style={{ background: '#F5F0E8', border: '1px dashed #C4BAB0' }}>🖼️</div>
+                  <button className="text-xs font-bold px-3.5 py-2 rounded-xl text-white" style={{ background: brandColor }}>Upload Logo</button>
+                </div>
+                <p className="text-[10px] text-[#B8B0A0] mt-1.5">Coming soon — wire to storage.service.ts</p>
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* Lead & Quotation Defaults */}
+        <SectionCard icon="📋" iconBg="#F0FDF4" title="Lead & Quotation Defaults" desc="Default values applied to new quotations" delay={0.15}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <FieldLabel>Quotation Validity (days)</FieldLabel>
+              <input type="number" value={quotationValidityDays} onChange={e => setQuotationValidityDays(Number(e.target.value))}
+                className="field-focus w-full rounded-xl px-3.5 py-2.5 text-sm text-[#1C1712] outline-none bg-[#F7F5F1] border border-[#E8E2D8]" />
+            </div>
+            <div>
+              <FieldLabel>Default Rate per SFT (₹)</FieldLabel>
+              <TextField value={defaultSftRate} onChange={setDefaultSftRate} placeholder="e.g. 1850" />
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* Auto Delete Card — existing feature, kept intact */}
+        <div className="fade-in bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden" style={{ animationDelay: '0.2s', boxShadow: '0 1px 2px rgba(28,23,18,0.03), 0 6px 18px rgba(28,23,18,0.05)' }}>
+          <div className="px-5 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg,#FEF2F2,#fff8f8)' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>🗑️</div>
+              <div>
+                <p className="text-sm font-black text-[#1C1712]">Auto-Delete Lost Leads</p>
+                <p className="text-[11px] text-[#9A8F82] mt-0.5">Automatically remove lost leads after a set number of days</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 space-y-3">
+            {DELETE_OPTIONS.map(opt => {
+              const isSelected = opt.value === autoDeleteDays
+              return (
+                <button key={String(opt.value)} onClick={() => setAutoDeleteDays(opt.value)}
+                  className="opt-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-left"
+                  style={{ background: isSelected ? `${opt.color}10` : '#F5F0E8', border: `2px solid ${isSelected ? opt.color : 'transparent'}`, boxShadow: isSelected ? `0 4px 14px ${opt.color}20` : 'none' }}>
+                  <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0" style={{ borderColor: isSelected ? opt.color : '#C4BAB0' }}>
+                    {isSelected && <div className="w-2.5 h-2.5 rounded-full" style={{ background: opt.color }} />}
+                  </div>
+                  <span className="text-lg flex-shrink-0">{opt.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold" style={{ color: isSelected ? opt.color : '#1C1712' }}>{opt.label}</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: '#9A8F82' }}>{opt.desc}</p>
+                  </div>
+                  {isSelected && <span className="text-[9px] font-black px-2 py-0.5 rounded-full text-white flex-shrink-0" style={{ background: opt.color }}>ACTIVE</span>}
+                </button>
+              )
+            })}
+          </div>
+
+          {autoDeleteDays !== null && (
+            <div className="mx-5 mb-4 px-4 py-3 rounded-xl flex items-start gap-3" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
+              <span className="text-base mt-0.5 flex-shrink-0">⚠️</span>
+              <p className="text-[11px] leading-relaxed" style={{ color: '#92400E' }}>
+                Lost leads older than <strong>{autoDeleteDays} days</strong> will be permanently deleted every night at 7:30 AM IST. This action <strong>cannot be undone</strong>.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Save Button — sticky at bottom, one save for all sections */}
+        <div className="fade-in sticky bottom-4" style={{ animationDelay: '0.25s' }}>
+          <button onClick={handleSave} disabled={saving}
+            className="w-full py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-50"
+            style={{
+              background: saved ? 'linear-gradient(135deg,#059669,#047857)' : `linear-gradient(135deg, ${brandColor}, #D97706)`,
+              boxShadow: saved ? '0 8px 24px rgba(5,150,105,0.35)' : `0 8px 24px ${brandColor}40`,
+            }}>
+            {saving ? '⏳ Saving...' : saved ? '✅ Saved!' : '💾 Save All Settings'}
+          </button>
+        </div>
+
+      </div>
+    </main>
+  )
+}

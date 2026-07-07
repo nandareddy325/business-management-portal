@@ -32,17 +32,10 @@ function FieldLabel({ children }: any) {
   return <label className="block text-[10px] font-bold text-[#7A6E60] uppercase tracking-wide mb-1.5">{children}</label>
 }
 
-function TextField({ value, onChange, placeholder, editing }: any) {
-  if (!editing) {
-    return (
-      <div className="readonly-field w-full rounded-xl px-3.5 py-2.5 text-sm">
-        {value ? <span className="text-[#1C1712] font-medium">{value}</span> : <span className="text-[#C4BAB0]">{placeholder}</span>}
-      </div>
-    )
-  }
+function TextField({ value, onChange, placeholder }: any) {
   return (
     <input type="text" value={value || ''} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      className="field-focus w-full rounded-xl px-3.5 py-2.5 text-sm text-[#1C1712] placeholder:text-[#C4BAB0] outline-none bg-white border-2 border-[#E2D9C8]" />
+      className="field-focus w-full rounded-xl px-3.5 py-2.5 text-sm text-[#1C1712] placeholder:text-[#C4BAB0] outline-none bg-[#F7F5F1] border border-[#E8E2D8]" />
   )
 }
 
@@ -50,7 +43,6 @@ export default function CompanySettingsPage() {
   const [loading, setLoading]       = useState(true)
   const [saving, setSaving]         = useState(false)
   const [saved, setSaved]           = useState(false)
-  const [isEditing, setIsEditing]   = useState(false)
   const [companyId, setCompanyId]   = useState<string | null>(null)
   const [companyName, setCompanyName] = useState('')
   const [autoDeleteDays, setAutoDeleteDays] = useState<number | null>(null)
@@ -67,17 +59,6 @@ export default function CompanySettingsPage() {
   const [defaultSftRate, setDefaultSftRate] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
   const [uploadingLogo, setUploadingLogo] = useState(false)
-
-  // Lead reassignment
-  const [autoReassign, setAutoReassign] = useState(false)
-  const [cres, setCres] = useState<any[]>([])
-  const [fromCre, setFromCre] = useState('')
-  const [toCre, setToCre] = useState('')
-  const [activeLeadCount, setActiveLeadCount] = useState<number | null>(null)
-  const [reassigning, setReassigning] = useState(false)
-  const [reassignResult, setReassignResult] = useState<string | null>(null)
-
-  const [snapshot, setSnapshot] = useState<any>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -108,43 +89,12 @@ export default function CompanySettingsPage() {
           setQuotationValidityDays(company.quotation_validity_days ?? 15)
           setDefaultSftRate(company.default_sft_rate ? String(company.default_sft_rate) : '')
           setLogoUrl(company.logo_url || '')
-          setAutoReassign(company.auto_reassign_on_leave || false)
         }
-
-        const { data: employeeList } = await supabase
-          .from('employees')
-          .select('user_id, full_name, designation, is_active')
-          .eq('company_id', profile.company_id)
-          .eq('is_active', true)
-          .order('full_name')
-        if (employeeList) setCres(employeeList)
-
       } catch (err) { console.error(err) }
       finally { setLoading(false) }
     }
     load()
   }, [])
-
-  const startEditing = () => {
-    setSnapshot({ gstNumber, businessAddress, businessPhone, businessHours, brandColor, invoicePrefix, quotationValidityDays, defaultSftRate, autoDeleteDays, logoUrl })
-    setIsEditing(true)
-  }
-
-  const cancelEditing = () => {
-    if (snapshot) {
-      setGstNumber(snapshot.gstNumber)
-      setBusinessAddress(snapshot.businessAddress)
-      setBusinessPhone(snapshot.businessPhone)
-      setBusinessHours(snapshot.businessHours)
-      setBrandColor(snapshot.brandColor)
-      setInvoicePrefix(snapshot.invoicePrefix)
-      setQuotationValidityDays(snapshot.quotationValidityDays)
-      setDefaultSftRate(snapshot.defaultSftRate)
-      setAutoDeleteDays(snapshot.autoDeleteDays)
-      setLogoUrl(snapshot.logoUrl)
-    }
-    setIsEditing(false)
-  }
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -179,46 +129,6 @@ export default function CompanySettingsPage() {
     }
   }
 
-  const checkActiveLeads = async (creId: string) => {
-    if (!creId || !companyId) { setActiveLeadCount(null); return }
-    const { count } = await supabase
-      .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .eq('company_id', companyId)
-      .eq('assigned_to', creId)
-      .not('pipeline_stage', 'in', '(won,lost)')
-    setActiveLeadCount(count ?? 0)
-  }
-
-  const handleReassign = async () => {
-    if (!fromCre || !toCre || !companyId) return
-    setReassigning(true)
-    setReassignResult(null)
-    try {
-      const { data, error } = await supabase.rpc('reassign_active_leads', {
-        p_company_id: companyId,
-        p_from_employee: fromCre,
-        p_to_employee: toCre,
-      })
-      if (error) throw error
-      setReassignResult(`✅ ${data} leads reassigned successfully`)
-      setActiveLeadCount(0)
-      setFromCre('')
-      setToCre('')
-    } catch (err) {
-      console.error(err)
-      setReassignResult('❌ Reassignment failed. Please try again.')
-    }
-    setReassigning(false)
-  }
-
-  const toggleAutoReassign = async () => {
-    if (!companyId) return
-    const newVal = !autoReassign
-    setAutoReassign(newVal)
-    await supabase.from('companies').update({ auto_reassign_on_leave: newVal }).eq('id', companyId)
-  }
-
   const handleSave = async () => {
     if (!companyId) return
     setSaving(true)
@@ -239,7 +149,6 @@ export default function CompanySettingsPage() {
         })
         .eq('id', companyId)
       setSaved(true)
-      setIsEditing(false)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) { console.error(err) }
     setSaving(false)
@@ -273,61 +182,23 @@ export default function CompanySettingsPage() {
         .fade-in { animation: fadeSlideUp 0.5s cubic-bezier(0.16,1,0.3,1) both; }
         .field-focus { transition: all 0.18s ease; }
         .field-focus:focus { border-color: #B8860B !important; box-shadow: 0 0 0 3px rgba(184,134,11,0.12); }
-        .readonly-field { background: #FAFAF8; border: 1px solid transparent; color: #1C1712; }
         .color-swatch { transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1); cursor: pointer; }
         .color-swatch:hover { transform: scale(1.12); }
         .color-swatch.active { transform: scale(1.15); }
-        .color-swatch.locked { cursor: default; opacity: 0.55; pointer-events: none; }
-        .color-swatch.locked.active { opacity: 1; }
         .opt-btn { transition: all 0.18s ease; }
-        .opt-btn.locked { pointer-events: none; }
-        .save-btn, .edit-btn, .cancel-btn, .reassign-btn { transition: all 0.2s ease; }
-        .save-btn:hover:not(:disabled), .edit-btn:hover, .cancel-btn:hover, .reassign-btn:hover:not(:disabled) { transform: translateY(-2px); }
+        .save-btn { transition: all 0.2s ease; }
+        .save-btn:hover:not(:disabled) { transform: translateY(-2px); }
         .preview-sticky { position: sticky; top: 24px; }
-        .edit-banner { animation: fadeSlideUp 0.3s ease both; }
-        .toggle-switch { transition: background 0.2s ease; cursor: pointer; }
-        .toggle-knob { transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
-        .select-field { transition: all 0.18s ease; }
-        .select-field:focus { border-color: #B8860B !important; }
       `}</style>
 
       <div className="max-w-[1400px] mx-auto space-y-6">
 
         {/* Header */}
-        <div className="fade-in flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <p className="text-[10px] font-bold text-[#B8860B] uppercase tracking-[4px] mb-1">Settings</p>
-            <h1 className="text-[32px] font-bold text-[#1C1712]">Company Settings</h1>
-            <p className="text-sm text-[#9A8F82] mt-1.5">{companyName}</p>
-          </div>
-
-          {!isEditing ? (
-            <button onClick={startEditing}
-              className="edit-btn flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white flex-shrink-0"
-              style={{ background: '#1C1712', boxShadow: '0 4px 14px rgba(28,23,18,0.25)' }}>
-              ✏️ Edit Settings
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button onClick={cancelEditing}
-                className="cancel-btn px-5 py-2.5 rounded-xl text-sm font-bold text-[#7A6E60] bg-white border border-[#E8E2D8]">
-                Cancel
-              </button>
-              <button onClick={handleSave} disabled={saving}
-                className="save-btn px-5 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50"
-                style={{ background: saved ? '#059669' : brandColor, boxShadow: `0 4px 14px ${brandColor}40` }}>
-                {saving ? '⏳ Saving...' : saved ? '✅ Saved!' : '💾 Save Changes'}
-              </button>
-            </div>
-          )}
+        <div className="fade-in">
+          <p className="text-[10px] font-bold text-[#B8860B] uppercase tracking-[4px] mb-1">Settings</p>
+          <h1 className="text-[32px] font-bold text-[#1C1712]">Company Settings</h1>
+          <p className="text-sm text-[#9A8F82] mt-1.5">{companyName}</p>
         </div>
-
-        {isEditing && (
-          <div className="edit-banner flex items-center gap-2.5 px-4 py-3 rounded-xl" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
-            <span className="text-sm">✏️</span>
-            <p className="text-[11px] font-semibold" style={{ color: '#92400E' }}>You're editing company settings. Changes are not saved until you click "Save Changes".</p>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
@@ -338,19 +209,19 @@ export default function CompanySettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <FieldLabel>GST Number</FieldLabel>
-                  <TextField value={gstNumber} onChange={setGstNumber} placeholder="e.g. 36ABCDE1234F1Z5" editing={isEditing} />
+                  <TextField value={gstNumber} onChange={setGstNumber} placeholder="e.g. 36ABCDE1234F1Z5" />
                 </div>
                 <div>
                   <FieldLabel>Business Phone</FieldLabel>
-                  <TextField value={businessPhone} onChange={setBusinessPhone} placeholder="+91 98765 43210" editing={isEditing} />
+                  <TextField value={businessPhone} onChange={setBusinessPhone} placeholder="+91 98765 43210" />
                 </div>
                 <div className="sm:col-span-2">
                   <FieldLabel>Business Address</FieldLabel>
-                  <TextField value={businessAddress} onChange={setBusinessAddress} placeholder="Shop no, street, city, PIN" editing={isEditing} />
+                  <TextField value={businessAddress} onChange={setBusinessAddress} placeholder="Shop no, street, city, PIN" />
                 </div>
                 <div className="sm:col-span-2">
                   <FieldLabel>Business Hours</FieldLabel>
-                  <TextField value={businessHours} onChange={setBusinessHours} placeholder="Mon–Sat, 10:00 AM – 7:00 PM" editing={isEditing} />
+                  <TextField value={businessHours} onChange={setBusinessHours} placeholder="Mon–Sat, 10:00 AM – 7:00 PM" />
                 </div>
               </div>
             </SectionCard>
@@ -361,8 +232,8 @@ export default function CompanySettingsPage() {
                   <FieldLabel>Brand Color</FieldLabel>
                   <div className="flex items-center gap-2.5 mt-1">
                     {BRAND_COLORS.map(c => (
-                      <div key={c} onClick={() => isEditing && setBrandColor(c)}
-                        className={`color-swatch w-9 h-9 rounded-full ${brandColor === c ? 'active' : ''} ${!isEditing ? 'locked' : ''}`}
+                      <div key={c} onClick={() => setBrandColor(c)}
+                        className={`color-swatch w-9 h-9 rounded-full ${brandColor === c ? 'active' : ''}`}
                         style={{ background: c, boxShadow: brandColor === c ? `0 0 0 3px #fff, 0 0 0 5px ${c}` : `0 2px 6px ${c}40` }} />
                     ))}
                   </div>
@@ -370,7 +241,7 @@ export default function CompanySettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <FieldLabel>Invoice Prefix</FieldLabel>
-                    <TextField value={invoicePrefix} onChange={setInvoicePrefix} placeholder="INV" editing={isEditing} />
+                    <TextField value={invoicePrefix} onChange={setInvoicePrefix} placeholder="INV" />
                   </div>
                   <div>
                     <FieldLabel>Logo</FieldLabel>
@@ -378,16 +249,12 @@ export default function CompanySettingsPage() {
                       <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0 overflow-hidden" style={{ background: '#F5F0E8', border: '1px dashed #C4BAB0' }}>
                         {logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" /> : '🖼️'}
                       </div>
-                      {isEditing ? (
-                        <label className="text-xs font-bold px-3.5 py-2 rounded-xl text-white cursor-pointer inline-flex items-center gap-1.5" style={{ background: brandColor, opacity: uploadingLogo ? 0.6 : 1 }}>
-                          {uploadingLogo ? '⏳ Uploading...' : logoUrl ? 'Change Logo' : 'Upload Logo'}
-                          <input type="file" accept="image/png,image/jpeg,image/svg+xml" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
-                        </label>
-                      ) : (
-                        <span className="text-[11px] text-[#B8B0A0]">{logoUrl ? 'Logo uploaded' : 'No logo yet'}</span>
-                      )}
+                      <label className="text-xs font-bold px-3.5 py-2 rounded-xl text-white cursor-pointer inline-flex items-center gap-1.5" style={{ background: brandColor, opacity: uploadingLogo ? 0.6 : 1 }}>
+                        {uploadingLogo ? '⏳ Uploading...' : logoUrl ? 'Change Logo' : 'Upload Logo'}
+                        <input type="file" accept="image/png,image/jpeg,image/svg+xml" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
+                      </label>
                     </div>
-                    {isEditing && <p className="text-[10px] text-[#B8B0A0] mt-1.5">PNG, JPG or SVG — max 2MB</p>}
+                    <p className="text-[10px] text-[#B8B0A0] mt-1.5">PNG, JPG or SVG — max 2MB</p>
                   </div>
                 </div>
               </div>
@@ -397,102 +264,15 @@ export default function CompanySettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <FieldLabel>Quotation Validity (days)</FieldLabel>
-                  {isEditing ? (
-                    <input type="number" value={quotationValidityDays} onChange={e => setQuotationValidityDays(Number(e.target.value))}
-                      className="field-focus w-full rounded-xl px-3.5 py-2.5 text-sm text-[#1C1712] outline-none bg-white border-2 border-[#E2D9C8]" />
-                  ) : (
-                    <div className="readonly-field w-full rounded-xl px-3.5 py-2.5 text-sm font-medium">{quotationValidityDays} days</div>
-                  )}
+                  <input type="number" value={quotationValidityDays} onChange={e => setQuotationValidityDays(Number(e.target.value))}
+                    className="field-focus w-full rounded-xl px-3.5 py-2.5 text-sm text-[#1C1712] outline-none bg-[#F7F5F1] border border-[#E8E2D8]" />
                 </div>
                 <div>
                   <FieldLabel>Default Rate per SFT (₹)</FieldLabel>
-                  <TextField value={defaultSftRate} onChange={setDefaultSftRate} placeholder="e.g. 1850" editing={isEditing} />
+                  <TextField value={defaultSftRate} onChange={setDefaultSftRate} placeholder="e.g. 1850" />
                 </div>
               </div>
             </SectionCard>
-
-            {/* ── Lead Ownership & Reassignment ── */}
-            <div className="fade-in bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden" style={{ animationDelay: '0.18s', boxShadow: '0 1px 2px rgba(28,23,18,0.03), 0 6px 18px rgba(28,23,18,0.05)' }}>
-              <div className="px-5 py-4 border-b border-[#F0EBE0] flex items-center gap-3" style={{ background: 'linear-gradient(135deg,#EFF6FF,#f8fbff)' }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: '#EFF6FF', border: '1px solid #BFDBFE' }}>👥</div>
-                <div>
-                  <p className="text-sm font-black text-[#1C1712]">Lead Ownership & Reassignment</p>
-                  <p className="text-[11px] text-[#9A8F82] mt-0.5">First CRE to call a lead owns it. Reassign leads when a CRE is on leave.</p>
-                </div>
-              </div>
-
-              <div className="p-5 space-y-5">
-
-                {/* Explanation strip */}
-                <div className="flex items-start gap-3 px-4 py-3 rounded-xl" style={{ background: '#F5F0E8' }}>
-                  <span className="text-sm mt-0.5">ℹ️</span>
-                  <p className="text-[11px] text-[#6B5E4E] leading-relaxed">
-                    When new leads arrive, every CRE sees them. The moment one CRE logs the first call, that lead is locked to them only — others stop seeing it. If a CRE goes on leave, use the tool below to move their active leads (RNR, Site Visit, Quotation stages) to another CRE.
-                  </p>
-                </div>
-
-                {/* Auto-reassign toggle */}
-                <div className="flex items-center justify-between px-4 py-3.5 rounded-xl" style={{ background: '#FAFAF8', border: '1px solid #F0EBE0' }}>
-                  <div>
-                    <p className="text-xs font-bold text-[#1C1712]">Auto-reassign on approved leave</p>
-                    <p className="text-[10px] text-[#9A8F82] mt-0.5">When a CRE's leave gets approved, prompt admin to reassign automatically</p>
-                  </div>
-                  <div onClick={toggleAutoReassign}
-                    className="toggle-switch w-11 h-6 rounded-full flex items-center px-0.5 flex-shrink-0"
-                    style={{ background: autoReassign ? '#1C1712' : '#E2D9C8', justifyContent: autoReassign ? 'flex-end' : 'flex-start' }}>
-                    <div className="toggle-knob w-5 h-5 rounded-full bg-white shadow-sm" />
-                  </div>
-                </div>
-
-                {/* Manual reassignment tool */}
-                <div>
-                  <p className="text-[10px] font-bold text-[#7A6E60] uppercase tracking-wide mb-2.5">Manual Reassignment</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 items-end">
-                    <div>
-                      <FieldLabel>From CRE (on leave)</FieldLabel>
-                      <select value={fromCre} onChange={e => { setFromCre(e.target.value); checkActiveLeads(e.target.value) }}
-                        className="select-field w-full rounded-xl px-3.5 py-2.5 text-sm text-[#1C1712] outline-none bg-white border-2 border-[#E2D9C8]">
-                        <option value="">Select CRE...</option>
-                        {cres.map(c => (
-                          <option key={c.user_id} value={c.user_id}>{c.full_name} {c.designation ? `(${c.designation})` : ''}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="hidden sm:flex items-center justify-center pb-2.5 text-lg text-[#C4BAB0]">→</div>
-                    <div>
-                      <FieldLabel>To CRE (receiving)</FieldLabel>
-                      <select value={toCre} onChange={e => setToCre(e.target.value)}
-                        className="select-field w-full rounded-xl px-3.5 py-2.5 text-sm text-[#1C1712] outline-none bg-white border-2 border-[#E2D9C8]">
-                        <option value="">Select CRE...</option>
-                        {cres.filter(c => c.user_id !== fromCre).map(c => (
-                          <option key={c.user_id} value={c.user_id}>{c.full_name} {c.designation ? `(${c.designation})` : ''}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {fromCre && activeLeadCount !== null && (
-                    <div className="mt-3 px-4 py-2.5 rounded-xl flex items-center justify-between" style={{ background: activeLeadCount > 0 ? '#FFFBEB' : '#F0FDF4', border: `1px solid ${activeLeadCount > 0 ? '#FDE68A' : '#BBF7D0'}` }}>
-                      <p className="text-[11px] font-semibold" style={{ color: activeLeadCount > 0 ? '#92400E' : '#166534' }}>
-                        {activeLeadCount > 0 ? `${activeLeadCount} active leads (RNR, Site Visit, Quotation stages) will move` : 'No active leads for this CRE'}
-                      </p>
-                    </div>
-                  )}
-
-                  <button onClick={handleReassign} disabled={!fromCre || !toCre || reassigning || activeLeadCount === 0}
-                    className="reassign-btn w-full mt-3 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-40"
-                    style={{ background: '#1C1712', boxShadow: '0 4px 14px rgba(28,23,18,0.2)' }}>
-                    {reassigning ? '⏳ Reassigning...' : '🔄 Reassign Active Leads'}
-                  </button>
-
-                  {reassignResult && (
-                    <p className="text-[11px] font-semibold mt-2.5 text-center" style={{ color: reassignResult.startsWith('✅') ? '#059669' : '#DC2626' }}>
-                      {reassignResult}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
 
             {/* Auto Delete Card */}
             <div className="fade-in bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden" style={{ animationDelay: '0.2s', boxShadow: '0 1px 2px rgba(28,23,18,0.03), 0 6px 18px rgba(28,23,18,0.05)' }}>
@@ -510,9 +290,9 @@ export default function CompanySettingsPage() {
                 {DELETE_OPTIONS.map(opt => {
                   const isSelected = opt.value === autoDeleteDays
                   return (
-                    <button key={String(opt.value)} onClick={() => isEditing && setAutoDeleteDays(opt.value)}
-                      className={`opt-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-left ${!isEditing ? 'locked' : ''}`}
-                      style={{ background: isSelected ? `${opt.color}10` : '#F5F0E8', border: `2px solid ${isSelected ? opt.color : 'transparent'}`, boxShadow: isSelected ? `0 4px 14px ${opt.color}20` : 'none', opacity: !isEditing && !isSelected ? 0.6 : 1 }}>
+                    <button key={String(opt.value)} onClick={() => setAutoDeleteDays(opt.value)}
+                      className="opt-btn w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-left"
+                      style={{ background: isSelected ? `${opt.color}10` : '#F5F0E8', border: `2px solid ${isSelected ? opt.color : 'transparent'}`, boxShadow: isSelected ? `0 4px 14px ${opt.color}20` : 'none' }}>
                       <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0" style={{ borderColor: isSelected ? opt.color : '#C4BAB0' }}>
                         {isSelected && <div className="w-2.5 h-2.5 rounded-full" style={{ background: opt.color }} />}
                       </div>
@@ -537,18 +317,17 @@ export default function CompanySettingsPage() {
               )}
             </div>
 
-            {isEditing && (
-              <div className="fade-in flex items-center gap-2.5" style={{ animationDelay: '0.25s' }}>
-                <button onClick={cancelEditing} className="cancel-btn flex-1 py-3.5 rounded-xl text-sm font-bold text-[#7A6E60] bg-white border border-[#E8E2D8]">
-                  Cancel
-                </button>
-                <button onClick={handleSave} disabled={saving}
-                  className="save-btn flex-[2] py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-50"
-                  style={{ background: saved ? 'linear-gradient(135deg,#059669,#047857)' : `linear-gradient(135deg, ${brandColor}, #D97706)`, boxShadow: saved ? '0 8px 24px rgba(5,150,105,0.35)' : `0 8px 24px ${brandColor}40` }}>
-                  {saving ? '⏳ Saving...' : saved ? '✅ Saved!' : '💾 Save All Settings'}
-                </button>
-              </div>
-            )}
+            {/* Save Button — normal flow, no overlap */}
+            <div className="fade-in" style={{ animationDelay: '0.25s' }}>
+              <button onClick={handleSave} disabled={saving}
+                className="save-btn w-full py-3.5 rounded-xl text-sm font-black text-white disabled:opacity-50"
+                style={{
+                  background: saved ? 'linear-gradient(135deg,#059669,#047857)' : `linear-gradient(135deg, ${brandColor}, #D97706)`,
+                  boxShadow: saved ? '0 8px 24px rgba(5,150,105,0.35)' : `0 8px 24px ${brandColor}40`,
+                }}>
+                {saving ? '⏳ Saving...' : saved ? '✅ Saved!' : '💾 Save All Settings'}
+              </button>
+            </div>
           </div>
 
           {/* ── RIGHT: Live Preview ── */}
@@ -559,11 +338,12 @@ export default function CompanySettingsPage() {
                 <p className="text-[10px] font-black text-[#9A8F82] uppercase tracking-[2px]">Live Preview</p>
               </div>
 
+              {/* Mini invoice mockup */}
               <div className="p-5">
                 <div className="rounded-xl p-4" style={{ border: `2px solid ${brandColor}`, background: `${brandColor}06` }}>
                   <div className="flex items-center justify-between mb-3">
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-black overflow-hidden" style={{ background: brandColor }}>
-                      {logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" /> : (companyName || 'GK').slice(0, 2).toUpperCase()}
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-black" style={{ background: brandColor }}>
+                      {(companyName || 'GK').slice(0, 2).toUpperCase()}
                     </div>
                     <span className="text-[9px] font-black px-2 py-0.5 rounded-full text-white" style={{ background: brandColor }}>
                       {invoicePrefix || 'INV'}-2026-0001
@@ -595,12 +375,12 @@ export default function CompanySettingsPage() {
               </div>
             </div>
 
+            {/* Quick tips */}
             <div className="mt-4 bg-white border border-[#E8E2D8] rounded-2xl p-4" style={{ boxShadow: '0 2px 8px rgba(28,23,18,0.04)' }}>
               <p className="text-[10px] font-black text-[#9A8F82] uppercase tracking-wide mb-2.5">💡 Tips</p>
               <div className="space-y-2">
                 <p className="text-[10px] text-[#7A6E60] leading-relaxed">GST number appears on all generated invoices automatically.</p>
                 <p className="text-[10px] text-[#7A6E60] leading-relaxed">Brand color is used across quotation PDFs and the client portal.</p>
-                <p className="text-[10px] text-[#7A6E60] leading-relaxed">Reassigning leads moves only active ones — Won/Lost leads stay with the original CRE for history.</p>
               </div>
             </div>
           </div>
@@ -610,3 +390,5 @@ export default function CompanySettingsPage() {
     </main>
   )
 }
+
+
