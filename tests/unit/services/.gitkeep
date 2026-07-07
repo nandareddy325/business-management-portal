@@ -1,0 +1,6 @@
+﻿// Unit tests for services/ layer
+// TODO: add tests once Jest/Vitest is configured
+// Example structure:
+// describe('crm.service', () => {
+//   it('should fetch leads by stage', async () => {})
+// })

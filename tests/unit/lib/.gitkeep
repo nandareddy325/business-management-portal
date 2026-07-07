@@ -1,0 +1,2 @@
+﻿// Unit tests for lib/ layer (queries, utils, stage-utils)
+// TODO: add tests once Jest/Vitest is configured

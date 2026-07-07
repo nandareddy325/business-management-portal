@@ -38,6 +38,7 @@
     "react-dom": "19.2.4",
     "react-dropzone": "^15.0.0",
     "react-hook-form": "^7.77.0",
+    "react-is": "^19.2.7",
     "recharts": "^3.8.1",
     "resend": "^6.16.0",
     "shadcn": "^4.10.0",
@@ -50,12 +51,15 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.19.41",
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
     "@types/uuid": "^10.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.11",
     "typescript": "^5"
   }
 }

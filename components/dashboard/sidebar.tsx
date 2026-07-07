@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
@@ -7,16 +7,17 @@ import { X, ChevronDown, LogOut } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 import { getStageCounts, type CanonicalStage } from '@/lib/stage-utils'
 import { fetchAllLeads } from '@/lib/fetch-all-leads'
+import { INDUSTRY_META, isIndustryEnabled, type IndustrySlug } from '@/config/industries.config'
 
 interface SidebarProps { isOpen: boolean; onClose: () => void }
 
-const INDUSTRIES: Record<string, { label: string; icon: string; slug: string }> = {
-  'interior-design': { label: 'Interior Design', icon: '🛋️', slug: 'interior-design' },
-  'real-estate':     { label: 'Real Estate',     icon: '🏠', slug: 'real-estate' },
-  'hospital':        { label: 'Hospital',         icon: '🏥', slug: 'hospital' },
-  'b2b-business':    { label: 'B2B Business',    icon: '🤝', slug: 'b2b-business' },
-  'clinics':         { label: 'Clinics',          icon: '🩺', slug: 'clinics' },
-}
+const INDUSTRIES: Record<string, { label: string; icon: string; slug: string }> =
+  Object.fromEntries(
+    (Object.keys(INDUSTRY_META) as IndustrySlug[]).map((slug) => [
+      slug,
+      { label: INDUSTRY_META[slug].name, icon: INDUSTRY_META[slug].icon, slug },
+    ])
+  )
 
 const SECTION_PERMISSION: Record<string, string> = {
   'PIPELINE':    'pipeline',
@@ -211,7 +212,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             const { data: company } = await supabase.from('companies').select('name').eq('id', profile.company_id).single()
             if (company?.name) setUserCompany(company.name)
             const { data: ci } = await supabase.from('company_industries').select('industries(slug)').eq('company_id', profile.company_id).eq('is_active', true)
-            if (ci) setActiveIndustries(ci.map((c: any) => c.industries?.slug).filter(Boolean))
+            if (ci) {
+              const dbEnabledSlugs = ci.map((c: any) => c.industries?.slug).filter(Boolean)
+              setActiveIndustries(dbEnabledSlugs.filter((slug: string) => isIndustryEnabled(slug as IndustrySlug)))
+            }
 
             await refreshStageCounts(profile.company_id)
           }
