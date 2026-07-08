@@ -6,6 +6,39 @@ import { TodayCallsSection } from '@/components/interior/today-calls-section'
 
 export const dynamic = 'force-dynamic'
 
+interface Lead {
+  id: string
+  pipeline_stage?: string | null
+  budget?: string | number | null
+  created_at: string
+  lead_name?: string | null
+  phone?: string | null
+  notes?: string | null
+  [key: string]: unknown
+}
+
+interface Activity {
+  id: string
+  lead_id: string
+  title?: string | null
+  description?: string | null
+  created_at: string
+  user_id?: string | null
+  user_name?: string | null
+  [key: string]: unknown
+}
+
+interface ProfileRow {
+  id: string
+  full_name?: string | null
+  email?: string | null
+}
+
+interface Cre {
+  id: string
+  name: string
+}
+
 const STAGES = [
   { key: 'new',       label: 'New Leads',  icon: UserPlus, color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', href: '/dashboard/industries/interior-design/new-leads',  description: 'Fresh enquiries' },
   { key: 'followup',  label: 'Follow Up',  icon: Calendar, color: '#D97706', bg: '#FFFBEB', border: '#FDE68A', href: '/dashboard/industries/interior-design/follow-up',   description: 'Date confirmed' },
@@ -25,7 +58,7 @@ export default async function InteriorDesignDashboard() {
   if (!profile?.company_id) redirect('/login')
 
   // ── Leads data — FIXED: Pagination to bypass Supabase 1000 row limit ──
-  let allLeads: any[] = []
+  let allLeads: Lead[] = []
   let page = 0
   const PAGE_SIZE = 1000
 
@@ -38,14 +71,14 @@ export default async function InteriorDesignDashboard() {
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
 
     if (error || !batch || batch.length === 0) break
-    allLeads = [...allLeads, ...batch]
+    allLeads = [...allLeads, ...(batch as Lead[])]
     if (batch.length < PAGE_SIZE) break
     page++
   }
 
   const stageCounts: Record<string, number> = {}
   STAGES.forEach(s => { stageCounts[s.key] = 0 })
-  allLeads?.forEach((l: any) => {
+  allLeads?.forEach((l: Lead) => {
     const s = l.pipeline_stage
     if (!s) return
     if (s === 'followup' && String(l.notes || '').startsWith('[RNR]')) {
@@ -61,7 +94,7 @@ export default async function InteriorDesignDashboard() {
   const todayStr    = new Date().toDateString()
   const todayLeads  = allLeads?.filter(l => new Date(l.created_at).toDateString() === todayStr).length ?? 0
 
-  const leadIds = allLeads?.map((l: any) => l.id) ?? []
+  const leadIds = allLeads?.map((l: Lead) => l.id) ?? []
 
   const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
   const nowUTC    = Date.now()
@@ -69,7 +102,7 @@ export default async function InteriorDesignDashboard() {
   const todayStart = new Date(`${istDateStr}T00:00:00+05:30`)
   const todayEnd   = new Date(`${istDateStr}T23:59:59+05:30`)
 
-  let todayCalls: any[] = []
+  let todayCalls: Activity[] = []
 
   if (leadIds.length > 0) {
     try {
@@ -84,12 +117,12 @@ export default async function InteriorDesignDashboard() {
       })
 
       if (res.ok) {
-        const allActs = await res.json()
+        const allActs: Activity[] = await res.json()
         const leadIdSet = new Set(leadIds)
-        const todayActs = (allActs ?? []).filter((a: any) => leadIdSet.has(a.lead_id))
+        const todayActs = (allActs ?? []).filter((a: Activity) => leadIdSet.has(a.lead_id))
 
         if (todayActs.length > 0) {
-          const uids = [...new Set(todayActs.map((a: any) => a.user_id).filter(Boolean))]
+          const uids = [...new Set(todayActs.map((a: Activity) => a.user_id).filter(Boolean))] as string[]
           const pm: Record<string, string> = {}
           if (uids.length > 0) {
             const profUrl = `${SURL}/rest/v1/profiles?id=in.(${uids.join(',')})&select=id,full_name,email`
@@ -98,11 +131,11 @@ export default async function InteriorDesignDashboard() {
               cache: 'no-store',
             })
             if (profRes.ok) {
-              const profs = await profRes.json()
-              profs?.forEach((p: any) => { pm[p.id] = p.full_name || p.email || 'Unknown' })
+              const profs: ProfileRow[] = await profRes.json()
+              profs?.forEach((p: ProfileRow) => { pm[p.id] = p.full_name || p.email || 'Unknown' })
             }
           }
-          todayCalls = todayActs.map((a: any) => ({
+          todayCalls = todayActs.map((a: Activity) => ({
             ...a, user_name: a.user_id ? (pm[a.user_id] || 'Unknown') : null
           }))
         }
@@ -114,12 +147,12 @@ export default async function InteriorDesignDashboard() {
     }
   }
 
-  const creIds = [...new Set(todayCalls.map((a: any) => a.user_id).filter(Boolean))]
-  let cres: { id: string; name: string }[] = []
+  const creIds = [...new Set(todayCalls.map((a: Activity) => a.user_id).filter(Boolean))] as string[]
+  let cres: Cre[] = []
   if (creIds.length > 0) {
     const { data: creProfiles } = await supabase.from('profiles').select('id, full_name, email').in('id', creIds)
-    cres = (creProfiles ?? []).map((p: any) => ({ id: p.id, name: p.full_name || p.email || 'Unknown' }))
-      .sort((a: any, b: any) => a.name.localeCompare(b.name))
+    cres = ((creProfiles ?? []) as ProfileRow[]).map((p: ProfileRow) => ({ id: p.id, name: p.full_name || p.email || 'Unknown' }))
+      .sort((a: Cre, b: Cre) => a.name.localeCompare(b.name))
   }
 
   return (
