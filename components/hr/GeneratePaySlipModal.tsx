@@ -16,11 +16,17 @@ interface Employee {
   employee_code: string;
   designation: string;
   salary?: number;
+  basic_salary?: number;
+  hra?: number;
+  special_allowance?: number;
+  conveyance_allowance?: number;
+  medical_allowance?: number;
   bank_name?: string;
   bank_account_no?: string;
   pan_number?: string;
   pf_no?: string;
   pf_uan?: string;
+  ifsc_code?: string;
 }
 
 interface Props { onClose: () => void; onSuccess: () => void; }
@@ -47,7 +53,10 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
   const [hra, setHra]                           = useState("");
   const [specialAllowance, setSpecialAllowance] = useState("");
   const [incentive, setIncentive]               = useState("");
+
+  // Deductions
   const [pfDeduction, setPfDeduction]           = useState("");
+  const [emiDeduction, setEmiDeduction]         = useState("");
 
   // Bank Details (editable if missing)
   const [bankName, setBankName]         = useState("");
@@ -55,6 +64,7 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
   const [panNumber, setPanNumber]       = useState("");
   const [pfNo, setPfNo]                 = useState("");
   const [pfUan, setPfUan]               = useState("");
+  const [ifscCode, setIfscCode]         = useState("");
 
   useEffect(() => { fetchEmployees(); }, []);
 
@@ -69,7 +79,7 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
 
       const { data } = await supabase
         .from("employees")
-        .select("id, full_name, employee_code, designation, salary, bank_name, bank_account_no, pan_number, pf_no, pf_uan")
+        .select("id, full_name, employee_code, designation, salary, basic_salary, hra, special_allowance, conveyance_allowance, medical_allowance, bank_name, bank_account_no, pan_number, pf_no, pf_uan, ifsc_code")
         .eq("company_id", profile.company_id)
         .order("full_name");
       setEmployees(data || []);
@@ -83,13 +93,34 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
     const emp = employees.find(e => e.id === empId);
     setSelectedEmpData(emp || null);
     if (emp) {
-      if (emp.salary) setBasicSalary(emp.salary.toString());
+      // Prefer granular basic_salary if set, else fall back to flat salary
+      if (emp.basic_salary) {
+        setBasicSalary(emp.basic_salary.toString());
+      } else if (emp.salary) {
+        setBasicSalary(emp.salary.toString());
+      } else {
+        setBasicSalary("");
+      }
+
+      setHra(emp.hra ? emp.hra.toString() : "");
+
+      // Special Allowance field combines special_allowance + conveyance + medical
+      // (modal only has one "Special Allowance" input; DB tracks them separately)
+      const combinedSpecial =
+        (emp.special_allowance || 0) +
+        (emp.conveyance_allowance || 0) +
+        (emp.medical_allowance || 0);
+      setSpecialAllowance(combinedSpecial ? combinedSpecial.toString() : "");
+
+      setIncentive("");
+
       // Pre-fill bank details if they exist
       setBankName(emp.bank_name || "");
       setBankAccNo(emp.bank_account_no || "");
       setPanNumber(emp.pan_number || "");
       setPfNo(emp.pf_no || "");
       setPfUan(emp.pf_uan || "");
+      setIfscCode(emp.ifsc_code || "");
     }
   }
 
@@ -107,6 +138,7 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
         pan_number:     panNumber,
         pf_no:          pfNo,
         pf_uan:         pfUan,
+        ifsc_code:      ifscCode,
       })
       .eq("id", selectedEmployee);
     if (!error) {
@@ -114,10 +146,10 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
       // Update local state
       setEmployees(prev => prev.map(e =>
         e.id === selectedEmployee
-          ? { ...e, bank_name: bankName, bank_account_no: bankAccNo, pan_number: panNumber, pf_no: pfNo, pf_uan: pfUan }
+          ? { ...e, bank_name: bankName, bank_account_no: bankAccNo, pan_number: panNumber, pf_no: pfNo, pf_uan: pfUan, ifsc_code: ifscCode }
           : e
       ));
-      setSelectedEmpData(prev => prev ? { ...prev, bank_name: bankName, bank_account_no: bankAccNo } : null);
+      setSelectedEmpData(prev => prev ? { ...prev, bank_name: bankName, bank_account_no: bankAccNo, ifsc_code: ifscCode } : null);
     } else {
       setError("Bank details save failed: " + error.message);
     }
@@ -127,7 +159,7 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
   const gross =
     (parseFloat(basicSalary) || 0) + (parseFloat(hra) || 0) +
     (parseFloat(specialAllowance) || 0) + (parseFloat(incentive) || 0);
-  const totalDeductions = parseFloat(pfDeduction) || 0;
+  const totalDeductions = (parseFloat(pfDeduction) || 0) + (parseFloat(emiDeduction) || 0);
   const netSalary = gross - totalDeductions;
 
   async function handleSubmit(status: "draft" | "published") {
@@ -141,6 +173,7 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
     const special  = parseFloat(specialAllowance) || 0;
     const inc      = parseFloat(incentive)        || 0;
     const pf       = parseFloat(pfDeduction)      || 0;
+    const emi      = parseFloat(emiDeduction)     || 0;
 
     const { error: insertError } = await supabase.from("payslips").insert({
       company_id:               companyId,
@@ -153,7 +186,9 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
       basic_actual:             basic, hra_actual: hraVal,
       special_allowance_actual: special, incentive_actual: inc,
       gross_salary:             gross,
-      pf_deduction:             pf, total_deductions: pf,
+      pf_deduction:             pf,
+      emi_deduction:            emi,
+      total_deductions:         pf + emi,
       net_salary:               netSalary,
       net_salary_in_words:      `Rupees ${netSalary.toLocaleString("en-IN")} Only`,
       status, auto_generated:   false,
@@ -222,6 +257,12 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
                     <label className="block text-xs text-[#6B5E4E] mb-1">Account Number</label>
                     <input type="text" value={bankAccNo} onChange={e => setBankAccNo(e.target.value)}
                       placeholder="e.g. 50100642410003"
+                      className="w-full px-3 py-2 text-sm border border-[#E8E0D0] rounded-xl bg-[#F5F0E8] focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 text-[#1C1712]"/>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-[#6B5E4E] mb-1">IFSC Code</label>
+                    <input type="text" value={ifscCode} onChange={e => setIfscCode(e.target.value.toUpperCase())}
+                      placeholder="e.g. SBIN0012672" maxLength={11}
                       className="w-full px-3 py-2 text-sm border border-[#E8E0D0] rounded-xl bg-[#F5F0E8] focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 text-[#1C1712]"/>
                   </div>
                   <div>
@@ -305,19 +346,36 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
                 </div>
               ))}
             </div>
+            {selectedEmpData && (selectedEmpData.conveyance_allowance || selectedEmpData.medical_allowance) ? (
+              <p className="text-[10px] text-[#9A8B7A] mt-2">
+                Special Allowance = Special ₹{selectedEmpData.special_allowance || 0} + Conveyance ₹{selectedEmpData.conveyance_allowance || 0} + Medical ₹{selectedEmpData.medical_allowance || 0} (combined, edit if needed)
+              </p>
+            ) : null}
           </div>
 
           {/* Deductions */}
           <div>
             <p className="text-xs font-bold text-red-500 uppercase tracking-wider border-b border-[#E8E0D0] pb-2 mb-3">Deductions</p>
-            <div>
-              <label className="block text-xs text-[#6B5E4E] mb-1">PF Deduction</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A8B7A] text-sm">₹</span>
-                <input type="text" inputMode="numeric" value={pfDeduction}
-                  onChange={e => setPfDeduction(e.target.value.replace(/[^0-9.]/g,""))}
-                  placeholder="0"
-                  className="w-full pl-7 pr-3 py-2 text-sm border border-[#E8E0D0] rounded-xl bg-[#F5F0E8] focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 text-[#1C1712]"/>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-[#6B5E4E] mb-1">PF Deduction</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A8B7A] text-sm">₹</span>
+                  <input type="text" inputMode="numeric" value={pfDeduction}
+                    onChange={e => setPfDeduction(e.target.value.replace(/[^0-9.]/g,""))}
+                    placeholder="0"
+                    className="w-full pl-7 pr-3 py-2 text-sm border border-[#E8E0D0] rounded-xl bg-[#F5F0E8] focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 text-[#1C1712]"/>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-[#6B5E4E] mb-1">EMI Deduction</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9A8B7A] text-sm">₹</span>
+                  <input type="text" inputMode="numeric" value={emiDeduction}
+                    onChange={e => setEmiDeduction(e.target.value.replace(/[^0-9.]/g,""))}
+                    placeholder="0"
+                    className="w-full pl-7 pr-3 py-2 text-sm border border-[#E8E0D0] rounded-xl bg-[#F5F0E8] focus:outline-none focus:ring-2 focus:ring-[#B8860B]/30 text-[#1C1712]"/>
+                </div>
               </div>
             </div>
           </div>
@@ -330,7 +388,7 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
             </div>
             <div className="text-right text-xs text-[#6B5E4E]">
               <p>{MONTHS[month-1]} {year}</p>
-              <p className="mt-0.5">Gross ₹{gross.toLocaleString("en-IN")} − PF ₹{totalDeductions.toLocaleString("en-IN")}</p>
+              <p className="mt-0.5">Gross ₹{gross.toLocaleString("en-IN")} − Deductions ₹{totalDeductions.toLocaleString("en-IN")}</p>
             </div>
           </div>
 
