@@ -50,10 +50,10 @@ export default function ForgotPasswordPage() {
             <div>
               <div className="w-16 h-16 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-center mb-6 text-3xl">📧</div>
               <h1 className="text-3xl font-bold text-[#1C1712] mb-2">Email Sent!</h1>
-              <p className="text-[#7A6E60] mb-2">We've sent a password reset link to</p>
+              <p className="text-[#7A6E60] mb-2">We&apos;ve sent a password reset link to</p>
               <p className="font-semibold text-[#1C1712] mb-8">{email}</p>
               <p className="text-sm text-[#9A8F82] mb-6">
-                Didn't receive it? Check your spam folder or try again.
+                Didn&apos;t receive it? Check your spam folder or try again.
               </p>
               <button
                 onClick={() => { setSent(false); setEmail('') }}
@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
             <div>
               <p className="text-sm font-bold text-[#B8860B] uppercase tracking-widest mb-3">ACCOUNT RECOVERY</p>
               <h1 className="text-3xl font-bold text-[#1C1712] mb-2">Forgot Password?</h1>
-              <p className="text-[#7A6E60] mb-8">Enter your email and we'll send you a reset link.</p>
+              <p className="text-[#7A6E60] mb-8">Enter your email and we&apos;lll send you a reset link.</p>
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
@@ -129,7 +129,7 @@ export default function ForgotPasswordPage() {
           </div>
 
           <h2 className="text-4xl font-bold text-white leading-tight mb-3">
-            We've got<br />you covered.
+            We&apos;ve got<br />you covered.
           </h2>
           <p className="text-[#B8860B] text-2xl font-semibold mb-4">Back in seconds.</p>
           <p className="text-white/50 text-sm leading-relaxed">

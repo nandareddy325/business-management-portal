@@ -9,9 +9,37 @@ const PLAN_PRICE = 10000
 
 function fmt(n: number) { return '₹' + n.toLocaleString('en-IN') }
 
+interface PendingSignup {
+  fullName: string
+  companyName: string
+  email: string
+  phone: string
+  password: string
+}
+
+interface RazorpaySuccessResponse {
+  razorpay_payment_id: string
+  razorpay_order_id: string
+  razorpay_signature: string
+}
+
+interface RazorpayFailureResponse {
+  error: { description: string; [key: string]: unknown }
+}
+
+interface RazorpayInstance {
+  open: () => void
+  on: (event: string, handler: (response: RazorpayFailureResponse) => void) => void
+}
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message
+  return fallback
+}
+
 export default function OnboardingPage() {
   const router = useRouter()
-  const [pendingSignup, setPendingSignup] = useState<any>(null)
+  const [pendingSignup, setPendingSignup] = useState<PendingSignup | null>(null)
   const [loading, setLoading] = useState(false)
   const [paying, setPaying] = useState(false)
   const [error, setError] = useState('')
@@ -21,7 +49,7 @@ export default function OnboardingPage() {
     const pending = localStorage.getItem('gk_pending_signup')
     if (!saved || !pending) { router.push('/signup'); return }
     setPendingSignup(JSON.parse(pending))
-  }, [])
+  }, [router])
 
   // Load Razorpay script
   useEffect(() => {
@@ -96,8 +124,8 @@ export default function OnboardingPage() {
     try {
       await createAccount('trial')
       window.location.href = '/dashboard/industries/interior-design'
-    } catch (err: any) {
-      setError(err.message || 'Failed to create account')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to create account'))
       setLoading(false)
     }
   }
@@ -123,7 +151,7 @@ export default function OnboardingPage() {
         prefill: { name: pendingSignup?.fullName || '', email: pendingSignup?.email || '', contact: pendingSignup?.phone || '' },
         theme: { color: '#B8860B' },
         modal: { ondismiss: () => { setLoading(false); setPaying(false) } },
-        handler: async (response: any) => {
+        handler: async (response: RazorpaySuccessResponse) => {
           setPaying(true)
           try {
             const companyId = await createAccount('active')
@@ -133,22 +161,23 @@ export default function OnboardingPage() {
               body: JSON.stringify({ ...response, companyId, planConfig: { 'interior-design': PLAN_ID } }),
             })
             window.location.href = '/dashboard/industries/interior-design'
-          } catch (e: any) {
-            setError(e.message || 'Account creation failed after payment')
+          } catch (e: unknown) {
+            setError(getErrorMessage(e, 'Account creation failed after payment'))
             setPaying(false); setLoading(false)
           }
         },
       }
 
-      const rzp = new (window as any).Razorpay(options)
-      rzp.on('payment.failed', (response: any) => {
+      const RazorpayCtor = (window as unknown as { Razorpay: new (options: unknown) => RazorpayInstance }).Razorpay
+      const rzp = new RazorpayCtor(options)
+      rzp.on('payment.failed', (response: RazorpayFailureResponse) => {
         setError('Payment failed: ' + response.error.description)
         setLoading(false); setPaying(false)
       })
       setLoading(false)
       rzp.open()
-    } catch (err: any) {
-      setError(err.message || 'Checkout failed')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Checkout failed'))
       setLoading(false)
     }
   }
@@ -192,7 +221,7 @@ export default function OnboardingPage() {
             <div className="w-6 h-1 rounded-full bg-emerald-500" />
             <div className="w-6 h-1 rounded-full bg-emerald-500" />
             <div className="w-6 h-1 rounded-full bg-[#B8860B]" />
-            <span className="text-[11px] text-[#9A8F82] ml-2 font-medium">Step 3 of 3 — Confirm & Pay</span>
+            <span className="text-[11px] text-[#9A8F82] ml-2 font-medium">Step 3 of 3 — Confirm &amp; Pay</span>
           </div>
         </div>
 
@@ -213,7 +242,7 @@ export default function OnboardingPage() {
               <span style={{ fontSize: 32 }}>🛋️</span>
               <div>
                 <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1712', margin: 0 }}>Interior Design</p>
-                <p style={{ fontSize: 12, color: '#9A8F82', margin: 0 }}>Projects, leads & vendors</p>
+                <p style={{ fontSize: 12, color: '#9A8F82', margin: 0 }}>Projects, leads &amp; vendors</p>
               </div>
               <div style={{ marginLeft: 'auto', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '6px 14px', textAlign: 'center' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#B8860B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Professional</div>

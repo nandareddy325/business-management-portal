@@ -157,7 +157,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center text-sm mt-6" style={{ color: '#9A8F82' }}>
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <a href="/signup" className="font-bold hover:underline" style={{ color: '#1C1712' }}>Sign Up Free</a>
           </p>
         </div>
@@ -185,7 +185,7 @@ export default function LoginPage() {
             <h2 className="text-4xl font-bold text-white leading-tight mb-2">Welcome<br />back!</h2>
             <p style={{ color: '#B8860B' }} className="text-3xl font-bold">Good to see you.</p>
             <p className="text-sm mt-4" style={{ color: '#9A8F82' }}>
-              Your leads, pipeline and team are waiting. Let's close some deals today.
+              Your leads, pipeline and team are waiting. Let&apos;s close some deals today.
             </p>
           </div>
 
