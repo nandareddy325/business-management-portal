@@ -3,7 +3,35 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
-declare global { interface Window { Razorpay: any } }
+interface RazorpaySuccessResponse {
+  razorpay_payment_id: string
+  razorpay_order_id: string
+  razorpay_signature: string
+}
+
+interface RazorpayFailureResponse {
+  error: { description: string; [key: string]: unknown }
+}
+
+interface RazorpayOptions {
+  [key: string]: unknown
+}
+
+interface RazorpayInstance {
+  open: () => void
+  on: (event: string, handler: (response: RazorpayFailureResponse) => void) => void
+}
+
+declare global {
+  interface Window {
+    Razorpay: new (options: RazorpayOptions) => RazorpayInstance
+  }
+}
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message
+  return fallback
+}
 
 const PLAN_PRICE = 10000
 function fmt(n: number) { return '₹' + n.toLocaleString('en-IN') }
@@ -39,7 +67,16 @@ export default function SubscriptionRenewClient() {
         if (!profile?.company_id) return
 
         setCompanyId(profile.company_id)
-        setCompanyName((profile as any).companies?.name || '')
+
+        const profileData = profile as unknown as {
+          company_id: string
+          companies?: { name?: string } | { name?: string }[] | null
+        }
+        const companiesField = profileData.companies
+        const resolvedName = Array.isArray(companiesField)
+          ? companiesField[0]?.name
+          : companiesField?.name
+        setCompanyName(resolvedName || '')
 
         const { data: sub } = await supabase
           .from('company_subscriptions')
@@ -99,7 +136,7 @@ export default function SubscriptionRenewClient() {
       if (!rzpKey) throw new Error('Payment gateway not configured. Contact support.')
 
       // Step 3: Open Razorpay
-      const options = {
+      const options: RazorpayOptions = {
         key: rzpKey,
         amount: order.amount,
         currency: 'INR',
@@ -112,7 +149,7 @@ export default function SubscriptionRenewClient() {
           contact: profile?.phone    || '',
         },
         theme: { color: '#B8860B' },
-        handler: async (response: any) => {
+        handler: async (response: RazorpaySuccessResponse) => {
           try {
             // Verify payment
             const verifyRes = await fetch('/api/razorpay/verify', {
@@ -139,9 +176,10 @@ export default function SubscriptionRenewClient() {
             }).eq('company_id', companyId)
 
             window.location.href = '/dashboard/industries/interior-design'
-          } catch (e: any) {
+          } catch (e: unknown) {
             setError('Payment received but activation failed. Contact support@gkcrm.in')
             setLoading(false)
+            void e
           }
         },
         modal: { ondismiss: () => setLoading(false) },
@@ -149,15 +187,15 @@ export default function SubscriptionRenewClient() {
 
       if (!window.Razorpay) throw new Error('Payment gateway not loaded. Please refresh.')
       const rzp = new window.Razorpay(options)
-      rzp.on('payment.failed', (r: any) => {
+      rzp.on('payment.failed', (r: RazorpayFailureResponse) => {
         setError('Payment failed: ' + (r.error?.description || 'Unknown error'))
         setLoading(false)
       })
       setLoading(false)
       rzp.open()
 
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong. Please try again.')
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Something went wrong. Please try again.'))
       setLoading(false)
     }
   }

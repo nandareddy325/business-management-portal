@@ -1,4 +1,5 @@
 ﻿import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getClientProject } from '@/lib/supabase/queries/client-portal'
 
@@ -29,7 +30,7 @@ export default async function ClientDashboardPage() {
         Welcome, {account.client_name}
       </h1>
       <p style={{ color: '#7A6E60', marginBottom: 24 }}>
-        Here's the latest on your project
+        Here&apos;s the latest on your project
       </p>
 
       <div style={{
@@ -43,18 +44,18 @@ export default async function ClientDashboardPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-        <a href="/client/project" style={{
+        <Link href="/client/project" style={{
           display: 'block', padding: 16, borderRadius: 12,
           background: '#1C1712', color: '#F5F0E8', textDecoration: 'none', textAlign: 'center'
-        }}>Project Timeline</a>
-        <a href="/client/quotations" style={{
+        }}>Project Timeline</Link>
+        <Link href="/client/quotations" style={{
           display: 'block', padding: 16, borderRadius: 12,
           background: '#1C1712', color: '#F5F0E8', textDecoration: 'none', textAlign: 'center'
-        }}>Quotations</a>
-        <a href="/client/payments" style={{
+        }}>Quotations</Link>
+        <Link href="/client/payments" style={{
           display: 'block', padding: 16, borderRadius: 12,
           background: '#1C1712', color: '#F5F0E8', textDecoration: 'none', textAlign: 'center'
-        }}>Payments</a>
+        }}>Payments</Link>
       </div>
     </div>
   )

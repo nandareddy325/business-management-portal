@@ -7,6 +7,20 @@ import { Users, Search, X, Calendar } from 'lucide-react'
 import { matchStage, getStageCounts, UNIQUE_STAGES, type CanonicalStage } from '@/lib/stage-utils'
 import { fetchAllLeads } from '@/lib/fetch-all-leads'
 
+interface Lead {
+  id: string
+  lead_name: string
+  phone?: string | null
+  pipeline_stage: string
+  source?: string | null
+  interest?: string | null
+  budget?: string | number | null
+  city?: string | null
+  property_type?: string | null
+  created_at: string
+  [key: string]: unknown
+}
+
 const GRADIENTS = [
   ['#7C3AED', '#4F46E5'], ['#0891B2', '#0E7490'], ['#059669', '#047857'],
   ['#D97706', '#B45309'], ['#DB2777', '#BE185D'], ['#7C3AED', '#6D28D9'],
@@ -60,7 +74,7 @@ const todayIST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/
 
 export default function AllLeadsPage() {
   const router = useRouter()
-  const [leads, setLeads] = useState<any[]>([])
+  const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<CanonicalStage | null>(null)
 
@@ -85,7 +99,7 @@ export default function AllLeadsPage() {
     // Paginated fetch — bypasses Supabase's default 1000-row cap.
     // Confirmed via SQL: actual lead count is 1079, not 1000. A plain
     // .select('*') was silently truncating results here.
-    const data = await fetchAllLeads(supabase, profile.company_id, 'interior-design', '*, notes')
+    const data = await fetchAllLeads(supabase, profile.company_id, 'interior-design', '*, notes') as Lead[] | null
     const sorted = [...(data ?? [])].sort((a, b) =>
       (STAGE_ORDER[a.pipeline_stage] ?? 99) - (STAGE_ORDER[b.pipeline_stage] ?? 99)
     )
@@ -284,11 +298,11 @@ export default function AllLeadsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredLeads.map((l: any, i: number) => {
+                {filteredLeads.map((l: Lead, i: number) => {
                   const g   = GRADIENTS[i % GRADIENTS.length]
-                  const src = SOURCE_CONFIG[l.source] ?? SOURCE_CONFIG['Other']
+                  const src = SOURCE_CONFIG[l.source ?? ''] ?? SOURCE_CONFIG['Other']
                   const stg = STAGE_CONFIG[l.pipeline_stage] ?? { bg: '#F5F0E8', color: '#7A6E60', label: l.pipeline_stage ?? '—' }
-                  const int = INTEREST_CONFIG[l.interest] ?? { bg: '#F5F0E8', color: '#7A6E60' }
+                  const int = INTEREST_CONFIG[l.interest ?? ''] ?? { bg: '#F5F0E8', color: '#7A6E60' }
                   const budget = (() => { const b = parseFloat(String(l.budget || '').replace(/[^0-9.]/g, '')); return l.budget ? (isNaN(b) ? l.budget : '₹' + b.toLocaleString('en-IN')) : null })()
                   return (
                     <tr key={l.id}
@@ -345,11 +359,11 @@ export default function AllLeadsPage() {
 
           {/* Mobile Cards */}
           <div className="md:hidden divide-y divide-[#F0EBE0]">
-            {filteredLeads.map((l: any, i: number) => {
+            {filteredLeads.map((l: Lead, i: number) => {
               const g   = GRADIENTS[i % GRADIENTS.length]
-              const src = SOURCE_CONFIG[l.source] ?? SOURCE_CONFIG['Other']
+              const src = SOURCE_CONFIG[l.source ?? ''] ?? SOURCE_CONFIG['Other']
               const stg = STAGE_CONFIG[l.pipeline_stage] ?? { bg: '#F5F0E8', color: '#7A6E60', label: l.pipeline_stage ?? '—' }
-              const int = INTEREST_CONFIG[l.interest] ?? { bg: '#F5F0E8', color: '#7A6E60' }
+              const int = INTEREST_CONFIG[l.interest ?? ''] ?? { bg: '#F5F0E8', color: '#7A6E60' }
               const budget = (() => { const b = parseFloat(String(l.budget || '').replace(/[^0-9.]/g, '')); return l.budget ? (isNaN(b) ? l.budget : '₹' + b.toLocaleString('en-IN')) : null })()
               return (
                 <div key={l.id}
