@@ -2,6 +2,17 @@
 
 import { useRouter } from 'next/navigation'
 
+interface Invoice {
+  id: string
+  invoice_no: string
+  notes?: string | null
+  amount: number
+  paid_amount?: number | null
+  due_date?: string | null
+  status?: string | null
+  created_at: string
+}
+
 const statusBadge: Record<string, string> = {
   paid:    'bg-emerald-100 text-emerald-700',
   pending: 'bg-amber-100 text-amber-700',
@@ -10,7 +21,7 @@ const statusBadge: Record<string, string> = {
   sent:    'bg-blue-100 text-blue-700',
 }
 
-export function InvoiceRow({ inv }: { inv: any }) {
+export function InvoiceRow({ inv }: { inv: Invoice }) {
   const router = useRouter()
 
   return (
@@ -34,7 +45,7 @@ export function InvoiceRow({ inv }: { inv: any }) {
           : '—'}
       </td>
       <td className="px-5 py-3">
-        <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full capitalize ${statusBadge[inv.status] ?? statusBadge.draft}`}>
+        <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full capitalize ${statusBadge[inv.status ?? 'draft'] ?? statusBadge.draft}`}>
           {inv.status ?? 'draft'}
         </span>
       </td>

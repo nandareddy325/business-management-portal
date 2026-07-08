@@ -2,6 +2,15 @@ import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { TrendingDown, Plus, AlertCircle, Tag } from 'lucide-react'
 
+interface Expense {
+  id: string
+  expense_name?: string | null
+  category?: string | null
+  amount: number
+  expense_date?: string | null
+  notes?: string | null
+}
+
 export default async function ExpensesPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -17,7 +26,7 @@ export default async function ExpensesPage() {
     .eq('company_id', profile.company_id)
     .order('expense_date', { ascending: false })
 
-  const all = expenses ?? []
+  const all: Expense[] = expenses ?? []
   const totalExpenses = all.reduce((s, e) => s + Number(e.amount || 0), 0)
 
   // Group by category
@@ -104,7 +113,7 @@ export default async function ExpensesPage() {
           </div>
         ) : (
           <div className="divide-y divide-[#F0EBE0]">
-            {all.map((exp: any) => (
+            {all.map((exp: Expense) => (
               <div key={exp.id} className="flex items-center justify-between px-5 py-4 hover:bg-[#FFFBEF] transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center">

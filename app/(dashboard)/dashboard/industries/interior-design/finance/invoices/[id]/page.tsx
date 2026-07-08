@@ -11,24 +11,75 @@ interface LineItem {
   rate: number
 }
 
+interface Invoice {
+  id: string
+  invoice_no: string
+  client_id?: string | null
+  client_name?: string | null
+  project_id?: string | null
+  amount: number
+  paid_amount?: number | null
+  status?: string | null
+  due_date?: string | null
+  notes?: string | null
+  created_at: string
+}
+
+interface Company {
+  name?: string | null
+  address?: string | null
+  phone?: string | null
+  email?: string | null
+}
+
+interface Client {
+  client_name?: string | null
+  company_name?: string | null
+  phone?: string | null
+  address?: string | null
+}
+
+interface Project {
+  project_name?: string | null
+  location?: string | null
+  house_type?: string | null
+  phone?: string | null
+}
+
+interface Milestone {
+  id: string
+  milestone_name: string
+  percentage?: number | null
+  expected_amount?: number | null
+  received_amount?: number | null
+}
+
+interface Payment {
+  id: string
+  milestone_id?: string | null
+  amount: number
+  payment_date: string
+  notes?: string | null
+}
+
 export default function InvoiceDetailPage() {
   const { id } = useParams()
   const router = useRouter()
   const supabase = createClientSupabaseClient()
   const printRef = useRef<HTMLDivElement>(null)
 
-  const [invoice, setInvoice] = useState<any>(null)
-  const [company, setCompany] = useState<any>(null)
-  const [client, setClient] = useState<any>(null)
+  const [invoice, setInvoice] = useState<Invoice | null>(null)
+  const [company, setCompany] = useState<Company | null>(null)
+  const [client, setClient] = useState<Client | null>(null)
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { description: '', qty: 1, rate: 0 }
   ])
   const [loading, setLoading] = useState(true)
 
   // Project-linked invoice data (Payment History + Milestone Summary view)
-  const [project, setProject] = useState<any>(null)
-  const [milestones, setMilestones] = useState<any[]>([])
-  const [payments, setPayments] = useState<any[]>([])
+  const [project, setProject] = useState<Project | null>(null)
+  const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [payments, setPayments] = useState<Payment[]>([])
 
   useEffect(() => {
     const load = async () => {
@@ -55,7 +106,7 @@ export default function InvoiceDetailPage() {
         .eq('id', emp?.company_id)
         .single()
 
-      let clientData = null
+      let clientData: Client | null = null
       if (inv.client_id) {
         const { data: cl } = await supabase
           .from('clients')
@@ -116,7 +167,7 @@ export default function InvoiceDetailPage() {
   const milestoneNameById: Record<string, string> = {}
   milestones.forEach(m => { milestoneNameById[m.id] = m.milestone_name })
 
-  const getMilestoneReceived = (m: any) => {
+  const getMilestoneReceived = (m: Milestone) => {
     const logged = payments.filter(p => p.milestone_id === m.id)
     if (logged.length > 0) return logged.reduce((s, p) => s + Number(p.amount || 0), 0)
     return Number(m.received_amount || 0)
@@ -257,7 +308,7 @@ export default function InvoiceDetailPage() {
                               <td className="px-4 py-2 text-[#1C1712]">
                                 {new Date(p.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                               </td>
-                              <td className="px-4 py-2 text-[#1C1712]">{milestoneNameById[p.milestone_id] || p.notes || 'Payment'}</td>
+                              <td className="px-4 py-2 text-[#1C1712]">{(p.milestone_id && milestoneNameById[p.milestone_id]) || p.notes || 'Payment'}</td>
                               <td className="px-4 py-2 text-right text-[#1C1712]">{fmt(Number(p.amount))}</td>
                               <td className="px-4 py-2 text-right font-semibold text-[#1C1712]">{fmt(running)}</td>
                             </tr>

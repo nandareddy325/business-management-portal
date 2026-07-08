@@ -5,6 +5,16 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 
+interface Client {
+  id: string
+  client_name: string
+}
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message
+  return fallback
+}
+
 export default function NewInvoicePage() {
   const router = useRouter()
   const supabase = createBrowserClient(
@@ -12,7 +22,7 @@ export default function NewInvoicePage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const [clients, setClients] = useState<any[]>([])
+  const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(false)
   const [companyId, setCompanyId] = useState('')
 
@@ -59,8 +69,8 @@ export default function NewInvoicePage() {
       })
       if (error) throw error
       router.push('/dashboard/industries/interior-design/finance/invoices')
-    } catch (err: any) {
-      alert('Error: ' + err.message)
+    } catch (err: unknown) {
+      alert('Error: ' + getErrorMessage(err, 'Something went wrong'))
     } finally {
       setLoading(false)
     }
@@ -109,14 +119,14 @@ export default function NewInvoicePage() {
             </div>
 
             <div>
-              <label className="text-xs font-bold text-[#9A8F82] uppercase tracking-wider block mb-1.5">Total Amount (â‚¹) *</label>
+              <label className="text-xs font-bold text-[#9A8F82] uppercase tracking-wider block mb-1.5">Total Amount (₹) *</label>
               <input type="number" min="0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                 placeholder="0"
                 className="w-full bg-[#F7F5F1] border border-[#E8E2D8] rounded-xl px-4 py-2.5 text-sm text-[#1C1712] focus:outline-none focus:border-[#B8860B]" />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-[#9A8F82] uppercase tracking-wider block mb-1.5">Amount Paid (â‚¹)</label>
+              <label className="text-xs font-bold text-[#9A8F82] uppercase tracking-wider block mb-1.5">Amount Paid (₹)</label>
               <input type="number" min="0" value={form.paid_amount} onChange={e => setForm(f => ({ ...f, paid_amount: e.target.value }))}
                 placeholder="0"
                 className="w-full bg-[#F7F5F1] border border-[#E8E2D8] rounded-xl px-4 py-2.5 text-sm text-[#1C1712] focus:outline-none focus:border-[#B8860B]" />
@@ -152,15 +162,15 @@ export default function NewInvoicePage() {
             <div className="rounded-xl bg-[#F7F5F1] p-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-[#9A8F82]">Total Amount</span>
-                <span className="font-semibold text-[#1C1712]">â‚¹{Number(form.amount).toLocaleString('en-IN')}</span>
+                <span className="font-semibold text-[#1C1712]">₹{Number(form.amount).toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-[#9A8F82]">Paid</span>
-                <span className="font-semibold text-emerald-600">â‚¹{Number(form.paid_amount || 0).toLocaleString('en-IN')}</span>
+                <span className="font-semibold text-emerald-600">₹{Number(form.paid_amount || 0).toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between text-sm font-bold border-t border-[#E8E2D8] pt-2">
                 <span className="text-[#1C1712]">Pending</span>
-                <span className={pending > 0 ? 'text-amber-600' : 'text-emerald-600'}>â‚¹{pending.toLocaleString('en-IN')}</span>
+                <span className={pending > 0 ? 'text-amber-600' : 'text-emerald-600'}>₹{pending.toLocaleString('en-IN')}</span>
               </div>
             </div>
           )}
@@ -182,4 +192,3 @@ export default function NewInvoicePage() {
     </div>
   )
 }
-
