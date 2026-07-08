@@ -6,6 +6,24 @@ import { AnalyticsCharts } from '@/components/interior/analytics-charts'
 
 export const dynamic = 'force-dynamic'
 
+interface Lead {
+  id: string
+  pipeline_stage?: string | null
+  source?: string | null
+  budget?: string | number | null
+  city?: string | null
+  interest?: string | null
+  created_at?: string | null
+  [key: string]: unknown
+}
+
+interface LeadActivity {
+  id: string
+  lead_id: string
+  type?: string | null
+  [key: string]: unknown
+}
+
 const STAGE_LABELS: Record<string, string> = {
   new: 'New', followup: 'Follow Up', rnr: 'RNR',
   sitevisit: 'Site Visit', quotation: 'Quotation', won: 'Won', lost: 'Lost'
@@ -16,10 +34,10 @@ const fmtBudget = (n: number) => n >= 100000 ? '₹' + (n/100000).toFixed(1) + '
 export default async function AnalyticsPage({
   searchParams
 }: {
-  searchParams: Promise<any>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const params = await searchParams
-  const dateRange = params?.range ?? 'all'
+  const dateRange = (params?.range as string) ?? 'all'
 
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -45,12 +63,12 @@ export default async function AnalyticsPage({
     query = query.gte('created_at', d.toISOString())
   }
 
-  const { data: leads } = await query
-  const allLeads = leads ?? []
+  const { data: leadsData } = await query
+  const allLeads: Lead[] = leadsData ?? []
 
   // Activities
-  const leadIds = allLeads.map((l: any) => l.id)
-  let allActivities: any[] = []
+  const leadIds = allLeads.map((l: Lead) => l.id)
+  let allActivities: LeadActivity[] = []
   if (leadIds.length > 0) {
     const { data: acts } = await supabase
       .from('lead_activities').select('*').in('lead_id', leadIds)
@@ -59,19 +77,19 @@ export default async function AnalyticsPage({
 
   // ── Computed Stats ──
   const totalLeads  = allLeads.length
-  const wonLeads    = allLeads.filter((l: any) => l.pipeline_stage === 'won').length
-  const lostLeads   = allLeads.filter((l: any) => l.pipeline_stage === 'lost').length
+  const wonLeads    = allLeads.filter((l: Lead) => l.pipeline_stage === 'won').length
+  const lostLeads   = allLeads.filter((l: Lead) => l.pipeline_stage === 'lost').length
   const activeLeads = totalLeads - wonLeads - lostLeads
   const convRate    = totalLeads > 0 ? ((wonLeads / totalLeads) * 100).toFixed(1) : '0'
-  const totalBudget = allLeads.reduce((s: number, l: any) => {
+  const totalBudget = allLeads.reduce((s: number, l: Lead) => {
     const b = parseFloat(String(l.budget || '0').replace(/[^0-9.]/g, ''))
     return s + (isNaN(b) ? 0 : b)
   }, 0)
-  const totalCalls = allActivities.filter((a: any) => a.type === 'call').length
+  const totalCalls = allActivities.filter((a: LeadActivity) => a.type === 'call').length
 
   // ── Source Distribution ──
   const sourceCounts: Record<string, number> = {}
-  allLeads.forEach((l: any) => {
+  allLeads.forEach((l: Lead) => {
     const s = l.source || 'Unknown'
     sourceCounts[s] = (sourceCounts[s] || 0) + 1
   })
@@ -81,7 +99,7 @@ export default async function AnalyticsPage({
 
   // ── Stage Distribution ──
   const stageCounts: Record<string, number> = {}
-  allLeads.forEach((l: any) => {
+  allLeads.forEach((l: Lead) => {
     const s = l.pipeline_stage || 'new'
     stageCounts[s] = (stageCounts[s] || 0) + 1
   })
@@ -91,7 +109,7 @@ export default async function AnalyticsPage({
 
   // ── City-wise ──
   const cityCounts: Record<string, { leads: number; won: number }> = {}
-  allLeads.forEach((l: any) => {
+  allLeads.forEach((l: Lead) => {
     const c = l.city || 'Unknown'
     if (!cityCounts[c]) cityCounts[c] = { leads: 0, won: 0 }
     cityCounts[c].leads++
@@ -109,7 +127,7 @@ export default async function AnalyticsPage({
     const d = new Date(today); d.setDate(d.getDate() - i)
     dailyMap[d.toISOString().split('T')[0]] = 0
   }
-  allLeads.forEach((l: any) => {
+  allLeads.forEach((l: Lead) => {
     const d = l.created_at?.split('T')[0]
     if (d && dailyMap[d] !== undefined) dailyMap[d]++
   })
@@ -120,7 +138,7 @@ export default async function AnalyticsPage({
 
   // ── Interest Distribution ──
   const interestCounts: Record<string, number> = {}
-  allLeads.forEach((l: any) => {
+  allLeads.forEach((l: Lead) => {
     if (l.interest) interestCounts[l.interest] = (interestCounts[l.interest] || 0) + 1
   })
   const interestData = Object.entries(interestCounts)
