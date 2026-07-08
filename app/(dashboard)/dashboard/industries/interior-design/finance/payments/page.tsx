@@ -1,6 +1,15 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { IndianRupee, Plus, AlertCircle, CheckCircle, CreditCard, Banknote } from 'lucide-react'
+import { IndianRupee, AlertCircle } from 'lucide-react'
+
+interface Payment {
+  id: string
+  amount: number
+  payment_method?: string | null
+  payment_date?: string | null
+  notes?: string | null
+  invoice?: { invoice_no?: string | null; company_id?: string | null; amount?: number | null } | null
+}
 
 const methodIcon: Record<string, string> = {
   cash:   '💵',
@@ -28,13 +37,13 @@ export default async function PaymentsPage() {
     .order('payment_date', { ascending: false })
 
   // Filter by company
-  const all = (payments ?? []).filter((p: any) => p.invoice?.company_id === profile.company_id)
+  const all: Payment[] = (payments ?? []).filter((p: Payment) => p.invoice?.company_id === profile.company_id)
 
-  const totalReceived = all.reduce((s: number, p: any) => s + Number(p.amount || 0), 0)
+  const totalReceived = all.reduce((s: number, p: Payment) => s + Number(p.amount || 0), 0)
 
   // Group by method
   const byMethod: Record<string, number> = {}
-  all.forEach((p: any) => {
+  all.forEach((p: Payment) => {
     const m = (p.payment_method || 'other').toLowerCase()
     byMethod[m] = (byMethod[m] || 0) + Number(p.amount || 0)
   })
@@ -94,7 +103,7 @@ export default async function PaymentsPage() {
           </div>
         ) : (
           <div className="divide-y divide-[#F0EBE0]">
-            {all.map((pay: any) => (
+            {all.map((pay: Payment) => (
               <div key={pay.id} className="flex items-center justify-between px-5 py-4 hover:bg-[#FFFBEF] transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center text-base">

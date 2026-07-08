@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { ArrowLeft, Plus, Trash2, Save, Download, ChevronDown, ChevronUp } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 
@@ -23,6 +24,18 @@ interface FalseCeiling {
   sft_cost: number
 }
 
+interface Client {
+  id: string
+  name: string
+  city?: string | null
+  address?: string | null
+}
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message
+  return fallback
+}
+
 export default function NewQuotationPage() {
   const router = useRouter()
   const supabase = createBrowserClient(
@@ -30,7 +43,7 @@ export default function NewQuotationPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const [clients, setClients] = useState<any[]>([])
+  const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [companyId, setCompanyId] = useState('')
@@ -116,8 +129,8 @@ export default function NewQuotationPage() {
       })
       if (error) throw error
       router.push('/dashboard/industries/interior-design/finance/quotations')
-    } catch (err: any) {
-      alert('Error: ' + err.message)
+    } catch (err: unknown) {
+      alert('Error: ' + getErrorMessage(err, 'Something went wrong'))
     } finally {
       setLoading(false)
     }
@@ -169,8 +182,8 @@ export default function NewQuotationPage() {
       a.download = `GK_Quotation_${form.quotation_no}.pdf`
       a.click()
       URL.revokeObjectURL(url)
-    } catch (err: any) {
-      alert('PDF Error: ' + err.message)
+    } catch (err: unknown) {
+      alert('PDF Error: ' + getErrorMessage(err, 'Something went wrong'))
     } finally {
       setPdfLoading(false)
     }
@@ -183,10 +196,10 @@ export default function NewQuotationPage() {
 
       {/* Header */}
       <div>
-        <a href="/dashboard/industries/interior-design/finance/quotations"
+        <Link href="/dashboard/industries/interior-design/finance/quotations"
           className="flex items-center gap-1.5 text-xs font-semibold text-[#9A8F82] hover:text-[#B8860B] transition-colors mb-4">
           <ArrowLeft size={14} /> Back to Quotations
-        </a>
+        </Link>
         <p className="text-xs font-bold tracking-widest uppercase text-[#B8860B] mb-1">Finance</p>
         <h1 className="font-serif text-2xl md:text-3xl text-[#1C1712]">New Quotation</h1>
         <p className="text-sm text-[#9A8F82] mt-1">GK Home Interiors — Room-wise SFT format</p>
@@ -211,13 +224,13 @@ export default function NewQuotationPage() {
                 onChange={e => {
                   const id = e.target.value
                   setForm(f => ({ ...f, client_id: id }))
-                  const c = clients.find((c: any) => c.id === id)
+                  const c = clients.find((c: Client) => c.id === id)
                   if (c) { setClientName(c.name); setClientAddress(c.city || '') }
                 }}
                 className="w-full bg-[#F7F5F1] border border-[#E8E2D8] rounded-xl px-4 py-2.5 text-sm text-[#1C1712] focus:outline-none focus:border-[#B8860B]"
               >
                 <option value="">Select Client</option>
-                {clients.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {clients.map((c: Client) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             ) : (
               <input
