@@ -1,48 +1,58 @@
-﻿'use client'
+﻿import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import ProjectsTabs from '@/components/interior/projects-tabs'
+import { AddProjectButton } from '@/components/interior/add-project-button'
+import { ProjectsListClient } from '@/components/interior/projects-list-client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { FolderOpen, Users, Palette, Package } from 'lucide-react'
+export const dynamic = 'force-dynamic'
 
-const BASE = '/dashboard/industries/interior-design/projects'
+export default async function AllProjectsPage() {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-const TABS = [
-  { key: 'all',       label: 'All Projects', href: BASE,                    icon: FolderOpen },
-  { key: 'clients',   label: 'Clients',      href: `${BASE}/clients`,       icon: Users      },
-  { key: 'designs',   label: 'Designs',      href: `${BASE}/designs`,       icon: Palette    },
-  { key: 'materials', label: 'Materials',    href: `${BASE}/materials`,     icon: Package    },
-]
+  // Get company_id + industry for the logged-in user
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('company_id')
+    .eq('id', user.id)
+    .single()
 
-export default function ProjectsTabs({ active }: { active?: string }) {
-  const pathname = usePathname()
+  const companyId = profile?.company_id
 
-  const isActive = (tab: typeof TABS[0]) => {
-    if (tab.key === 'all') return pathname === BASE || pathname === BASE + '/'
-    return pathname.startsWith(tab.href)
+  let projects: any[] = []
+  if (companyId) {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('company_id', companyId)
+      .eq('industry', 'interior-design')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Projects fetch error:', error)
+    } else {
+      projects = data ?? []
+    }
   }
 
   return (
-    <div className="flex gap-1 p-1 rounded-2xl border border-[#E2D9C8]" style={{ background: '#EDE8DF' }}>
-      {TABS.map(tab => {
-        const Icon    = tab.icon
-        const active  = isActive(tab)
-        return (
-          <Link
-            key={tab.key}
-            href={tab.href}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 no-underline"
-            style={{
-              background: active ? '#1C1712' : 'transparent',
-              color:      active ? '#F5F0E8' : '#7A6E60',
-              boxShadow:  active ? '0 1px 4px rgba(0,0,0,0.18)' : 'none',
-            }}
-          >
-            <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="hidden sm:inline">{tab.label}</span>
-            <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
-          </Link>
-        )
-      })}
+    <div className="min-h-screen p-4 sm:p-6" style={{ background: '#F5F0E8' }}>
+      <div className="max-w-7xl mx-auto space-y-5">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-xl font-bold text-[#1C1712]">Projects</h1>
+            <p className="text-xs text-[#7A6E60] mt-0.5">
+              Won leads become projects automatically, or add one manually
+            </p>
+          </div>
+          <AddProjectButton companyId={companyId ?? ''} />
+        </div>
+
+        <ProjectsTabs />
+
+        <ProjectsListClient initialProjects={projects} />
+      </div>
     </div>
   )
 }
