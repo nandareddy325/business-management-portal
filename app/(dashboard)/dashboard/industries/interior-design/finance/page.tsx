@@ -1,8 +1,45 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { IndianRupee, FileText, Receipt, TrendingUp, TrendingDown, Clock, CheckCircle, AlertCircle, ArrowUpRight } from 'lucide-react'
 
-async function getFinanceData(supabase: any, companyId: string) {
+type SupabaseServerClient = Awaited<ReturnType<typeof createServerSupabaseClient>>
+
+interface Quotation {
+  id: string
+  quotation_no?: string | null
+  amount?: number | null
+  status?: string | null
+  created_at: string
+}
+
+interface Invoice {
+  id: string
+  invoice_no?: string | null
+  amount?: number | null
+  paid_amount?: number | null
+  status?: string | null
+  due_date?: string | null
+  created_at: string
+}
+
+interface Payment {
+  id: string
+  amount?: number | null
+  payment_method?: string | null
+  payment_date?: string | null
+  invoice?: { invoice_no?: string | null } | null
+}
+
+interface Expense {
+  id: string
+  expense_name?: string | null
+  category?: string | null
+  amount?: number | null
+  expense_date?: string | null
+}
+
+async function getFinanceData(supabase: SupabaseServerClient, companyId: string) {
   const [
     { data: quotations },
     { data: invoices },
@@ -15,18 +52,23 @@ async function getFinanceData(supabase: any, companyId: string) {
     supabase.from('expenses').select('*').eq('company_id', companyId).order('created_at', { ascending: false }),
   ])
 
-  const totalQuotationValue = (quotations ?? []).reduce((s: number, q: any) => s + Number(q.amount || 0), 0)
-  const totalInvoiced = (invoices ?? []).reduce((s: number, i: any) => s + Number(i.amount || 0), 0)
-  const totalReceived = (invoices ?? []).reduce((s: number, i: any) => s + Number(i.paid_amount || 0), 0)
+  const quotationsList: Quotation[] = quotations ?? []
+  const invoicesList: Invoice[] = invoices ?? []
+  const paymentsList: Payment[] = payments ?? []
+  const expensesList: Expense[] = expenses ?? []
+
+  const totalQuotationValue = quotationsList.reduce((s: number, q: Quotation) => s + Number(q.amount || 0), 0)
+  const totalInvoiced = invoicesList.reduce((s: number, i: Invoice) => s + Number(i.amount || 0), 0)
+  const totalReceived = invoicesList.reduce((s: number, i: Invoice) => s + Number(i.paid_amount || 0), 0)
   const totalPending = totalInvoiced - totalReceived
-  const totalExpenses = (expenses ?? []).reduce((s: number, e: any) => s + Number(e.amount || 0), 0)
+  const totalExpenses = expensesList.reduce((s: number, e: Expense) => s + Number(e.amount || 0), 0)
   const netProfit = totalReceived - totalExpenses
 
   return {
-    quotations: quotations ?? [],
-    invoices: invoices ?? [],
-    payments: payments ?? [],
-    expenses: expenses ?? [],
+    quotations: quotationsList,
+    invoices: invoicesList,
+    payments: paymentsList,
+    expenses: expensesList,
     stats: {
       totalQuotationValue,
       totalInvoiced,
@@ -121,15 +163,15 @@ export default async function FinancePage() {
           <p className="text-sm text-[#9A8F82] mt-1">Quotations · Invoices · Payments · Expenses</p>
         </div>
         <div className="flex gap-2">
-          <a href="/dashboard/industries/interior-design/finance/quotations/new"
+          <Link href="/dashboard/industries/interior-design/finance/quotations/new"
             className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
             style={{ background: '#1C1712' }}>
             + New Quotation
-          </a>
-          <a href="/dashboard/industries/interior-design/finance/invoices/new"
+          </Link>
+          <Link href="/dashboard/industries/interior-design/finance/invoices/new"
             className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-[#B8860B] text-[#B8860B] hover:bg-[#B8860B] hover:text-white transition-all">
             + New Invoice
-          </a>
+          </Link>
         </div>
       </div>
 
@@ -186,10 +228,10 @@ export default async function FinancePage() {
               <Receipt size={15} className="text-[#B8860B]" />
               <h2 className="font-serif text-sm text-[#1C1712]">Recent Invoices</h2>
             </div>
-            <a href="/dashboard/industries/interior-design/finance/invoices"
+            <Link href="/dashboard/industries/interior-design/finance/invoices"
               className="text-[11px] font-semibold text-[#B8860B] hover:underline flex items-center gap-1">
               View all <ArrowUpRight size={11} />
-            </a>
+            </Link>
           </div>
           <div className="divide-y divide-[#F0EBE0]">
             {invoices.slice(0, 5).length === 0 ? (
@@ -197,7 +239,7 @@ export default async function FinancePage() {
                 <AlertCircle size={24} className="text-[#9A8F82] mx-auto mb-2" />
                 <p className="text-sm text-[#9A8F82]">No invoices yet</p>
               </div>
-            ) : invoices.slice(0, 5).map((inv: any) => (
+            ) : invoices.slice(0, 5).map((inv: Invoice) => (
               <div key={inv.id} className="flex items-center justify-between px-5 py-3 hover:bg-[#FFFBEF] transition-colors">
                 <div>
                   <p className="text-sm font-semibold text-[#1C1712]">{inv.invoice_no}</p>
@@ -207,7 +249,7 @@ export default async function FinancePage() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-[#1C1712]">₹{Number(inv.amount).toLocaleString('en-IN')}</p>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${statusBadge[inv.status] ?? statusBadge.draft}`}>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${statusBadge[inv.status ?? 'draft'] ?? statusBadge.draft}`}>
                     {inv.status}
                   </span>
                 </div>
@@ -224,10 +266,10 @@ export default async function FinancePage() {
               <FileText size={15} className="text-[#B8860B]" />
               <h2 className="font-serif text-sm text-[#1C1712]">Recent Quotations</h2>
             </div>
-            <a href="/dashboard/industries/interior-design/finance/quotations"
+            <Link href="/dashboard/industries/interior-design/finance/quotations"
               className="text-[11px] font-semibold text-[#B8860B] hover:underline flex items-center gap-1">
               View all <ArrowUpRight size={11} />
-            </a>
+            </Link>
           </div>
           <div className="divide-y divide-[#F0EBE0]">
             {quotations.slice(0, 5).length === 0 ? (
@@ -235,7 +277,7 @@ export default async function FinancePage() {
                 <AlertCircle size={24} className="text-[#9A8F82] mx-auto mb-2" />
                 <p className="text-sm text-[#9A8F82]">No quotations yet</p>
               </div>
-            ) : quotations.slice(0, 5).map((q: any) => (
+            ) : quotations.slice(0, 5).map((q: Quotation) => (
               <div key={q.id} className="flex items-center justify-between px-5 py-3 hover:bg-[#FFFBEF] transition-colors">
                 <div>
                   <p className="text-sm font-semibold text-[#1C1712]">{q.quotation_no}</p>
@@ -245,7 +287,7 @@ export default async function FinancePage() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-bold text-[#1C1712]">₹{Number(q.amount).toLocaleString('en-IN')}</p>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${statusBadge[q.status] ?? statusBadge.draft}`}>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full capitalize ${statusBadge[q.status ?? 'draft'] ?? statusBadge.draft}`}>
                     {q.status}
                   </span>
                 </div>
@@ -263,10 +305,10 @@ export default async function FinancePage() {
             <TrendingDown size={15} className="text-[#B8860B]" />
             <h2 className="font-serif text-sm text-[#1C1712]">Recent Expenses</h2>
           </div>
-          <a href="/dashboard/industries/interior-design/finance/expenses"
+          <Link href="/dashboard/industries/interior-design/finance/expenses"
             className="text-[11px] font-semibold text-[#B8860B] hover:underline flex items-center gap-1">
             View all <ArrowUpRight size={11} />
-          </a>
+          </Link>
         </div>
         <div className="divide-y divide-[#F0EBE0]">
           {expenses.slice(0, 5).length === 0 ? (
@@ -274,7 +316,7 @@ export default async function FinancePage() {
               <AlertCircle size={24} className="text-[#9A8F82] mx-auto mb-2" />
               <p className="text-sm text-[#9A8F82]">No expenses yet</p>
             </div>
-          ) : expenses.slice(0, 5).map((exp: any) => (
+          ) : expenses.slice(0, 5).map((exp: Expense) => (
             <div key={exp.id} className="flex items-center justify-between px-5 py-3 hover:bg-[#FFFBEF] transition-colors">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
@@ -301,10 +343,10 @@ export default async function FinancePage() {
             <IndianRupee size={15} className="text-[#B8860B]" />
             <h2 className="font-serif text-sm text-[#1C1712]">Recent Payments Received</h2>
           </div>
-          <a href="/dashboard/industries/interior-design/finance/payments"
+          <Link href="/dashboard/industries/interior-design/finance/payments"
             className="text-[11px] font-semibold text-[#B8860B] hover:underline flex items-center gap-1">
             View all <ArrowUpRight size={11} />
-          </a>
+          </Link>
         </div>
         <div className="divide-y divide-[#F0EBE0]">
           {payments.slice(0, 5).length === 0 ? (
@@ -312,7 +354,7 @@ export default async function FinancePage() {
               <AlertCircle size={24} className="text-[#9A8F82] mx-auto mb-2" />
               <p className="text-sm text-[#9A8F82]">No payments yet</p>
             </div>
-          ) : payments.slice(0, 5).map((pay: any) => (
+          ) : payments.slice(0, 5).map((pay: Payment) => (
             <div key={pay.id} className="flex items-center justify-between px-5 py-3 hover:bg-[#FFFBEF] transition-colors">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">

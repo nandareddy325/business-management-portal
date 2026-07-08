@@ -1,7 +1,19 @@
 ﻿import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { Receipt, Plus, AlertCircle, Clock, CheckCircle } from 'lucide-react'
 import { InvoiceRow } from './invoice-row'
+
+interface Invoice {
+  id: string
+  invoice_no: string
+  notes?: string | null
+  amount: number
+  paid_amount?: number | null
+  due_date?: string | null
+  status?: string | null
+  created_at: string
+}
 
 export default async function InvoicesPage() {
   const supabase = await createServerSupabaseClient()
@@ -22,7 +34,7 @@ export default async function InvoicesPage() {
     console.error('Invoice fetch error:', error)
   }
 
-  const all = invoices ?? []
+  const all: Invoice[] = invoices ?? []
   const totalAmount   = all.reduce((s, i) => s + Number(i.amount || 0), 0)
   const totalPaid     = all.reduce((s, i) => s + Number(i.paid_amount || 0), 0)
   const totalPending  = totalAmount - totalPaid
@@ -40,11 +52,11 @@ export default async function InvoicesPage() {
           <h1 className="font-serif text-2xl md:text-3xl text-[#1C1712]">Invoices</h1>
           <p className="text-sm text-[#9A8F82] mt-1">{all.length} total invoices</p>
         </div>
-        <a href="/dashboard/industries/interior-design/finance/invoices/new"
+        <Link href="/dashboard/industries/interior-design/finance/invoices/new"
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
           style={{ background: '#1C1712' }}>
           <Plus size={15} /> New Invoice
-        </a>
+        </Link>
       </div>
 
       {/* Stats */}
@@ -108,7 +120,7 @@ export default async function InvoicesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F0EBE0]">
-                {all.map((inv: any) => (
+                {all.map((inv: Invoice) => (
                   <InvoiceRow key={inv.id} inv={inv} />
                 ))}
               </tbody>
