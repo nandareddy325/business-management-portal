@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import {
   FileText, Plus, Download, Eye, Search, ChevronDown,
-  AlertCircle, CheckCircle2, Users, Zap, RefreshCw
+  AlertCircle, CheckCircle2, Zap, RefreshCw
 } from "lucide-react";
 import GeneratePaySlipModal from "@/components/hr/GeneratePaySlipModal";
 import PaySlipViewModal from "@/components/hr/PaySlipViewModal";
@@ -75,6 +75,7 @@ export default function PaySlipsPage() {
 
   useEffect(() => {
     fetchPaySlips();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMonth, selectedYear]);
 
   async function fetchPaySlips() {
@@ -92,17 +93,22 @@ export default function PaySlipsPage() {
     if (!slipsData || slipsData.length === 0) { setPayslips([]); setLoading(false); return; }
 
     // Step 2: employee details fetch
-    const empIds = [...new Set(slipsData.map((s: any) => s.employee_id))];
+    const empIds = [...new Set(slipsData.map((s: { employee_id: string }) => s.employee_id))];
     const { data: empsData } = await supabase
   .from("employees")
   .select("id, full_name, employee_code, designation, department, join_date, bank_name, bank_account_no, pan_number, pf_no, pf_uan")
   .in("id", empIds);
 
-    const empMap: Record<string, any> = {};
-    (empsData || []).forEach((e: any) => { empMap[e.id] = e; });
+    interface EmployeeInfo {
+      id: string; full_name?: string; employee_code?: string; designation?: string
+      department?: string; join_date?: string; bank_name?: string; bank_account_no?: string
+      pan_number?: string; pf_no?: string; pf_uan?: string
+    }
+    const empMap: Record<string, EmployeeInfo> = {};
+    (empsData || []).forEach((e: EmployeeInfo) => { empMap[e.id] = e; });
 
-    const mapped = slipsData.map((row: any) => {
-  const emp = empMap[row.employee_id] || {};
+    const mapped = slipsData.map((row: { employee_id: string; [key: string]: unknown }) => {
+  const emp: Partial<EmployeeInfo> = empMap[row.employee_id] || {};
   return {
     ...row,
     employee_name:        emp.full_name       || "Unknown",
@@ -118,7 +124,7 @@ export default function PaySlipsPage() {
     location:             "Hyderabad",
   };
 });
-    setPayslips(mapped);
+    setPayslips(mapped as PaySlip[]);
   } catch (err) {
     console.error("fetchPaySlips:", err);
   }
@@ -314,7 +320,7 @@ export default function PaySlipsPage() {
             <FileText size={40} className="text-[#D4C5A9] mb-3" />
             <p className="text-[#6B5E4E] font-medium">No payslips for {MONTHS[selectedMonth - 1]} {selectedYear}</p>
             <p className="text-xs text-[#9A8B7A] mt-1">
-              Click <strong>"Single Payslip"</strong> to create one or <strong>"Generate All"</strong> for all employees
+              Click <strong>&ldquo;Single Payslip&rdquo;</strong> to create one or <strong>&ldquo;Generate All&rdquo;</strong> for all employees
             </p>
             <button
               onClick={handleGenerateAll}

@@ -5,6 +5,16 @@ import { AddEmployeeButton } from '@/components/hr/add-employee-button'
 
 export const dynamic = 'force-dynamic'
 
+interface Employee {
+  id: string
+  full_name: string
+  email?: string
+  phone?: string
+  department?: string
+  designation?: string
+  join_date?: string
+}
+
 export default async function EmployeesPage() {
   const supabase = await createServerSupabaseClient()
 
@@ -27,7 +37,7 @@ export default async function EmployeesPage() {
     .order('full_name')
 
   const departments = [
-    ...new Set((employees ?? []).map((e: any) => e.department).filter(Boolean)),
+    ...new Set((employees as Employee[] ?? []).map((e) => e.department).filter(Boolean)),
   ]
 
   const deptColors: Record<string, { bg: string; text: string }> = {
@@ -69,7 +79,7 @@ export default async function EmployeesPage() {
       {departments.length > 0 && (
         <div className="flex gap-2 flex-wrap">
           {departments.map((dept) => {
-            const deptCount = employees?.filter((e: any) => e.department === dept).length ?? 0
+            const deptCount = (employees as Employee[] | null)?.filter((e) => e.department === dept).length ?? 0
             const style = deptColors[String(dept)] ?? deptColors['Other']
             return (
               <span
@@ -90,7 +100,7 @@ export default async function EmployeesPage() {
             <UserCheck className="w-6 h-6 text-[#7A6E60]" />
           </div>
           <p className="text-[#7A6E60] text-sm font-medium">No employees added yet</p>
-          <p className="text-[#B8A99A] text-xs mt-1">Click "+ Add Employee" to get started</p>
+          <p className="text-[#B8A99A] text-xs mt-1">Click &ldquo;+ Add Employee&rdquo; to get started</p>
         </div>
       )}
 
@@ -108,7 +118,7 @@ export default async function EmployeesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F0EBE0]">
-              {(employees ?? []).map((emp: any, i: number) => {
+              {(employees as Employee[] ?? []).map((emp, i: number) => {
                 const av = avatarColors[i % avatarColors.length]
                 const deptStyle = deptColors[emp.department] ?? deptColors['Other']
                 return (
@@ -147,7 +157,7 @@ export default async function EmployeesPage() {
       {/* MOBILE — Cards */}
       {!!employees?.length && (
         <div className="md:hidden space-y-3">
-          {(employees ?? []).map((emp: any, i: number) => {
+          {(employees as Employee[] ?? []).map((emp, i: number) => {
             const av = avatarColors[i % avatarColors.length]
             const deptStyle = deptColors[emp.department] ?? deptColors['Other']
             return (
