@@ -37,19 +37,19 @@ export default async function ReportsPage() {
     supabase.from('employees').select('*', { count: 'exact', head: true }).eq('company_id', cid).eq('is_active', true),
   ])
 
-  const stageSummary = (leadsByStage ?? []).reduce((acc: any, l) => {
+  const stageSummary = (leadsByStage ?? []).reduce((acc: Record<string, number>, l) => {
     const s = l.pipeline_stage || 'new'
     acc[s] = (acc[s] ?? 0) + 1
     return acc
   }, {})
 
-  const sourceSummary = (leadsBySource ?? []).reduce((acc: any, l) => {
+  const sourceSummary = (leadsBySource ?? []).reduce((acc: Record<string, number>, l) => {
     const src = l.source || 'Direct'
     acc[src] = (acc[src] ?? 0) + 1
     return acc
   }, {})
 
-  const revenue = (invoiceStats ?? []).reduce((acc, i: any) => {
+  const revenue = (invoiceStats ?? []).reduce((acc, i: { amount?: number; paid_amount?: number; status?: string }) => {
     acc.total += Number(i.amount || 0)
     acc.collected += Number(i.paid_amount || 0)
     if (i.status === 'overdue') acc.overdue += Number(i.amount || 0) - Number(i.paid_amount || 0)
@@ -62,7 +62,7 @@ export default async function ReportsPage() {
   const collectionRate = revenue.total > 0 ? Math.round((revenue.collected / revenue.total) * 100) : 0
 
   // Sort sources by count
-  const sortedSources = Object.entries(sourceSummary).sort(([,a]: any, [,b]: any) => b - a)
+  const sortedSources = Object.entries(sourceSummary).sort(([, a], [, b]) => b - a)
   const sourceColors = ['bg-blue-500', 'bg-purple-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500', 'bg-cyan-500']
 
   return (
@@ -101,7 +101,7 @@ export default async function ReportsPage() {
             <span className="text-xs text-[#7A6E60] bg-[#F0EBE0] px-2 py-1 rounded-lg font-medium">{totalLeads} total</span>
           </div>
           <div className="space-y-3">
-            {Object.entries(stageSummary).sort(([,a]: any, [,b]: any) => b - a).map(([stage, count]: any) => {
+            {Object.entries(stageSummary).sort(([, a], [, b]) => b - a).map(([stage, count]) => {
               const style = stageColors[stage] ?? stageColors['new']
               const pct = totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0
               return (
@@ -136,7 +136,7 @@ export default async function ReportsPage() {
             <span className="text-xs text-[#7A6E60] bg-[#F0EBE0] px-2 py-1 rounded-lg font-medium">{sortedSources.length} sources</span>
           </div>
           <div className="space-y-3">
-            {sortedSources.map(([source, count]: any, i) => {
+            {sortedSources.map(([source, count], i) => {
               const pct = totalLeads > 0 ? Math.round((count / totalLeads) * 100) : 0
               return (
                 <div key={source} className="flex items-center gap-3">

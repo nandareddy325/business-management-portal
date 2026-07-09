@@ -15,6 +15,27 @@ function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay()
 }
 
+interface Employee {
+  id: string
+  full_name: string
+}
+
+interface AttendanceRecord {
+  id: string
+  employee_id: string
+  attendance_date: string
+  status?: string
+  check_in?: string
+  check_out?: string
+}
+
+interface LeaveApp {
+  from_date: string
+  to_date: string
+  leave_type: string
+  status: string
+}
+
 export default function EmployeeAttendancePage() {
   const router = useRouter()
   const supabase = createBrowserClient(
@@ -22,9 +43,9 @@ export default function EmployeeAttendancePage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const [employee, setEmployee] = useState<any>(null)
-  const [records, setRecords]   = useState<any[]>([])
-  const [leaveApps, setLeaveApps] = useState<any[]>([])
+  const [employee, setEmployee] = useState<Employee | null>(null)
+  const [records, setRecords]   = useState<AttendanceRecord[]>([])
+  const [leaveApps, setLeaveApps] = useState<LeaveApp[]>([])
   const [loading, setLoading]   = useState(true)
   const [marking, setMarking]   = useState(false)
   const [markedToday, setMarkedToday] = useState(false)
@@ -66,14 +87,17 @@ export default function EmployeeAttendancePage() {
       setRecords(recs ?? [])
       setLeaveApps(leaves ?? [])
 
-      const todayRec = (recs ?? []).find((r: any) => r.attendance_date === todayStr)
+      const todayRec = (recs ?? []).find((r: AttendanceRecord) => r.attendance_date === todayStr)
       if (todayRec) setMarkedToday(true)
 
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadData()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const markPresent = async () => {
     if (!employee || marking || markedToday) return
@@ -296,7 +320,7 @@ export default function EmployeeAttendancePage() {
           <div className="bg-[#FAF7F2] border-t border-[#B8860B]/25">
             <p className="text-[9px] tracking-[3px] text-[#8B6914] font-semibold uppercase px-6 lg:px-8 pt-4 pb-1.5" style={mono}>§3 — Recent Records</p>
             <div>
-              {records.slice(0, 10).map((r: any, idx) => {
+              {records.slice(0, 10).map((r: AttendanceRecord, idx) => {
                 const d      = new Date(r.attendance_date)
                 const status = r.status?.toLowerCase() ?? 'present'
                 const color  = { present: 'text-emerald-700', absent: 'text-rose-600', leave: 'text-amber-700' }[status] ?? 'text-[#9A8F82]'
@@ -325,7 +349,7 @@ export default function EmployeeAttendancePage() {
               {!records.length && (
                 <div className="py-10 text-center px-6">
                   <p className="text-[#9A8F82] text-sm">No attendance records yet</p>
-                  <p className="text-[#B8B0A0] text-xs mt-1">Tap "Mark Present" above to check in</p>
+                  <p className="text-[#B8B0A0] text-xs mt-1">Tap &ldquo;Mark Present&rdquo; above to check in</p>
                 </div>
               )}
             </div>
