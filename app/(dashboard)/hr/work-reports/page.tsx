@@ -21,18 +21,34 @@ function getInitials(name: string) {
     : parts[0].slice(0, 2).toUpperCase()
 }
 
+interface WorkReport {
+  id: string
+  employee_id: string
+  company_id?: string
+  report_date: string
+  tasks_completed?: string
+  tasks_pending?: string
+  blockers?: string
+  hours_worked?: number | string
+  hours_spent?: number | string
+  task_description?: string
+  status?: string
+  created_at?: string
+  employee_name?: string
+}
+
 export default function WorkReportsPage() {
   const supabase = createClientSupabaseClient()
   const [role, setRole] = useState<'admin' | 'user'>('user')
   const [companyId, setCompanyId] = useState('')
   const [userId, setUserId] = useState('')
-  const [reports, setReports] = useState<any[]>([])
+  const [reports, setReports] = useState<WorkReport[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
-  const [todayReport, setTodayReport] = useState<any>(null)
+  const [todayReport, setTodayReport] = useState<WorkReport | null>(null)
   const [filterUser, setFilterUser] = useState('all')
   const [profileMap, setProfileMap] = useState<Record<string, string>>({})
 
@@ -48,7 +64,10 @@ export default function WorkReportsPage() {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   })
 
-  useEffect(() => { init() }, [])
+  useEffect(() => {
+    init()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function init() {
     try {
@@ -91,25 +110,25 @@ export default function WorkReportsPage() {
       if (!data) return
 
       // Step 2: Fetch names from employees table (work_reports FK points to employees)
-      const empIds = [...new Set(data.map((d: any) => d.employee_id).filter(Boolean))]
+      const empIds = [...new Set(data.map((d: { employee_id: string }) => d.employee_id).filter(Boolean))]
       const pm: Record<string, string> = {}
       if (empIds.length > 0) {
         const { data: emps } = await supabase
           .from('employees').select('id, full_name, email')
         if (emps) {
-          emps.forEach((e: any) => { pm[e.id] = e.full_name || e.email || 'Unknown' })
+          emps.forEach((e: { id: string; full_name?: string; email?: string }) => { pm[e.id] = e.full_name || e.email || 'Unknown' })
         }
       }
       setProfileMap(pm)
 
       // Attach name to reports
-      const enriched = data.map((rep: any) => ({
+      const enriched = data.map((rep: WorkReport) => ({
         ...rep,
         employee_name: pm[rep.employee_id] || 'Unknown',
       }))
 
       setReports(enriched)
-      const tr = enriched.find((rep: any) => rep.report_date === today && rep.employee_id === uid)
+      const tr = enriched.find((rep: WorkReport) => rep.report_date === today && rep.employee_id === uid)
       setTodayReport(tr || null)
     } catch (e) {
       console.error('[WorkReports] error:', e)
@@ -138,14 +157,14 @@ export default function WorkReportsPage() {
       setForm({ tasks_completed: '', tasks_pending: '', blockers: '', hours_worked: '8' })
       await fetchReports(companyId, userId, role)
       setTimeout(() => setSuccess(''), 3000)
-    } catch (err: any) {
-      setError(err.message || 'Submit failed')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Submit failed')
     } finally {
       setSubmitting(false)
     }
   }
 
-  function editReport(report: any) {
+  function editReport(report: WorkReport) {
     setForm({
       tasks_completed: report.tasks_completed || '',
       tasks_pending: report.tasks_pending || '',
@@ -195,7 +214,7 @@ export default function WorkReportsPage() {
               <Users size={14} style={{ color: '#B8860B' }} />
             </div>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-wider" style={{ color:'#9A8F82' }}>Today's Reports</p>
+              <p className="text-[9px] font-black uppercase tracking-wider" style={{ color:'#9A8F82' }}>Today&apos;s Reports</p>
               <p className="text-2xl font-black leading-tight" style={{ color: '#B8860B' }}>{todayReports.length}</p>
               <p className="text-[9px]" style={{ color:'#9A8F82' }}>{uniqueUsers.length} employees</p>
             </div>
@@ -263,7 +282,7 @@ export default function WorkReportsPage() {
                 onFocus={e => e.target.style.borderColor = '#B8860B'} onBlur={e => e.target.style.borderColor = '#E2D9C8'}/>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#2563EB' }}>🔄 Pending / Tomorrow's Tasks</label>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#2563EB' }}>🔄 Pending / Tomorrow&apos;s Tasks</label>
               <textarea rows={3} placeholder={"1. Billing fix\n2. Settings testing"} value={form.tasks_pending}
                 onChange={e => setForm({ ...form, tasks_pending: e.target.value })}
                 className="w-full border rounded-xl px-4 py-3 text-sm focus:outline-none resize-none text-[#1C1712] placeholder-[#C4BAB0]"
@@ -333,11 +352,11 @@ export default function WorkReportsPage() {
               <FileText className="w-7 h-7 text-[#B8860B]" />
             </div>
             <p className="text-[#1C1712] font-bold text-sm">No work reports yet</p>
-            <p className="text-[#9A8F82] text-xs mt-1">Submit today's report to get started</p>
+            <p className="text-[#9A8F82] text-xs mt-1">Submit today&apos;s report to get started</p>
           </div>
         ) : (
           <div className="divide-y divide-[#F0EBE0]">
-            {filteredReports.map((report: any, i: number) => (
+            {filteredReports.map((report: WorkReport, i: number) => (
               <ReportRow key={report.id} report={report} isAdmin={role === 'admin'}
                 isOwn={report.employee_id === userId} avatarIndex={i}
                 onEdit={() => { editReport(report); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
@@ -351,7 +370,7 @@ export default function WorkReportsPage() {
 }
 
 function ReportRow({ report, isAdmin, isOwn, avatarIndex, onEdit, today }: {
-  report: any; isAdmin: boolean; isOwn: boolean; avatarIndex: number; onEdit: () => void; today: string
+  report: WorkReport; isAdmin: boolean; isOwn: boolean; avatarIndex: number; onEdit: () => void; today: string
 }) {
   const [expanded, setExpanded] = useState(false)
   const date = new Date(report.report_date + 'T00:00:00').toLocaleDateString('en-IN', {
