@@ -5,8 +5,8 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getEmailTemplates } from '@/lib/supabase/queries/admin'
-import { Mail, Plus } from 'lucide-react'
-import { TemplatesTable, VariablesInfo } from '@/components/super-admin/email-templates'
+import { Mail } from 'lucide-react'
+import { TemplatesTable, VariablesInfo, TemplateFormModal } from '@/components/super-admin/email-templates'
 
 export default async function EmailTemplatesPage() {
   const supabase = await createServerSupabaseClient()
@@ -26,9 +26,7 @@ export default async function EmailTemplatesPage() {
             </div>
             <h1 className="text-lg sm:text-xl font-bold text-[#1C1712]">Email Templates</h1>
           </div>
-          <button className="px-4 py-2 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-all flex items-center gap-2 shadow-md">
-            <Plus size={14} /> New Template
-          </button>
+          <TemplateFormModal mode="create" />
         </div>
       </div>
 

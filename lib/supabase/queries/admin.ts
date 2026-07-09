@@ -104,11 +104,7 @@ export async function getAPIKeys(
 ) {
   const { data, error } = await supabase
     .from('api_keys')
-    .select(`
-      *,
-      created_by:profiles!created_by(email, full_name),
-      company:companies!company_id(name)
-    `)
+    .select('*')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
@@ -366,6 +362,16 @@ export async function incrementEmailTemplateUsage(
       usage_count: supabase.rpc('increment', { x: 1 }),
       last_used_at: new Date().toISOString()
     })
+    .eq('id', templateId)
+}
+
+export async function deleteEmailTemplate(
+  supabase: SupabaseClient,
+  templateId: string
+) {
+  return await supabase
+    .from('email_templates')
+    .update({ is_active: false })
     .eq('id', templateId)
 }
 
