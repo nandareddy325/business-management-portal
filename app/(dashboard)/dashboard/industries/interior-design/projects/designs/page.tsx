@@ -26,6 +26,16 @@ const avatarColors = [
   { bg: '#ECFEFF', text: '#0E7490' },
 ]
 
+interface Design {
+  id: string
+  design_name: string
+  style?: string
+  room_type?: string
+  notes?: string
+  created_at: string
+  project?: { project_name: string } | null
+}
+
 export default async function DesignsPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -46,10 +56,10 @@ export default async function DesignsPage() {
     .eq('company_id', profile.company_id)
     .eq('industry', 'interior-design')
 
-  const styleCounts: Record<string, number> = {}
-  designs?.forEach((d: any) => { if (d.style) styleCounts[d.style] = (styleCounts[d.style] || 0) + 1 })
+  const styleCounts: Record<string, number> = {};
+  (designs as Design[] | null)?.forEach((d) => { if (d.style) styleCounts[d.style] = (styleCounts[d.style] || 0) + 1 })
   const topStyle = Object.entries(styleCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—'
-  const withProject = designs?.filter((d: any) => d.project?.project_name).length ?? 0
+  const withProject = (designs as Design[] | null)?.filter((d) => d.project?.project_name).length ?? 0
 
   return (
     <div className="space-y-5 p-4 md:p-4" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
@@ -118,7 +128,7 @@ export default async function DesignsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(designs ?? []).map((d: any, i: number) => {
+                {(designs as Design[] ?? []).map((d, i: number) => {
                   const av = avatarColors[i % avatarColors.length]
                   const cfg = STYLE_CONFIG[d.style] ?? { bg: '#F5F0E8', color: '#7A6E60', icon: '🎨' }
                   return (
@@ -160,7 +170,7 @@ export default async function DesignsPage() {
 
           {/* Mobile */}
           <div className="md:hidden divide-y divide-[#F0EBE0]">
-            {(designs ?? []).map((d: any, i: number) => {
+            {(designs as Design[] ?? []).map((d, i: number) => {
               const cfg = STYLE_CONFIG[d.style] ?? { bg: '#F5F0E8', color: '#7A6E60', icon: '🎨' }
               const av = avatarColors[i % avatarColors.length]
               return (

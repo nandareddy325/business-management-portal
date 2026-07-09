@@ -18,6 +18,17 @@ const avatarColors = [
 
 const ini = (name: string) => name?.split(' ').map((x: string) => x[0]).join('').slice(0, 2).toUpperCase() || '?'
 
+interface Client {
+  id: string
+  name: string
+  phone?: string
+  email?: string
+  city?: string
+  notes?: string
+  created_at: string
+  project?: { project_name: string } | null
+}
+
 export default async function IDClientsPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -38,7 +49,7 @@ export default async function IDClientsPage() {
     .eq('company_id', profile.company_id)
     .eq('industry', 'interior-design')
 
-  const thisMonth = clients?.filter((c: any) => {
+  const thisMonth = (clients as Client[] | null)?.filter((c) => {
     const d = new Date(c.created_at), now = new Date()
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
   }).length ?? 0
@@ -62,7 +73,7 @@ export default async function IDClientsPage() {
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Total Clients',    value: count ?? 0,   color: '#7C3AED', bg: '#F5F3FF' },
-          { label: 'With Projects',    value: clients?.filter((c: any) => c.project?.project_name).length ?? 0, color: '#B8860B', bg: '#FFFBEB' },
+          { label: 'With Projects',    value: (clients as Client[] | null)?.filter((c) => c.project?.project_name).length ?? 0, color: '#B8860B', bg: '#FFFBEB' },
           { label: 'This Month',       value: thisMonth,    color: '#059669', bg: '#F0FDF4' },
         ].map((s, i) => (
           <div key={i} className="border border-[#E2D9C8] rounded-2xl px-4 py-3" style={{ background: s.bg }}>
@@ -95,7 +106,7 @@ export default async function IDClientsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(clients ?? []).map((c: any, i: number) => {
+                {(clients as Client[] ?? []).map((c, i: number) => {
                   const av = avatarColors[i % avatarColors.length]
                   return (
                     <tr key={c.id} className="border-b border-[#F7F5F1] last:border-0 hover:bg-[#FDFAF8] transition-colors">
@@ -135,7 +146,7 @@ export default async function IDClientsPage() {
 
           {/* Mobile */}
           <div className="md:hidden divide-y divide-[#F0EBE0]">
-            {(clients ?? []).map((c: any, i: number) => {
+            {(clients as Client[] ?? []).map((c, i: number) => {
               const av = avatarColors[i % avatarColors.length]
               return (
                 <div key={c.id} className="p-4 hover:bg-[#FDFAF8] transition-colors">

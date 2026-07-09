@@ -21,6 +21,18 @@ const CATEGORY_CONFIG: Record<string, { bg: string; color: string; icon: string 
 
 const fmt = (n: number) => '₹' + n.toLocaleString('en-IN')
 
+interface Material {
+  id: string
+  material_name: string
+  category?: string
+  quantity?: number
+  unit?: string
+  unit_cost?: number
+  supplier?: string
+  created_at: string
+  project?: { project_name: string } | null
+}
+
 export default async function MaterialsPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -41,14 +53,14 @@ export default async function MaterialsPage() {
     .eq('company_id', profile.company_id)
     .eq('industry', 'interior-design')
 
-  const totalCost = (materials ?? []).reduce((s, m: any) => s + (Number(m.quantity||0) * Number(m.unit_cost||0)), 0)
+  const totalCost = (materials as Material[] ?? []).reduce((s, m) => s + (Number(m.quantity||0) * Number(m.unit_cost||0)), 0)
   const categoryCosts: Record<string, number> = {}
-  ;(materials ?? []).forEach((m: any) => {
+  ;(materials as Material[] ?? []).forEach((m) => {
     const cat = m.category || 'Other'
     categoryCosts[cat] = (categoryCosts[cat] || 0) + (Number(m.quantity||0) * Number(m.unit_cost||0))
   })
   const topCategory = Object.entries(categoryCosts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—'
-  const withProject = (materials ?? []).filter((m: any) => m.project?.project_name).length
+  const withProject = (materials as Material[] ?? []).filter((m) => m.project?.project_name).length
 
   return (
     <div className="space-y-5 p-4 md:p-4" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
@@ -118,7 +130,7 @@ export default async function MaterialsPage() {
                 </tr>
               </thead>
               <tbody>
-                {(materials ?? []).map((m: any, i: number) => {
+                {(materials as Material[] ?? []).map((m, i: number) => {
                   const total = Number(m.quantity||0) * Number(m.unit_cost||0)
                   const cfg = CATEGORY_CONFIG[m.category] ?? { bg: '#F5F0E8', color: '#7A6E60', icon: '📦' }
                   return (
@@ -163,7 +175,7 @@ export default async function MaterialsPage() {
 
           {/* Mobile */}
           <div className="md:hidden divide-y divide-[#F0EBE0]">
-            {(materials ?? []).map((m: any, i: number) => {
+            {(materials as Material[] ?? []).map((m) => {
               const total = Number(m.quantity||0) * Number(m.unit_cost||0)
               const cfg = CATEGORY_CONFIG[m.category] ?? { bg: '#F5F0E8', color: '#7A6E60', icon: '📦' }
               return (
