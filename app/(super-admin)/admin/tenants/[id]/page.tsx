@@ -2,10 +2,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import {
   Building2, Users, TrendingUp, ArrowLeft,
-  CreditCard, Hash, CheckCircle2, XCircle, Crown, RefreshCw,
-  Brain, Zap, Target, AlertCircle, BarChart3, Sparkles,
+  CreditCard, CheckCircle2, XCircle, Crown, RefreshCw,
+  Brain, Zap, Target, BarChart3, Sparkles,
   Lock, Server, Clock, DollarSign, Calendar
 } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
@@ -77,10 +78,11 @@ export default function TenantDetailPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData()
     const interval = setInterval(fetchData, 30000)
     return () => clearInterval(interval)
-  }, [id])
+  }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const performAIAnalysis = async () => {
     setAiAnalyzing(true)
@@ -150,9 +152,9 @@ export default function TenantDetailPage() {
       {/* Sticky Header */}
       <div className="sticky top-0 z-10 border-b border-[#E8E2D8] bg-[#F5F0E8]/80 backdrop-blur-xl px-4 sm:px-8 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <a href="/admin/tenants" className="flex items-center gap-1.5 text-xs font-semibold text-[#9A8F82] hover:text-[#B8860B] transition-colors">
+          <Link href="/admin/tenants" className="flex items-center gap-1.5 text-xs font-semibold text-[#9A8F82] hover:text-[#B8860B] transition-colors">
             <ArrowLeft size={13} /> Back to Tenants
-          </a>
+          </Link>
           <div className="flex items-center gap-2">
             {isLifetime && (
               <span className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">

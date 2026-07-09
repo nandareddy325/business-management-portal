@@ -84,7 +84,7 @@ async function generateForMonth(month: number, year: number) {
       .lt("date", monthEnd);
 
     const lop = (attendance || []).filter(
-      (a: any) => a.status === "absent" || a.status === "lop"
+      (a: { status?: string }) => a.status === "absent" || a.status === "lop"
     ).length;
 
     // Salary components
@@ -155,8 +155,8 @@ export async function GET(req: NextRequest) {
   try {
     const result = await generateForMonth(month, year);
     return NextResponse.json({ success: true, month, year, ...result });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
   }
 }
 
@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
   try {
     const result = await generateForMonth(month, year);
     return NextResponse.json({ success: true, month, year, ...result });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Unknown error" }, { status: 500 });
   }
 }

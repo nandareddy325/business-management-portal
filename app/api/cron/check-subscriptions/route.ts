@@ -31,7 +31,7 @@ export async function GET(req: Request) {
       `${SURL}/rest/v1/company_subscriptions?status=in.(active,trial)&select=id,company_id,status,trial_ends_at`,
       { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}` } }
     )
-    const subs: any[] = subsRes.ok ? await subsRes.json() : []
+    const subs: { id: string; company_id: string; status: string; trial_ends_at?: string }[] = subsRes.ok ? await subsRes.json() : []
 
     for (const sub of subs) {
       if (!sub.trial_ends_at) continue
@@ -46,7 +46,7 @@ export async function GET(req: Request) {
         `${SURL}/rest/v1/companies?id=eq.${sub.company_id}&select=id,name`,
         { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}` } }
       )
-      const comps: any[] = compRes.ok ? await compRes.json() : []
+      const comps: { id: string; name: string }[] = compRes.ok ? await compRes.json() : []
       const company = comps[0]
       if (!company) continue
 
@@ -54,7 +54,7 @@ export async function GET(req: Request) {
         `${SURL}/rest/v1/profiles?company_id=eq.${sub.company_id}&role=eq.tenant_admin&select=email,full_name&limit=1`,
         { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}` } }
       )
-      const profs: any[] = profRes.ok ? await profRes.json() : []
+      const profs: { email: string; full_name?: string }[] = profRes.ok ? await profRes.json() : []
       const adminEmail = profs[0]?.email
       if (!adminEmail) continue
 
@@ -69,8 +69,8 @@ export async function GET(req: Request) {
             html: getReminderEmailHtml(company.name, diffDays, renewUrl),
           })
           results.reminders++
-        } catch (e: any) {
-          results.errors.push(`Reminder email failed for ${company.name}: ${e.message}`)
+        } catch (e: unknown) {
+          results.errors.push(`Reminder email failed for ${company.name}: ${e instanceof Error ? e.message : 'Unknown error'}`)
         }
       }
 
@@ -96,8 +96,8 @@ export async function GET(req: Request) {
             html: getExpiredEmailHtml(company.name, renewUrl),
           })
           results.expired++
-        } catch (e: any) {
-          results.errors.push(`Expired handling failed for ${company.name}: ${e.message}`)
+        } catch (e: unknown) {
+          results.errors.push(`Expired handling failed for ${company.name}: ${e instanceof Error ? e.message : 'Unknown error'}`)
         }
       }
     }
@@ -108,7 +108,7 @@ export async function GET(req: Request) {
       ...results,
     })
 
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 })
   }
 }
