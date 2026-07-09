@@ -6,6 +6,21 @@ import { ProjectsListClient } from '@/components/interior/projects-list-client'
 
 export const dynamic = 'force-dynamic'
 
+interface ProjectRow {
+  id: string
+  project_name: string
+  client_name: string | null
+  budget: number | null
+  status: string | null
+  start_date: string | null
+  end_date: string | null
+  deadline: string | null
+  created_at: string
+  source: 'lead_won' | 'manual' | null
+  assigned_to: string | null
+  notes: string | null
+}
+
 export default async function AllProjectsPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -20,7 +35,7 @@ export default async function AllProjectsPage() {
 
   const companyId = profile?.company_id
 
-  let projects: any[] = []
+  let projects: ProjectRow[] = []
   if (companyId) {
     const { data, error } = await supabase
       .from('projects')

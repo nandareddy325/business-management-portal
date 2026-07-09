@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-declare global { interface Window { Razorpay: any } }
-
 const ALL_INDUSTRIES = [
   { id: 'interior-design', slug: 'interior-design', name: 'Interior Design', icon: '🛋️', desc: 'Projects, leads & vendors', color: '#9333EA' },
   { id: 'real-estate',     slug: 'real-estate',     name: 'Real Estate',     icon: '🏠', desc: 'Properties, site visits & deals', color: '#2563EB' },
@@ -79,7 +77,7 @@ export default function AddIndustryModal({ activeIndustrySlugs, companyId, onSuc
         order_id: order.id,
         prefill: { email: user?.email || '' },
         theme: { color: '#B8860B' },
-        handler: async (response: any) => {
+        handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
           // Verify payment
           await fetch('/api/razorpay/verify', {
             method: 'POST',
@@ -101,8 +99,8 @@ export default function AddIndustryModal({ activeIndustrySlugs, companyId, onSuc
 
       const rzp = new window.Razorpay(options)
       rzp.open()
-    } catch (err: any) {
-      setError(err.message || 'Failed')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed')
     } finally {
       setLoading(false)
     }

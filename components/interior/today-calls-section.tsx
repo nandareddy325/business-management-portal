@@ -6,9 +6,8 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 
 const ini = (n: string) => n?.split(' ').map((x: string) => x[0]).join('').slice(0, 2).toUpperCase() || '?'
-const fmtDate = (ds: string) => { if (!ds) return '—'; return new Date(ds).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
 
-interface Call { id: string; lead_id: string; description: string; created_at: string; user_id: string; user_name: string }
+interface Call { id: string; lead_id: string; description?: string | null; created_at: string; user_id?: string | null; user_name?: string | null }
 interface CRE  { id: string; name: string }
 interface SD   { count: number; calls: number }
 interface PerfData {
@@ -58,11 +57,19 @@ function getColors(name: string) {
   return AVATAR_COLORS[name?.charCodeAt(0) % AVATAR_COLORS.length] ?? AVATAR_COLORS[0]
 }
 
+interface ModalLead {
+  id: string
+  lead_name: string
+  phone?: string
+  city?: string
+  budget?: string | number
+}
+
 // ── Leads Modal ──
 function LeadsModal({
   title, color, leads, loading, onClose
 }: {
-  title: string; color: string; leads: any[]; loading: boolean; onClose: () => void
+  title: string; color: string; leads: ModalLead[]; loading: boolean; onClose: () => void
 }) {
   const router = useRouter()
   return (
@@ -104,7 +111,7 @@ function LeadsModal({
             </div>
           ) : (
             <div>
-              {leads.map((lead: any, i: number) => {
+              {leads.map((lead: ModalLead, i: number) => {
                 const [c1, c2] = getColors(lead.lead_name || '?')
                 return (
                   <div key={lead.id}
@@ -324,7 +331,7 @@ export function TodayCallsSection({
   const [modalOpen, setModalOpen]     = useState(false)
   const [modalTitle, setModalTitle]   = useState('')
   const [modalColor, setModalColor]   = useState('#7C3AED')
-  const [modalLeads, setModalLeads]   = useState<any[]>([])
+  const [modalLeads, setModalLeads]   = useState<ModalLead[]>([])
   const [modalLoading, setModalLoading] = useState(false)
 
   const supabase = createBrowserClient(
@@ -372,7 +379,7 @@ export function TodayCallsSection({
         .gte('created_at', todayStart)
         .lte('created_at', todayEnd)
 
-      const calledLeadIds = [...new Set((todayActs ?? []).map((a: any) => a.lead_id))]
+      const calledLeadIds = [...new Set((todayActs ?? []).map((a: { lead_id: string }) => a.lead_id))]
 
       if (calledLeadIds.length === 0) {
         setModalLeads([])

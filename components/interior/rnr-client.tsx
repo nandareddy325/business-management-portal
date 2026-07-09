@@ -9,11 +9,6 @@ const fmtDate = (ds: string) => {
   return new Date(ds).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-const fmtDateTime = (ds: string) => {
-  if (!ds) return '—'
-  return new Date(ds).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })
-}
-
 const ini = (n: string) => n?.split(' ').map((x: string) => x[0]).join('').slice(0, 2).toUpperCase() || '?'
 
 const AVATAR_COLORS = [
@@ -25,14 +20,25 @@ function getColors(name: string) {
   return AVATAR_COLORS[name?.charCodeAt(0) % AVATAR_COLORS.length] ?? AVATAR_COLORS[0]
 }
 
+interface RnrLead {
+  id: string
+  lead_name: string
+  phone?: string
+  budget?: string | number
+  property_type?: string
+  source?: string
+  rnr_callback_date?: string | null
+  created_at: string
+}
+
 interface Props {
-  leads: any[]
+  leads: RnrLead[]
   count: number
-  overdueLeads: any[]
-  todayLeads: any[]
-  tomorrowLeads: any[]
-  upcomingLeads: any[]
-  noDateLeads: any[]
+  overdueLeads: RnrLead[]
+  todayLeads: RnrLead[]
+  tomorrowLeads: RnrLead[]
+  upcomingLeads: RnrLead[]
+  noDateLeads: RnrLead[]
 }
 
 type QuickFilter = 'all' | 'today' | 'tomorrow' | 'overdue'
@@ -58,14 +64,14 @@ export function RnrClient({
     // Search
     if (search.trim()) {
       const q = search.toLowerCase()
-      base = base.filter((l: any) =>
+      base = base.filter((l: RnrLead) =>
         l.lead_name?.toLowerCase().includes(q) || l.phone?.includes(q)
       )
     }
 
     // Date range (on created_at)
-    if (dateFrom) base = base.filter((l: any) => new Date(l.created_at) >= new Date(dateFrom))
-    if (dateTo)   base = base.filter((l: any) => new Date(l.created_at) <= new Date(dateTo + 'T23:59:59'))
+    if (dateFrom) base = base.filter((l: RnrLead) => new Date(l.created_at) >= new Date(dateFrom))
+    if (dateTo)   base = base.filter((l: RnrLead) => new Date(l.created_at) <= new Date(dateTo + 'T23:59:59'))
 
     return base
   }, [leads, search, dateFrom, dateTo, quickFilter, overdueLeads, todayLeads, tomorrowLeads])
@@ -143,7 +149,10 @@ export function RnrClient({
   )
 }
 
-function GroupedView({ overdueLeads, todayLeads, tomorrowLeads, upcomingLeads, noDateLeads, router }: any) {
+function GroupedView({ overdueLeads, todayLeads, tomorrowLeads, upcomingLeads, noDateLeads, router }: {
+  overdueLeads: RnrLead[]; todayLeads: RnrLead[]; tomorrowLeads: RnrLead[];
+  upcomingLeads: RnrLead[]; noDateLeads: RnrLead[]; router: ReturnType<typeof useRouter>
+}) {
   return (
     <div className="space-y-4">
       {overdueLeads.length > 0 && (
@@ -213,8 +222,8 @@ function GroupedView({ overdueLeads, todayLeads, tomorrowLeads, upcomingLeads, n
 function LeadTable({
   leads, label, icon, color, headerBg, headerBorder, router, footerNote, showEmpty
 }: {
-  leads: any[]; label: string; icon?: string; color: string;
-  headerBg?: string; headerBorder?: string; router: any;
+  leads: RnrLead[]; label: string; icon?: string; color: string;
+  headerBg?: string; headerBorder?: string; router: ReturnType<typeof useRouter>;
   footerNote?: string; showEmpty?: boolean
 }) {
   if (!showEmpty && leads.length === 0) return null
@@ -246,7 +255,7 @@ function LeadTable({
       </div>
 
       {/* Rows */}
-      {leads.map((lead: any, i: number) => {
+      {leads.map((lead: RnrLead, i: number) => {
         const [c1, c2] = getColors(lead.lead_name)
         const isOverdue = lead.rnr_callback_date && new Date(lead.rnr_callback_date) < new Date()
         return (

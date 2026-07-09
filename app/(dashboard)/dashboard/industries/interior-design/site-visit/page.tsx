@@ -7,6 +7,31 @@ import { fetchAllLeads } from '@/lib/fetch-all-leads'
 
 export const dynamic = 'force-dynamic'
 
+interface Lead {
+  id: string
+  lead_name: string
+  phone?: string
+  email?: string
+  source?: string
+  budget?: string
+  city?: string
+  interest?: string
+  notes?: string | null
+  created_at: string
+  pipeline_stage?: string | null
+  property_type?: string
+  sitevisit_date?: string | null
+  sitevisit_status?: string | null
+  sitevisit_type?: string | null
+  sitevisit_note?: string | null
+  company_id: string
+  industry: string
+}
+
+interface LeadWithDate extends Lead {
+  date: string | null
+}
+
 export default async function SiteVisitPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -21,7 +46,7 @@ export default async function SiteVisitPage() {
   if (!profile?.company_id) redirect('/login')
 
   // Paginated fetch — bypasses Supabase's default 1000-row cap.
-  const allLeads = await fetchAllLeads(
+  const allLeads = await fetchAllLeads<Lead>(
     supabase,
     profile.company_id,
     'interior-design',
@@ -32,12 +57,12 @@ export default async function SiteVisitPage() {
   const siteVisitLeads = allLeads.filter(l => matchStage(l, 'sitevisit'))
 
   // Reuse `date` field for LeadTable/bucket logic, sourced from sitevisit_date directly.
-  const leadsWithDates = siteVisitLeads
-    .map((l: any) => ({
+  const leadsWithDates: LeadWithDate[] = siteVisitLeads
+    .map((l): LeadWithDate => ({
       ...l,
       date: l.sitevisit_date || null,
     }))
-    .sort((a: any, b: any) => {
+    .sort((a, b) => {
       if (!a.date && !b.date) return 0
       if (!a.date) return 1
       if (!b.date) return -1
