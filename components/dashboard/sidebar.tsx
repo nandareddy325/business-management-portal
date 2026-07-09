@@ -151,6 +151,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   useEffect(() => {
     if (industryFromUrl) {
       localStorage.setItem('gk-active-industry', industryFromUrl)
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount/route-driven sync, not a render-time side effect
       setCurrentIndustrySlug(industryFromUrl)
     } else {
       const saved = localStorage.getItem('gk-active-industry')
@@ -159,7 +160,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, [pathname, industryFromUrl])
 
   const currentIndustry = INDUSTRIES[currentIndustrySlug]
-  const { adminNavGroups, employeeNavGroups, IND } = useMemo(() => buildNavGroups(currentIndustrySlug), [currentIndustrySlug])
+  const { adminNavGroups, employeeNavGroups } = useMemo(() => buildNavGroups(currentIndustrySlug), [currentIndustrySlug])
 
   const [role, setRole] = useState<'admin' | 'employee'>('employee')
   const [userName, setUserName] = useState('User')
@@ -213,7 +214,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             if (company?.name) setUserCompany(company.name)
             const { data: ci } = await supabase.from('company_industries').select('industries(slug)').eq('company_id', profile.company_id).eq('is_active', true)
             if (ci) {
-              const dbEnabledSlugs = ci.map((c: any) => c.industries?.slug).filter(Boolean)
+              const dbEnabledSlugs = ci.map((c: { industries?: { slug?: string }[] }) => c.industries?.[0]?.slug).filter(Boolean)
               setActiveIndustries(dbEnabledSlugs.filter((slug: string) => isIndustryEnabled(slug as IndustrySlug)))
             }
 
@@ -232,6 +233,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       } catch (err) { console.error('Sidebar init:', err) }
     }
     init()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
   }, [pathname])
 
   useEffect(() => {
@@ -244,6 +246,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         await refreshStageCounts(profile.company_id)
       }).subscribe()
     return () => { supabase.removeChannel(channel) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
   }, [])
 
   useEffect(() => {

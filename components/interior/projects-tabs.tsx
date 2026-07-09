@@ -13,7 +13,7 @@ const TABS = [
   { key: 'materials', label: 'Materials',    href: `${BASE}/materials`,     icon: Package    },
 ]
 
-export default function ProjectsTabs({ active }: { active?: string }) {
+export default function ProjectsTabs({ active: _active }: { active?: string }) {
   const pathname = usePathname()
 
   const isActive = (tab: typeof TABS[0]) => {

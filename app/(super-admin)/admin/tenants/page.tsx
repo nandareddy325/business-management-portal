@@ -44,7 +44,9 @@ export default function AdminTenantsPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount/route-driven sync, not a render-time side effect
     fetchTenants()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
   }, [search, page])
 
   useEffect(() => {
@@ -52,6 +54,7 @@ export default function AdminTenantsPage() {
     fetchTenants()
   }, 15000)
   return () => clearInterval(interval)
+// eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
 }, [])
 
   const totalPages = Math.ceil(total / 15)

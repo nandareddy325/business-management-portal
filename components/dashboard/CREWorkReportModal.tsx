@@ -110,12 +110,6 @@ export default function CREWorkReportModal({ user, open, onClose }: Props) {
   const [stats, setStats] = useState<WorkStats | null>(null)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (open && user) {
-      fetchTodayStats(user.id)
-    }
-  }, [open, user])
-
   async function fetchTodayStats(userId: string) {
     setLoading(true)
     setStats(null)
@@ -159,6 +153,15 @@ export default function CREWorkReportModal({ user, open, onClose }: Props) {
     setLoading(false)
   }
 
+  useEffect(() => {
+    if (open && user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional fetch when modal opens
+      fetchTodayStats(user.id)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
+  }, [open, user])
+
+
   const today = new Date().toLocaleDateString('en-IN', {
     weekday: 'long',
     day: '2-digit',
@@ -200,7 +203,7 @@ export default function CREWorkReportModal({ user, open, onClose }: Props) {
                     {user?.full_name}
                   </DialogTitle>
                   <p className="text-xs mt-0.5" style={{ color: '#B8860B' }}>
-                    Today's Work Report
+                    Today&apos;s Work Report
                   </p>
                 </div>
               </div>
@@ -234,7 +237,7 @@ export default function CREWorkReportModal({ user, open, onClose }: Props) {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
               <Loader2 size={28} className="animate-spin" style={{ color: '#B8860B' }} />
-              <p className="text-sm text-gray-400">Loading today's report…</p>
+              <p className="text-sm text-gray-400">Loading today&apos;s report…</p>
             </div>
           ) : stats ? (
             <>

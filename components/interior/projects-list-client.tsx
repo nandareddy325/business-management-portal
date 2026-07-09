@@ -130,7 +130,7 @@ export function ProjectsListClient({ initialProjects }: { initialProjects: Proje
         </select>
         <select
           value={sortBy}
-          onChange={e => setSortBy(e.target.value as any)}
+          onChange={e => setSortBy(e.target.value as 'deadline' | 'recent' | 'budget_high' | 'budget_low')}
           className="bg-white border border-[#DDD5C4] rounded-xl px-3 py-2.5 text-sm text-[#1C1712] outline-none focus:border-[#B8860B]"
         >
           <option value="recent">Most Recent</option>

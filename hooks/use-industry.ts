@@ -6,6 +6,7 @@ export function useIndustryAccess(companyId: string | null) {
   const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount/route-driven sync, not a render-time side effect
     if (!companyId) { setLoading(false); return }
     supabase
       .from('company_industries')
@@ -13,7 +14,7 @@ export function useIndustryAccess(companyId: string | null) {
       .eq('company_id', companyId)
       .eq('is_active', true)
       .then(({ data }) => {
-        setIndustries((data || []).map((d: any) => d.industries?.slug).filter(Boolean))
+        setIndustries((data || []).map((d: { industries?: { slug?: string }[] }) => d.industries?.[0]?.slug).filter(Boolean) as string[])
         setLoading(false)
       })
   }, [companyId])

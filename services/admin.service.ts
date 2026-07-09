@@ -55,7 +55,7 @@ export const adminClientService = {
     return apiClient.get('/api/admin/plans')
   },
 
-  async updatePlan(planId: string, data: Record<string, any>) {
+  async updatePlan(planId: string, data: Record<string, unknown>) {
     return apiClient.patch(`/api/admin/plans/${planId}`, data)
   },
 

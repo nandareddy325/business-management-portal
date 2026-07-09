@@ -56,31 +56,5 @@ export async function checkAnyPermission(permissions: Permission[]): Promise<boo
 }
 
 // ── React component guard (client) ────────────────────────
-'use client'
-import { useAuth } from '@/hooks/use-auth'
-
-type GuardProps = {
-  permission?: Permission
-  permissions?: Permission[]
-  role?: UserRole
-  fallback?: React.ReactNode
-  children: React.ReactNode
-}
-
-export function PermissionGuard({ permission, permissions, role, fallback = null, children }: GuardProps) {
-  const { user } = useAuth()
-  if (!user) return <>{fallback}</>
-
-  const userRole = user.role as UserRole
-
-  if (permission && !hasPermission(userRole, permission)) return <>{fallback}</>
-  if (permissions && !hasAnyPermission(userRole, permissions)) return <>{fallback}</>
-  if (role) {
-    const hierarchy: Record<UserRole, number> = {
-      super_admin: 4, tenant_admin: 3, manager: 2, employee: 1,
-    }
-    if (hierarchy[userRole] < hierarchy[role]) return <>{fallback}</>
-  }
-
-  return <>{children}</>
-}
+// Moved to './permission-guard' (client component) to keep this module
+// server-only. Import PermissionGuard from '@/modules/rbac/permission-guard'.

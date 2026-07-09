@@ -46,13 +46,13 @@ export function SubmitReportButton({ employeeId, companyId }: { employeeId: stri
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
           <div className="bg-[#FEFCF8] border border-[#DDD5C4] rounded-2xl w-full max-w-sm p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold text-[#1C1712]">Today's Work Report</h2>
+              <h2 className="text-base font-semibold text-[#1C1712]">Today&apos;s Work Report</h2>
               <button onClick={() => setOpen(false)}><X className="w-5 h-5 text-[#9A8F82]" /></button>
             </div>
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-[#7A6E60] mb-1 block font-medium">Task Description *</label>
-                <textarea name="task_description" value={form.task_description} onChange={handleChange as any} rows={3}
+                <textarea name="task_description" value={form.task_description} onChange={handleChange} rows={3}
                   placeholder="What did you work on today?"
                   className="w-full bg-white border border-[#DDD5C4] rounded-xl px-3 py-2.5 text-sm text-[#1C1712] outline-none focus:border-[#B8860B] resize-none" />
               </div>

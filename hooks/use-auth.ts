@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+interface Profile {
+  role?: string
+  company_id?: string
+  [key: string]: unknown
+}
+
 export function useAuth() {
-  const [user, setUser]       = useState<any>(null)
-  const [profile, setProfile] = useState<any>(null)
+  const [user, setUser]       = useState<unknown>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

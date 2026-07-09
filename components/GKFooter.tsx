@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 
 // ── SVG Icons ─────────────────────────────────────────────────────────────
@@ -30,14 +29,6 @@ const WhatsAppIcon = () => (
 )
 
 // ── Data ──────────────────────────────────────────────────────────────────
-
-const footerStats = [
-  { value: '3,800+',   label: 'Active Users',    icon: '👥' },
-  { value: '₹120Cr+', label: 'Revenue Tracked',  icon: '💰' },
-  { value: '99.9%',   label: 'Uptime',            icon: '⚡' },
-  { value: '7 Stages', label: 'Lead Pipeline',    icon: '🎯' },
-  { value: '48 hrs',  label: 'Avg Onboarding',    icon: '🚀' },
-]
 
 const trustBadges = [
   { icon: '🔐', label: 'SSL Secured',    sub: '256-bit encryption' },
@@ -73,16 +64,6 @@ interface GKFooterProps {
 // ── Component ─────────────────────────────────────────────────────────────
 
 export default function GKFooter({ activePage = 'home' }: GKFooterProps) {
-  const [email, setEmail]       = useState('')
-  const [subscribed, setSubscribed] = useState(false)
-
-  const handleSubscribe = () => {
-    if (email.includes('@') && email.includes('.')) {
-      setSubscribed(true)
-      setEmail('')
-    }
-  }
-
   // ── helpers ──
   const privacyActive = activePage === 'privacy'
   const termsActive   = activePage === 'terms'

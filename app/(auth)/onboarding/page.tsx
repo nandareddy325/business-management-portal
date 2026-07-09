@@ -48,6 +48,7 @@ export default function OnboardingPage() {
     const saved = localStorage.getItem('gk_signup_industries')
     const pending = localStorage.getItem('gk_pending_signup')
     if (!saved || !pending) { router.push('/signup'); return }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount/route-driven sync, not a render-time side effect
     setPendingSignup(JSON.parse(pending))
   }, [router])
 

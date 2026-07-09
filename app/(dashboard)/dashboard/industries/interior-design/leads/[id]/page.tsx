@@ -35,6 +35,7 @@ interface Activity {
   created_at: string
   user_id?: string
   user_name?: string | null
+  [key: string]: unknown
 }
 
 export default async function LeadDetailPage({

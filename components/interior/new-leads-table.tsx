@@ -24,18 +24,6 @@ const LEAD_BASE = '/dashboard/industries/interior-design/leads'
 
 interface Lead { id: string; lead_name: string; phone?: string; email?: string; source?: string; budget?: string; city?: string; interest?: string; created_at: string }
 
-function todayIST() {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
-}
-
-function applyPreset(days: number) {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
-  const to = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
-  const from = new Date(now)
-  from.setDate(from.getDate() - (days - 1))
-  return { from: from.toLocaleDateString('en-CA'), to }
-}
-
 export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
@@ -116,7 +104,7 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
             <span className="text-[10px] text-[#9A8F82]">of {count} leads</span>
             {searchQuery && (
               <span className="text-[10px] bg-[#F5F0E8] text-[#7A6E60] px-2 py-0.5 rounded-full border border-[#E2D9C8]">
-                🔍 "{searchQuery}"
+                🔍 &quot;{searchQuery}&quot;
               </span>
             )}
             {dateActive && fromDate && (
@@ -155,7 +143,7 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
                 </tr>
               </thead>
               <tbody>
-                {filteredLeads.map((l: any, i: number) => {
+                {filteredLeads.map((l: Lead, i: number) => {
                   const g = GRADIENTS[i % GRADIENTS.length]
                   const src = SOURCE_CONFIG[l.source] ?? SOURCE_CONFIG['Other']
                   return (
@@ -218,7 +206,7 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
 
           {/* Mobile Cards */}
           <div className="md:hidden divide-y divide-[#F0EBE0]">
-            {filteredLeads.map((l: any, i: number) => {
+            {filteredLeads.map((l: Lead, i: number) => {
               const g = GRADIENTS[i % GRADIENTS.length]
               const src = SOURCE_CONFIG[l.source] ?? SOURCE_CONFIG['Other']
               return (

@@ -32,7 +32,7 @@ export const hrClientService = {
     return apiClient.post('/api/hr/employees', data)
   },
 
-  async updateEmployee(employeeId: string, data: Record<string, any>) {
+  async updateEmployee(employeeId: string, data: Record<string, unknown>) {
     return apiClient.patch(`/api/hr/employees/${employeeId}`, data)
   },
 

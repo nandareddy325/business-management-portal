@@ -26,18 +26,39 @@ const OUTCOME_BADGE: Record<string, { label: string; color: string; bg: string }
   interested: { label: 'Interested ✅', color: '#10B981', bg: '#D1FAE5' },
 }
 
+interface TableLead {
+  id: string
+  lead_name: string
+  phone: string
+  email?: string
+  city?: string
+  source?: string
+  pipeline_stage?: string
+  scheduled_date?: string | null
+  [key: string]: unknown
+}
+
+interface LastCall {
+  id?: string
+  outcome?: string
+  pipeline_stage?: string
+  scheduled_date?: string | null
+  [key: string]: unknown
+}
+
 export default function LeadsTable() {
   const supabase = createClientSupabaseClient()
-  const [leads, setLeads] = useState<any[]>([])
-  const [lastCallMap, setLastCallMap] = useState<Record<string, any>>({})
-  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [leads, setLeads] = useState<TableLead[]>([])
+  const [lastCallMap, setLastCallMap] = useState<Record<string, LastCall>>({})
+  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [stageFilter, setStageFilter] = useState('all')
-  const [callModalLead, setCallModalLead] = useState<any>(null)
+  const [callModalLead, setCallModalLead] = useState<TableLead | null>(null)
 
   useEffect(() => {
     init()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
   }, [])
 
   async function init() {
@@ -60,7 +81,7 @@ export default function LeadsTable() {
       .eq('type', 'call')
       .order('created_at', { ascending: false })
 
-    const callMap: Record<string, any> = {}
+    const callMap: Record<string, LastCall> = {}
     activitiesData?.forEach(a => {
       if (!callMap[a.lead_id]) callMap[a.lead_id] = a
     })

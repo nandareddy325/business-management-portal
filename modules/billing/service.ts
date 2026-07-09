@@ -1,4 +1,4 @@
-import { billingRepository, type LineItem } from './repository'
+import { billingRepository, type LineItem, type InvoiceStatus } from './repository'
 
 export const billingService = {
   async createInvoice(companyId: string, input: {
@@ -47,7 +47,7 @@ export const billingService = {
     return billingRepository.getRevenueSummary(companyId)
   },
 
-  async getInvoices(companyId: string, status?: any, page = 1) {
+  async getInvoices(companyId: string, status?: InvoiceStatus, page = 1) {
     return billingRepository.getInvoices(companyId, status, page)
   },
 

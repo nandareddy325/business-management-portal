@@ -38,6 +38,7 @@ export default function ConfirmationModal({
   // Reset typing when modal closes
   useEffect(() => {
     if (!isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount/route-driven sync, not a render-time side effect
       setTypedValue('')
     }
   }, [isOpen])
@@ -106,7 +107,7 @@ export default function ConfirmationModal({
           <div className="px-6 py-5 space-y-4">
             <p className="text-sm text-[#1C1712] leading-relaxed">
               {message}
-              {tenantName && <span className="font-bold block mt-2">"{tenantName}"</span>}
+              {tenantName && <span className="font-bold block mt-2">&quot;{tenantName}&quot;</span>}
             </p>
 
             {/* Typing Confirmation (if required) */}
@@ -114,7 +115,7 @@ export default function ConfirmationModal({
               <div className="space-y-3 mt-4">
                 <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
                   <span className="text-xs font-semibold text-red-700">
-                    Type <span className="font-black">"{confirmationWord}"</span> to confirm
+                    Type <span className="font-black">&quot;{confirmationWord}&quot;</span> to confirm
                   </span>
                 </div>
                 <input

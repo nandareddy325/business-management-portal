@@ -28,6 +28,7 @@ export default function RootLayout({
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font -- Tailwind's fontFamily.sans/serif reference these exact family names across the app; migrating to next/font requires reworking that config too */}
         <link
           href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap"
           rel="stylesheet"

@@ -12,12 +12,25 @@ const GRADIENTS = [
 
 const ini = (n: string) => n?.split(' ').map((x: string) => x[0]).join('').slice(0,2).toUpperCase() || '?'
 
-export function CRMTeamSection({ crmTeam, leadBase }: { crmTeam: any[]; leadBase: string }) {
+interface CrmTeamMember {
+  id: string
+  name?: string
+  email?: string
+  todayCount?: number
+  yestCount?: number
+  lastCallLead?: string
+  lastCallId?: string
+  lastCallTime?: string
+  totalCalls?: number
+  [key: string]: unknown
+}
+
+export function CRMTeamSection({ crmTeam, leadBase }: { crmTeam: CrmTeamMember[]; leadBase: string }) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState<{ id: string; full_name: string; email?: string } | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
 
-  function handleNameClick(member: any) {
+  function handleNameClick(member: CrmTeamMember) {
     setSelectedMember({
       id: member.id,
       full_name: member.name,
@@ -57,7 +70,7 @@ export function CRMTeamSection({ crmTeam, leadBase }: { crmTeam: any[]; leadBase
             </div>
           ) : (
             <div className="divide-y divide-[#F0EBE0]">
-              {crmTeam.map((member: any, i: number) => {
+              {crmTeam.map((member: CrmTeamMember, i: number) => {
                 const g = GRADIENTS[i % GRADIENTS.length]
                 return (
                   <div key={member.id} className="px-4 py-4 hover:bg-[#FDFAF8] transition-colors">

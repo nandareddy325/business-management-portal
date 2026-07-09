@@ -1,16 +1,15 @@
 // lib/supabase/queries/admin.ts
 // Real Supabase queries for admin tables
 
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { SupabaseClient } from '@supabase/supabase-js'
 import type {
-  AuditLog, AuditLogInsert, AuditLogFilters,
-  APIKey, APIKeyInsert, APIKeyUpdate,
-  SupportTicket, SupportTicketInsert, SupportTicketUpdate, SupportTicketFilters,
-  EmailTemplate, EmailTemplateInsert, EmailTemplateUpdate,
-  Backup, BackupInsert, BackupUpdate,
+  AuditLogInsert, AuditLogFilters, AuditLogActionType, AuditLogResourceType,
+  APIKeyInsert, APIKeyUpdate,
+  SupportTicketInsert, SupportTicketUpdate, SupportTicketFilters,
+  EmailTemplateInsert, EmailTemplateUpdate,
+  BackupInsert, BackupUpdate,
   SystemStatus, SystemStatusInsert, SystemStatusUpdate,
-  AuditLogStats, TicketStats, BackupStats, SystemHealthSummary
+  AuditLogStats, TicketStats, BackupStats
 } from '@/types/admin'
 
 // ============================================================================
@@ -70,7 +69,7 @@ export async function getAuditLogStats(
     success_count: data.filter(l => l.status === 'success').length,
     failed_count: data.filter(l => l.status === 'failed').length,
     warning_count: data.filter(l => l.status === 'warning').length,
-    by_action_type: {} as any
+    by_action_type: {} as Record<string, number>
   }
 
   // Count by action type
@@ -514,14 +513,14 @@ export async function logAdminAction(
   actionType: string,
   resourceType: string,
   resourceId?: string,
-  changes?: Record<string, any>
+  changes?: Record<string, unknown>
 ) {
   return await createAuditLog(supabase, {
     company_id: companyId,
     user_id: userId,
     action,
-    action_type: actionType as any,
-    resource_type: resourceType as any,
+    action_type: actionType as AuditLogActionType,
+    resource_type: resourceType as AuditLogResourceType,
     resource_id: resourceId,
     changes,
     status: 'success'

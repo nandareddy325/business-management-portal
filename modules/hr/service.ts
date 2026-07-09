@@ -39,8 +39,8 @@ export const hrService = {
       hrRepository.getAttendanceByDate(companyId, today),
     ])
 
-    const markedIds = new Set(attendance.map((a: any) => a.employee_id))
-    const unmarked = employees.data.filter((e: any) => !markedIds.has(e.id))
+    const markedIds = new Set(attendance.map((a: { employee_id: string }) => a.employee_id))
+    const unmarked = employees.data.filter((e: { id: string }) => !markedIds.has(e.id))
 
     return { attendance, unmarked, date: today }
   },
@@ -51,7 +51,7 @@ export const hrService = {
       hrRepository.getMonthlyAttendanceSummary(companyId, month),
     ])
 
-    return employees.map((emp: any) => ({
+    return employees.map((emp: { id: string; [key: string]: unknown }) => ({
       ...emp,
       attendance: summary[emp.id] ?? { present: 0, absent: 0, half_day: 0, leave: 0 },
     }))
@@ -64,7 +64,7 @@ export const hrService = {
     ])
     if (!employee) throw new Error('Employee not found')
 
-    const stats = attendance.reduce((acc: Record<string, number>, r: any) => {
+    const stats = attendance.reduce((acc: Record<string, number>, r: { status: string }) => {
       acc[r.status] = (acc[r.status] ?? 0) + 1
       return acc
     }, {})

@@ -6,11 +6,16 @@ import { CheckSquare, X } from 'lucide-react'
 import { createClientSupabaseClient } from '@/lib/supabase/client'
 
 interface Employee { id: string; full_name: string; designation?: string; department?: string }
+interface AttendanceEntry {
+  id?: string
+  status?: string
+  check_in?: string | null
+}
 interface Props {
   companyId: string
   date: string
   employees: Employee[]
-  attendanceMap: Record<string, any>
+  attendanceMap: Record<string, AttendanceEntry>
 }
 
 const STATUS_OPTIONS = [

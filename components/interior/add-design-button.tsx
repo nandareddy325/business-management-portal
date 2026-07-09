@@ -59,7 +59,7 @@ export function AddDesignButton({ companyId, projects }: { companyId: string; pr
                   </select></div>
               </div>
               <div><label className="text-xs text-[#7A6E60] mb-1 block font-medium">Notes</label>
-                <textarea name="notes" value={form.notes} onChange={handleChange as any} rows={2} placeholder="Design notes..." className="w-full bg-white border border-[#DDD5C4] rounded-xl px-3 py-2.5 text-sm text-[#1C1712] outline-none focus:border-[#B8860B] resize-none" /></div>
+                <textarea name="notes" value={form.notes} onChange={handleChange} rows={2} placeholder="Design notes..." className="w-full bg-white border border-[#DDD5C4] rounded-xl px-3 py-2.5 text-sm text-[#1C1712] outline-none focus:border-[#B8860B] resize-none" /></div>
               {error && <p className="text-xs text-red-500">{error}</p>}
             </div>
             <div className="flex gap-3 mt-5">

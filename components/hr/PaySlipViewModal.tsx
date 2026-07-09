@@ -156,6 +156,7 @@ export default function PaySlipViewModal({ payslip, onClose }: Props) {
   alignItems: "center",
   padding: "16px 24px",
 }}>
+  {/* eslint-disable-next-line @next/next/no-img-element -- static PDF template rendered via html2pdf, next/image not compatible here */}
   <img src="/GK_LOGO.png" alt="GK Logo" style={{ width: 80, height: "auto" }} />
 
   <div style={{ textAlign: "center" }}>

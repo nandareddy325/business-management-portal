@@ -50,14 +50,14 @@ export default function NewQuotationPage() {
   const [clientName, setClientName] = useState('')
   const [clientAddress, setClientAddress] = useState('')
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => ({
     quotation_no: `HYD${String(Math.floor(Math.random() * 90000) + 10000)}`,
     client_name: '',
     client_id: '',
     status: 'draft',
     discount: 0,
     complementary: '',
-  })
+  }))
 
   const [rooms, setRooms] = useState<Room[]>([
     { name: 'Hall', items: [{ description: '', length: 0, height: 0, sft_cost: 1600 }] },
@@ -82,6 +82,7 @@ export default function NewQuotationPage() {
       }
     }
     init()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
   }, [])
 
   // Calculations
@@ -107,15 +108,6 @@ export default function NewQuotationPage() {
   const removeFC = (i: number) => setFalseCeilings(prev => prev.filter((_, j) => j !== i))
   const updateFC = (i: number, field: keyof FalseCeiling, value: string | number) =>
     setFalseCeilings(prev => prev.map((f, j) => j === i ? { ...f, [field]: value } : f))
-
-  const handleClientChange = (clientId: string) => {
-    setForm(f => ({ ...f, client_id: clientId }))
-    const client = clients.find(c => c.id === clientId)
-    if (client) {
-      setClientName(client.name)
-      setClientAddress(client.address || '')
-    }
-  }
 
   const handleSave = async () => {
     if (!form.client_name && !form.client_id) { alert('Client select cheyyi!'); return }

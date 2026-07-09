@@ -60,7 +60,7 @@ export const crmService = {
       crmRepository.getLeads(companyId, { industryId, limit: 200 }),
     ])
 
-    const board: Record<string, any[]> = {}
+    const board: Record<string, unknown[]> = {}
     for (const stage of stages) {
       board[stage] = leads.filter(l => l.pipeline_stage === stage)
     }

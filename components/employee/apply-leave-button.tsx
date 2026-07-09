@@ -4,10 +4,20 @@ import { useRouter } from 'next/navigation'
 import { Plus, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
+interface LeaveBalance {
+  cl_total?: number
+  cl_used?: number
+  sl_total?: number
+  sl_used?: number
+  el_total?: number
+  el_used?: number
+  [key: string]: unknown
+}
+
 interface Props {
   employeeId: string
   companyId: string
-  balance: any
+  balance: LeaveBalance
 }
 
 export function ApplyLeaveButton({ employeeId, companyId, balance }: Props) {
@@ -107,7 +117,7 @@ export function ApplyLeaveButton({ employeeId, companyId, balance }: Props) {
               )}
               <div>
                 <label className="text-xs text-[#7A6E60] mb-1 block font-medium">Reason</label>
-                <textarea name="reason" value={form.reason} onChange={handleChange as any} rows={2}
+                <textarea name="reason" value={form.reason} onChange={handleChange} rows={2}
                   placeholder="Brief reason for leave..."
                   className="w-full bg-white border border-[#DDD5C4] rounded-xl px-3 py-2.5 text-sm text-[#1C1712] outline-none focus:border-[#B8860B] resize-none" />
               </div>

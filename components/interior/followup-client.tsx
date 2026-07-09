@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, X, Calendar, Clock, AlertTriangle, ChevronDown } from 'lucide-react'
+import { Search, X, Calendar, Clock, AlertTriangle } from 'lucide-react'
 import { LeadTable } from '@/components/interior/lead-table'
 
 interface Lead { 
@@ -45,22 +45,6 @@ const parseFollowUpDate = (dateStr?: string) => {
   } catch {
     return null
   }
-}
-
-// Format date for display with time
-const formatFollowUpDate = (dateStr?: string) => {
-  const d = parseFollowUpDate(dateStr)
-  if (!d) return null
-  const dateStr_ = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-  const timeStr = new Date(dateStr!).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })
-  return `${dateStr_}, ${timeStr}`
-}
-
-// Get date in YYYY-MM-DD format for filtering
-const getDateForFilter = (dateStr?: string) => {
-  const d = parseFollowUpDate(dateStr)
-  if (!d) return ''
-  return d.toLocaleDateString('en-CA')
 }
 
 // Parse YYYY-MM-DD input to Date at midnight
@@ -279,7 +263,7 @@ export function FollowUpClient({ leads, count }: { leads: Lead[]; count: number 
             <span className="text-[#9A8F82]">of {count} leads</span>
             {searchQuery && (
               <span className="bg-[#F5F0E8] text-[#7A6E60] px-2 py-0.5 rounded-full border border-[#E2D9C8]">
-                🔍 "{searchQuery}"
+                🔍 &quot;{searchQuery}&quot;
               </span>
             )}
             {dateActive && fromDate && (

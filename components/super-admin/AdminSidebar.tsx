@@ -26,22 +26,13 @@ const NAV = [
   { href: '/admin/settings',         icon: Settings,        label: 'Settings' },
 ]
 
-export default function AdminSidebar() {
-  const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
-
-  // Close mobile drawer on route change
-  useEffect(() => { setMobileOpen(false) }, [pathname])
-
-  // Close on resize to desktop
-  useEffect(() => {
-    const fn = () => { if (window.innerWidth >= 1024) setMobileOpen(false) }
-    window.addEventListener('resize', fn)
-    return () => window.removeEventListener('resize', fn)
-  }, [])
-
-  const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
+function SidebarContent({ mobile = false, collapsed, pathname, setCollapsed }: {
+  mobile?: boolean
+  collapsed: boolean
+  pathname: string
+  setCollapsed: React.Dispatch<React.SetStateAction<boolean>>
+}) {
+  return (
     <div className={`
       flex flex-col h-full
       ${mobile ? 'w-72' : collapsed ? 'w-[72px]' : 'w-60'}
@@ -143,6 +134,24 @@ export default function AdminSidebar() {
       </div>
     </div>
   )
+}
+
+export default function AdminSidebar() {
+  const pathname = usePathname()
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Close mobile drawer on route change
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount/route-driven sync, not a render-time side effect
+  useEffect(() => { setMobileOpen(false) }, [pathname])
+
+  // Close on resize to desktop
+  useEffect(() => {
+    const fn = () => { if (window.innerWidth >= 1024) setMobileOpen(false) }
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+
 
   return (
     <>
@@ -171,7 +180,7 @@ export default function AdminSidebar() {
             >
               <X size={14} />
             </button>
-            <SidebarContent mobile />
+            <SidebarContent mobile collapsed={collapsed} pathname={pathname} setCollapsed={setCollapsed} />
           </div>
         </div>
       )}
@@ -183,7 +192,7 @@ export default function AdminSidebar() {
         ${collapsed ? 'w-[72px]' : 'w-60'}
         transition-all duration-300 ease-in-out flex-shrink-0
       `}>
-        <SidebarContent />
+        <SidebarContent collapsed={collapsed} pathname={pathname} setCollapsed={setCollapsed} />
       </aside>
     </>
   )

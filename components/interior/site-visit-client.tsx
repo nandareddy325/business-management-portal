@@ -174,7 +174,7 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
             <span className="font-bold text-[#9A8F82]">Showing</span>
             <span className="font-black text-[#1C1712]">{filteredLeads.length}</span>
             <span className="text-[#9A8F82]">of {count} leads</span>
-            {searchQuery && <span className="bg-[#F5F0E8] text-[#7A6E60] px-2 py-0.5 rounded-full border border-[#E2D9C8]">🔍 "{searchQuery}"</span>}
+            {searchQuery && <span className="bg-[#F5F0E8] text-[#7A6E60] px-2 py-0.5 rounded-full border border-[#E2D9C8]">🔍 &quot;{searchQuery}&quot;</span>}
             {dateActive && fromDate && <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">📅 {fromDate} {effectiveToDate && fromDate !== effectiveToDate ? `→ ${effectiveToDate}` : ''}</span>}
           </div>
         )}

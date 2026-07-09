@@ -69,9 +69,6 @@ const ini = (name: string) =>
 
 const LEAD_BASE = '/dashboard/industries/interior-design/leads'
 
-// Today in IST as YYYY-MM-DD
-const todayIST = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
-
 export default function AllLeadsPage() {
   const router = useRouter()
   const [leads, setLeads] = useState<Lead[]>([])
@@ -107,18 +104,8 @@ export default function AllLeadsPage() {
     setLoading(false)
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- intentional mount-time fetch; fn ref is stable in practice
   useEffect(() => { fetchLeads() }, [])
-
-  // ── Quick date presets ──
-  const applyDatePreset = (days: number) => {
-    const to = todayIST()
-    const from = new Date()
-    from.setDate(from.getDate() - days)
-    const fromStr = from.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
-    setFromDate(fromStr)
-    setToDate(to)
-    setDateActive(true)
-  }
 
   const clearDate = () => {
     setFromDate('')

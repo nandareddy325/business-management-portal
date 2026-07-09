@@ -383,6 +383,7 @@ export default function CompanySettingsPage() {
                     <FieldLabel>Logo</FieldLabel>
                     <div className="flex items-center gap-3">
                       <div className="w-11 h-11 rounded-xl flex items-center justify-center text-lg flex-shrink-0 overflow-hidden" style={{ background: '#F5F0E8', border: '1px dashed #C4BAB0' }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element -- dynamic/user-uploaded logo, not a next/image candidate */}
                         {logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" /> : '🖼️'}
                       </div>
                       {isEditing ? (
@@ -570,6 +571,7 @@ export default function CompanySettingsPage() {
                 <div className="rounded-xl p-4" style={{ border: `2px solid ${brandColor}`, background: `${brandColor}06` }}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-black overflow-hidden" style={{ background: brandColor }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- dynamic/user-uploaded logo preview */}
                       {logoUrl ? <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" /> : (companyName || 'GK').slice(0, 2).toUpperCase()}
                     </div>
                     <span className="text-[9px] font-black px-2 py-0.5 rounded-full text-white" style={{ background: brandColor }}>

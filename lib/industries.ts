@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { IndustryConfig } from '@/types'
 
 export const industries: IndustryConfig[] = [

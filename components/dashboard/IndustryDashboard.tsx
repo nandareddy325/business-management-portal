@@ -15,8 +15,8 @@ interface Props {
 export function IndustryDashboard({ industry }: Props) {
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [userEmail, setUserEmail] = useState('')
-    const [userRole, setUserRole] = useState('user')
+  const [userEmail] = useState('')
+  const [userRole] = useState('user')
   const [userName, setUserName] = useState('User')
   const config = getIndustry(industry.id)
 

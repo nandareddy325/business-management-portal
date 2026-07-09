@@ -40,7 +40,7 @@ export function LogsTable({ logs, loading }: LogsTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-black/[0.04]">
-            {logs.map((log: any) => (
+            {logs.map((log: AuditLog) => (
               <tr key={log.id} className="hover:bg-black/[0.02] transition-colors">
                 <td className="px-5 py-3">
                   <div>

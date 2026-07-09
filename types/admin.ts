@@ -36,7 +36,7 @@ export interface AuditLog {
   action_type: AuditLogActionType
   resource_type: AuditLogResourceType
   resource_id?: string
-  changes?: Record<string, any>
+  changes?: Record<string, unknown>
   status: AuditLogStatus
   ip_address?: string
   user_agent?: string
@@ -60,7 +60,7 @@ export interface AuditLogInsert {
   action_type: AuditLogActionType
   resource_type: AuditLogResourceType
   resource_id?: string
-  changes?: Record<string, any>
+  changes?: Record<string, unknown>
   status: AuditLogStatus
   ip_address?: string
   user_agent?: string

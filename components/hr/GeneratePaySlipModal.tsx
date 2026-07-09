@@ -66,8 +66,6 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
   const [pfUan, setPfUan]               = useState("");
   const [ifscCode, setIfscCode]         = useState("");
 
-  useEffect(() => { fetchEmployees(); }, []);
-
   async function fetchEmployees() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -85,6 +83,10 @@ export default function GeneratePaySlipModal({ onClose, onSuccess }: Props) {
       setEmployees(data || []);
     } catch(err) { console.error(err); }
   }
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps -- intentional mount-time fetch; fn ref is stable in practice
+  useEffect(() => { fetchEmployees(); }, []);
+
 
   function handleEmployeeChange(empId: string) {
     setSelectedEmployee(empId);

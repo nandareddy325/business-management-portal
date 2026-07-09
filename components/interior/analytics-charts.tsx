@@ -7,13 +7,20 @@ import {
 
 const COLORS = ['#7C3AED','#0891B2','#D97706','#DB2777','#059669','#DC2626','#2563EB','#EA580C','#64748B','#B8860B']
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface TooltipPayloadItem {
+  color?: string
+  name?: string
+  value?: number | string
+  [key: string]: unknown
+}
+
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: TooltipPayloadItem[]; label?: string }) => {
   if (active && payload && payload.length) {
     return (
       <div className="px-3 py-2 rounded-xl text-xs font-bold shadow-xl"
         style={{ background: '#1C1712', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}>
         <p className="mb-1" style={{ color: '#B8860B' }}>{label}</p>
-        {payload.map((p: any, i: number) => (
+        {payload.map((p: TooltipPayloadItem, i: number) => (
           <p key={i} style={{ color: p.color }}>{p.name}: {p.value}</p>
         ))}
       </div>

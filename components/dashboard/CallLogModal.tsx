@@ -126,6 +126,7 @@ export default function CallLogModal({ lead, userId, onClose, onSuccess }: CallL
               <Calendar size={16} color="#92400E" />
               <p className="text-sm" style={{ color: '#92400E' }}>
                 Next call auto-scheduled: <strong>
+                  {/* eslint-disable-next-line react-hooks/purity -- display-only preview date, recomputed each render intentionally */}
                   {new Date(Date.now() + selected.nextDays * 86400000).toLocaleDateString('en-IN', {
                     day: '2-digit', month: 'short', year: 'numeric'
                   })}

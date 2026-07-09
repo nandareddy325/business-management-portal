@@ -1,7 +1,7 @@
 // services/api-client.ts
 // Base HTTP client — all services use this
 
-type ApiResponse<T = any> = {
+type ApiResponse<T = unknown> = {
   success: boolean
   data?: T
   error?: { code: string; message: string }
@@ -18,10 +18,10 @@ class ApiError extends Error {
   }
 }
 
-async function request<T = any>(
+async function request<T = unknown>(
   method: string,
   url: string,
-  body?: Record<string, any>
+  body?: Record<string, unknown>
 ): Promise<ApiResponse<T>> {
   const options: RequestInit = {
     method,
@@ -46,11 +46,11 @@ async function request<T = any>(
 }
 
 export const apiClient = {
-  get: <T = any>(url: string) => request<T>('GET', url),
-  post: <T = any>(url: string, body: Record<string, any>) => request<T>('POST', url, body),
-  patch: <T = any>(url: string, body: Record<string, any>) => request<T>('PATCH', url, body),
-  put: <T = any>(url: string, body: Record<string, any>) => request<T>('PUT', url, body),
-  delete: <T = any>(url: string) => request<T>('DELETE', url),
+  get: <T = unknown>(url: string) => request<T>('GET', url),
+  post: <T = unknown>(url: string, body: Record<string, unknown>) => request<T>('POST', url, body),
+  patch: <T = unknown>(url: string, body: Record<string, unknown>) => request<T>('PATCH', url, body),
+  put: <T = unknown>(url: string, body: Record<string, unknown>) => request<T>('PUT', url, body),
+  delete: <T = unknown>(url: string) => request<T>('DELETE', url),
 }
 
 export { ApiError }

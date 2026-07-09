@@ -50,7 +50,7 @@ export const hrRepository = {
     return data
   },
 
-  async updateEmployee(companyId: string, employeeId: string, updates: Record<string, any>) {
+  async updateEmployee(companyId: string, employeeId: string, updates: Record<string, unknown>) {
     const supabase = await createServerSupabaseClient()
     const { data, error } = await supabase
       .from('employees')

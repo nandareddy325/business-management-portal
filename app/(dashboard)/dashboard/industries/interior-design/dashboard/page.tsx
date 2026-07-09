@@ -97,6 +97,7 @@ export default async function InteriorDesignDashboard() {
   const leadIds = allLeads?.map((l: Lead) => l.id) ?? []
 
   const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+  // eslint-disable-next-line react-hooks/purity -- server component — computed per request, not a client render purity concern
   const nowUTC    = Date.now()
   const istDateStr = new Date(nowUTC + IST_OFFSET_MS).toISOString().split('T')[0]
   const todayStart = new Date(`${istDateStr}T00:00:00+05:30`)

@@ -1,7 +1,7 @@
 // FILE 13: components/super-admin/analytics/MetricsCards.tsx
 // ============================================================================
 'use client'
-import { TrendingUp, TrendingDown, Activity, Users, Zap, Clock } from 'lucide-react'
+import { TrendingUp, TrendingDown, Activity, Users, Clock } from 'lucide-react'
 
 interface MetricCardProps {
   title: string

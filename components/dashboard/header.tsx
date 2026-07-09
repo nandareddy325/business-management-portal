@@ -54,6 +54,7 @@ export function Header({
 
   // ✅ Fix: useEffect lo set cheyyi — hydration mismatch avoid avutundi
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount/route-driven sync, not a render-time side effect
     setToday(new Date().toLocaleDateString('en-IN', {
       weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
     }))
@@ -80,6 +81,7 @@ export function Header({
       .subscribe((status) => setRealtimeStatus(status))
 
     return () => { supabase.removeChannel(channel) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
   }, [])
 
   useEffect(() => {

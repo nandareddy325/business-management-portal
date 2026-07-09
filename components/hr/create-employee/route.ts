@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
       warning: leaveError ? 'Employee created, but leave balance setup failed — add it manually.' : undefined,
     })
 
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 })
+  } catch (err: unknown) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Server error' }, { status: 500 })
   }
 }

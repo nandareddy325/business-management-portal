@@ -59,7 +59,7 @@ export const billingRepository = {
     return data
   },
 
-  async updateInvoice(companyId: string, invoiceId: string, updates: Record<string, any>) {
+  async updateInvoice(companyId: string, invoiceId: string, updates: Record<string, unknown>) {
     const supabase = await createServerSupabaseClient()
     const { data, error } = await supabase
       .from('invoices')

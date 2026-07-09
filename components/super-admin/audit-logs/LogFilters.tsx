@@ -6,11 +6,11 @@ import { Search, Filter, Calendar } from 'lucide-react'
 
 interface LogFiltersProps {
   onSearchChange?: (value: string) => void
-  onFilterChange?: (filter: any) => void
+  onFilterChange?: (filter: unknown) => void
   onDateChange?: (dates: { start?: string; end?: string }) => void
 }
 
-export function LogFilters({ onSearchChange, onFilterChange, onDateChange }: LogFiltersProps) {
+export function LogFilters({ onSearchChange, onFilterChange: _onFilterChange, onDateChange: _onDateChange }: LogFiltersProps) {
   return (
     <div className="bg-white ring-1 ring-black/8 rounded-2xl p-4 shadow-sm">
       <div className="flex flex-col sm:flex-row gap-3">

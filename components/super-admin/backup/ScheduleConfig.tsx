@@ -14,7 +14,7 @@ interface ScheduleConfigProps {
   onSave?: (schedule: BackupSchedule) => void
 }
 
-export function ScheduleConfig({ schedule, onSave }: ScheduleConfigProps) {
+export function ScheduleConfig({ schedule, onSave: _onSave }: ScheduleConfigProps) {
   return (
     <div className="bg-white ring-1 ring-black/8 rounded-2xl p-6 shadow-sm">
       <div className="flex items-center gap-2 mb-5">

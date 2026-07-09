@@ -18,7 +18,7 @@ interface Props {
   pendingInvoices: Invoice[]
 }
 
-export function RecordPaymentButton({ companyId, pendingInvoices }: Props) {
+export function RecordPaymentButton({ companyId: _companyId, pendingInvoices }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)

@@ -5,6 +5,41 @@
 import { useState } from 'react'
 import { KeyRound, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react'
 
+function InputField({
+  label, value, onChange, show, onToggle, placeholder
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  show: boolean
+  onToggle: () => void
+  placeholder?: string
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-[#7A6E60] uppercase tracking-wider mb-1.5">
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          type={show ? 'text' : 'password'}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder ?? '••••••••'}
+          className="w-full bg-white border border-[#DDD5C4] rounded-xl px-4 py-2.5 pr-11 text-sm text-[#1C1712] outline-none focus:border-[#B8860B] transition-colors"
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9A8F82] hover:text-[#1C1712] transition-colors"
+        >
+          {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function ChangePasswordCard() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -62,38 +97,6 @@ export default function ChangePasswordCard() {
     }
   }
 
-  const InputField = ({
-    label, value, onChange, show, onToggle, placeholder
-  }: {
-    label: string
-    value: string
-    onChange: (v: string) => void
-    show: boolean
-    onToggle: () => void
-    placeholder?: string
-  }) => (
-    <div>
-      <label className="block text-xs font-semibold text-[#7A6E60] uppercase tracking-wider mb-1.5">
-        {label}
-      </label>
-      <div className="relative">
-        <input
-          type={show ? 'text' : 'password'}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder ?? '••••••••'}
-          className="w-full bg-white border border-[#DDD5C4] rounded-xl px-4 py-2.5 pr-11 text-sm text-[#1C1712] outline-none focus:border-[#B8860B] transition-colors"
-        />
-        <button
-          type="button"
-          onClick={onToggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9A8F82] hover:text-[#1C1712] transition-colors"
-        >
-          {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </button>
-      </div>
-    </div>
-  )
 
   return (
     <div className="bg-[#FDFAF4] border border-[#E2D9C8] rounded-2xl overflow-hidden">

@@ -1,7 +1,7 @@
 // components/super-admin/dashboard/QuickActions.tsx
 'use client'
 
-import { Plus, Settings, Download, RotateCcw, Users, MessageSquare, Zap } from 'lucide-react'
+import { Plus, Settings, Download, RotateCcw, MessageSquare, Zap } from 'lucide-react'
 
 interface QuickAction {
   icon: React.ReactNode

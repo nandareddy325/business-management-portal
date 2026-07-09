@@ -44,7 +44,7 @@ export const tenantRepository = {
       .eq('company_id', companyId)
       .eq('is_active', true)
     if (error) return []
-    return data.map((row: any) => row.industry?.slug).filter(Boolean)
+    return data.map((row: { industry?: { slug?: string }[] }) => row.industry?.[0]?.slug).filter(Boolean)
   },
 
   async addIndustryAccess(companyId: string, industryId: string): Promise<void> {

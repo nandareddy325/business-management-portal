@@ -27,6 +27,7 @@ export function AttendanceMarkButton({
 
   // Sync props on mount — fixes stale state issue
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount/route-driven sync, not a render-time side effect
     setCheckedIn(isCheckedIn)
     setCheckedOut(isCheckedOut)
     setCheckInTime(checkInTimeISO ?? null)
@@ -93,8 +94,8 @@ export function AttendanceMarkButton({
       setCheckedIn(true)
       setCheckInTime(now)
       setMessage('✅ Checked in successfully!')
-    } catch (e: any) {
-      setMessage('❌ ' + (e.message || 'Failed to check in'))
+    } catch (e: unknown) {
+      setMessage('❌ ' + (e instanceof Error ? e.message : 'Failed to check in'))
     }
     setLoading(false)
   }
@@ -129,8 +130,8 @@ export function AttendanceMarkButton({
       setCheckedOut(true)
       setCheckOutTime(now)
       setMessage('✅ Checked out successfully!')
-    } catch (e: any) {
-      setMessage('❌ ' + (e.message || 'Failed to check out'))
+    } catch (e: unknown) {
+      setMessage('❌ ' + (e instanceof Error ? e.message : 'Failed to check out'))
     }
     setLoading(false)
   }

@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getSupportTickets, getTicketStats } from '@/lib/supabase/queries/admin'
-import { Headphones, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { TicketsTable, TicketStats } from '@/components/super-admin/support'
 
 export default async function SupportPage() {

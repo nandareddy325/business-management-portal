@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getAPIKeys } from '@/lib/supabase/queries/admin'
-import { Key, Plus, Zap, GitBranch, Webhook } from 'lucide-react'
+import { Plus, Zap, GitBranch, Webhook } from 'lucide-react'
 import { KeysTable, IntegrationCard } from '@/components/super-admin/api-keys'
 
 export default async function APIKeysPage() {

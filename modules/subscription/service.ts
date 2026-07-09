@@ -69,7 +69,7 @@ export const subscriptionService = {
       .eq('id', companyId)
       .single()
 
-    const maxUsers = (data?.plan as any)?.max_users ?? 5
+    const maxUsers = (data?.plan as { max_users?: number } | null)?.max_users ?? 5
     if (maxUsers === -1) return true // unlimited
 
     const { count } = await supabase
@@ -89,7 +89,7 @@ export const subscriptionService = {
       .eq('id', companyId)
       .single()
 
-    const maxLeads = (data?.plan as any)?.max_leads ?? 500
+    const maxLeads = (data?.plan as { max_leads?: number } | null)?.max_leads ?? 500
     if (maxLeads === -1) return true // unlimited
 
     const startOfMonth = new Date()
@@ -113,7 +113,7 @@ export const subscriptionService = {
       .eq('id', companyId)
       .single()
 
-    const plan = (data?.plan as any)?.name
+    const plan = (data?.plan as { name?: string } | null)?.name
     const featureMatrix: Record<string, string[]> = {
       starter: [],
       professional: ['hrms', 'billing', 'realtime'],

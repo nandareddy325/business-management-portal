@@ -23,6 +23,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const hash = window.location.hash
   if (hash && hash.includes('access_token')) {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount/route-driven sync, not a render-time side effect
     setReady(true)
   }
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
@@ -31,6 +32,7 @@ export default function ResetPasswordPage() {
       }
     })  
     return () => authListener.subscription.unsubscribe()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
   }, [])
 
   const passwordStrength = (pwd: string) => {

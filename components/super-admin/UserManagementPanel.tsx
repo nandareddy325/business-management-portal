@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import {
-  Search, Download, Plus, Sparkles, Shield, Users, Activity,
+  Search, Download, Plus, Sparkles, Shield, Users,
   Edit2, X, AlertTriangle, ChevronUp, ChevronDown, Trash2,
   CheckCircle, Loader2, Building2,
 } from 'lucide-react'
@@ -340,6 +340,7 @@ function AiInsightPanel({ user, score, company, onClose }: {
   user:User; score:number; company?:Company; onClose:()=>void
 }) {
   const c = scoreColor(score)
+  // eslint-disable-next-line react-hooks/purity -- display-only 'days since joined' calculation
   const ageDays = Math.floor((Date.now() - new Date(user.created_at).getTime()) / 86_400_000)
   const rec = score > 85 && user.role === 'employee' ? 'Role Upgrade' : score < 50 ? 'Needs Attention' : 'Stable'
   const recC = score > 85 ? '#16a34a' : score < 50 ? '#dc2626' : '#d97706'

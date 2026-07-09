@@ -50,8 +50,8 @@ export function AddEmployeeButton({ companyId }: { companyId: string }) {
       setCreated(data.employee)
       setForm({ full_name: '', email: '', phone: '', designation: '', department: '', join_date: '', salary: '' })
       setSelectedPermissions([])
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
       setLoading(false)
     }
