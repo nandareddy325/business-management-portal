@@ -12,6 +12,17 @@ const statusStyle: Record<string, string> = {
   rejected: 'text-rose-600',
 }
 
+interface LeaveApplication {
+  id: string
+  status: string
+  leave_type?: string
+  from_date: string
+  to_date: string
+  days?: number
+  reason?: string
+  manager_comment?: string
+}
+
 export default async function EmployeeLeavePage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -35,9 +46,9 @@ export default async function EmployeeLeavePage() {
     supabase.from('leave_applications').select('*').eq('employee_id', employee.id).order('created_at', { ascending: false }),
   ])
 
-  const pendingCount  = (applications ?? []).filter((a: any) => a.status === 'pending').length
-  const approvedCount = (applications ?? []).filter((a: any) => a.status === 'approved').length
-  const rejectedCount = (applications ?? []).filter((a: any) => a.status === 'rejected').length
+  const pendingCount  = (applications as LeaveApplication[] ?? []).filter((a) => a.status === 'pending').length
+  const approvedCount = (applications as LeaveApplication[] ?? []).filter((a) => a.status === 'approved').length
+  const rejectedCount = (applications as LeaveApplication[] ?? []).filter((a) => a.status === 'rejected').length
 
   const mono = { fontFamily: 'ui-monospace, "JetBrains Mono", monospace' }
   const serif = { fontFamily: 'Georgia, serif' }
@@ -142,7 +153,7 @@ export default async function EmployeeLeavePage() {
             </div>
 
             <div>
-              {(applications ?? []).map((a: any, idx) => {
+              {(applications as LeaveApplication[] ?? []).map((a, idx) => {
                 const color = statusStyle[a.status] ?? 'text-[#9A8F82]'
                 return (
                   <div key={a.id} className={`px-6 lg:px-8 py-3.5 flex items-start justify-between gap-3 ${idx > 0 ? 'border-t border-[#F0EAE0]' : ''}`}>

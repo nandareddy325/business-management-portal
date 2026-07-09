@@ -6,12 +6,39 @@ import { AttendanceMarkButton } from '@/components/employee/attendance-mark-butt
 
 export const dynamic = 'force-dynamic'
 
+interface Employee {
+  id: string
+  user_id?: string
+  email?: string
+  full_name?: string
+  employee_code?: string
+  employee_id?: string
+  designation?: string
+  department?: string
+  permissions?: string[]
+}
+
+interface Attendance {
+  id: string
+  check_in?: string
+  check_out?: string
+  check_in_address?: string
+  check_out_address?: string
+  status?: string
+}
+
+interface LeaveBalance {
+  cl_total: number; cl_used: number
+  sl_total: number; sl_used: number
+  el_total: number; el_used: number
+}
+
 export default async function EmployeePortalPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  let employee: any = null
+  let employee: Employee | null = null
 
   const { data: empByUserId } = await supabase
     .from('employees').select('*').eq('user_id', user.id).maybeSingle()
@@ -52,8 +79,8 @@ export default async function EmployeePortalPage() {
     { data: pendingLeaves },
     { data: todayReport },
   ] = await Promise.all([
-    supabase.from('attendance').select('*').eq('employee_id', employee.id).eq('attendance_date', today).maybeSingle(),
-    supabase.from('leave_balances').select('*').eq('employee_id', employee.id).eq('year', new Date().getFullYear()).eq('month', new Date().getMonth() + 1).maybeSingle(),
+    supabase.from('attendance').select('*').eq('employee_id', employee.id).eq('attendance_date', today).maybeSingle() as unknown as Promise<{ data: Attendance | null }>,
+    supabase.from('leave_balances').select('*').eq('employee_id', employee.id).eq('year', new Date().getFullYear()).eq('month', new Date().getMonth() + 1).maybeSingle() as unknown as Promise<{ data: LeaveBalance | null }>,
     supabase.from('leave_applications').select('*').eq('employee_id', employee.id).eq('status', 'pending'),
     supabase.from('work_reports').select('*').eq('employee_id', employee.id).eq('report_date', today).maybeSingle(),
   ])
@@ -65,19 +92,19 @@ export default async function EmployeePortalPage() {
   const hasCRMAccess = Array.isArray(employee.permissions) &&
     employee.permissions.some((p: string) => VALID_MODULES.includes(p))
 
-  const isCheckedIn  = !!(todayAttendance as any)?.check_in
-  const isCheckedOut = !!(todayAttendance as any)?.check_out
-  const checkInAddress  = (todayAttendance as any)?.check_in_address ?? null
-  const checkOutAddress = (todayAttendance as any)?.check_out_address ?? null
+  const isCheckedIn  = !!todayAttendance?.check_in
+  const isCheckedOut = !!todayAttendance?.check_out
+  const checkInAddress  = todayAttendance?.check_in_address ?? null
+  const checkOutAddress = todayAttendance?.check_out_address ?? null
 
   const fmtTime = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
   const ringR = 22
   const ringC = 2 * Math.PI * ringR
 
   const leaves = leaveBalance ? [
-    { type: 'CL', label: 'Casual', total: (leaveBalance as any).cl_total, used: (leaveBalance as any).cl_used, stroke: '#B8860B' },
-    { type: 'SL', label: 'Sick',   total: (leaveBalance as any).sl_total, used: (leaveBalance as any).sl_used, stroke: '#8B6914' },
-    { type: 'EL', label: 'Earned', total: (leaveBalance as any).el_total, used: (leaveBalance as any).el_used, stroke: '#6B5410' },
+    { type: 'CL', label: 'Casual', total: leaveBalance.cl_total, used: leaveBalance.cl_used, stroke: '#B8860B' },
+    { type: 'SL', label: 'Sick',   total: leaveBalance.sl_total, used: leaveBalance.sl_used, stroke: '#8B6914' },
+    { type: 'EL', label: 'Earned', total: leaveBalance.el_total, used: leaveBalance.el_used, stroke: '#6B5410' },
   ] : []
 
   const quickActions = [
@@ -134,7 +161,7 @@ export default async function EmployeePortalPage() {
                   </span>
                   <span className="text-[11px] text-white/70 tracking-wide whitespace-nowrap">
                     Present today
-                    {(todayAttendance as any)?.check_in && <span className="text-[#D4A537]"> · in at {fmtTime((todayAttendance as any).check_in)}</span>}
+                    {todayAttendance?.check_in && <span className="text-[#D4A537]"> · in at {fmtTime(todayAttendance.check_in)}</span>}
                   </span>
                 </div>
               )}
@@ -173,9 +200,9 @@ export default async function EmployeePortalPage() {
                     employeeId={employee.id}
                     isCheckedIn={isCheckedIn}
                     isCheckedOut={isCheckedOut}
-                    attendanceId={(todayAttendance as any)?.id ?? null}
-                    checkInTimeISO={(todayAttendance as any)?.check_in ?? null}
-                    checkOutTimeISO={(todayAttendance as any)?.check_out ?? null}
+                    attendanceId={todayAttendance?.id ?? null}
+                    checkInTimeISO={todayAttendance?.check_in ?? null}
+                    checkOutTimeISO={todayAttendance?.check_out ?? null}
                   />
                 </div>
               </div>
@@ -189,7 +216,7 @@ export default async function EmployeePortalPage() {
                   <div className="pr-5 border-r border-[#E2D9C8]">
                     <p className="text-[10px] tracking-[1.5px] text-[#9A8F82] uppercase mb-1">Attendance</p>
                     <p className={`text-base capitalize ${todayAttendance ? 'text-emerald-700' : 'text-[#9A8F82]'}`} style={{ fontFamily: 'Georgia, serif' }}>
-                      {todayAttendance ? (todayAttendance as any).status : 'Not marked'}
+                      {todayAttendance ? todayAttendance.status : 'Not marked'}
                     </p>
                   </div>
                   <div className="pl-5">
