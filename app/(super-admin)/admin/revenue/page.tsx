@@ -1,6 +1,6 @@
 // app/(super-admin)/admin/revenue/page.tsx
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { TrendingUp, IndianRupee, AlertCircle, ArrowUpRight } from 'lucide-react'
+import { TrendingUp, IndianRupee, AlertCircle } from 'lucide-react'
 
 async function getRevenueData() {
   const supabase = await createServerSupabaseClient()
@@ -13,8 +13,9 @@ async function getRevenueData() {
 
   const planStats: Record<string, { count: number; mrr: number; name: string }> = {}
   for (const c of planBreakdown ?? []) {
-    const planName = (c.plan as any)?.name ?? 'unknown'
-    const price = Number((c.plan as any)?.price_monthly ?? 0)
+    const plan = c.plan as { name?: string; price_monthly?: number } | null
+    const planName = plan?.name ?? 'unknown'
+    const price = Number(plan?.price_monthly ?? 0)
     if (!planStats[planName]) planStats[planName] = { count: 0, mrr: 0, name: planName }
     planStats[planName].count++
     planStats[planName].mrr += price
@@ -150,7 +151,10 @@ export default async function AdminRevenuePage() {
           </div>
           <div className="divide-y divide-[#F0EBE0]">
             {(recentPayments ?? []).length > 0 ? (
-              (recentPayments ?? []).map((c: any) => (
+              (recentPayments as {
+                id: string; name?: string; subscription_id?: string
+                plan?: { name?: string; price_monthly?: number } | null
+              }[] ?? []).map((c) => (
                 <div key={c.id} className="flex items-center justify-between px-6 py-4 hover:bg-[#FFFBEF] transition-colors group">
                   <div className="flex items-center gap-3 flex-1">
                     <div className="w-9 h-9 rounded-xl bg-[#F5F0E8] border border-[#E8E2D8] flex items-center justify-center flex-shrink-0">

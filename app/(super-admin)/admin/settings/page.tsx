@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Shield, Bell, Database, Globe, Lock, ChevronRight, Activity, Server, Users, Building2, Zap, CheckCircle, AlertTriangle, Clock, RefreshCw } from 'lucide-react'
+import { Shield, Database, Globe, Lock, ChevronRight, Activity, Server, Users, Building2, CheckCircle, AlertTriangle, Clock, RefreshCw } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 import  ConfirmationModal  from '@/components/super-admin/ConfirmationModal'
 
@@ -55,11 +55,11 @@ export default function AdminSettingsPage() {
       }
 
       const totalCompanies = companies?.length || 0
-      const activeCompanies = companies?.filter((c: any) => {
+      const activeCompanies = companies?.filter((c: { plan_status?: string }) => {
         const status = c.plan_status || ''
         return status.toLowerCase() === 'active'
       }).length || 0
-      const trialCompanies = companies?.filter((c: any) => {
+      const trialCompanies = companies?.filter((c: { plan_status?: string }) => {
         const status = c.plan_status || ''
         return status.toLowerCase() === 'trial'
       }).length || 0
@@ -85,10 +85,10 @@ export default function AdminSettingsPage() {
         // Don't throw, just skip this data
       } else if (services && services.length > 0) {
         totalServices = services.length
-        healthyServices = services.filter((s: any) => s.is_healthy === true).length
+        healthyServices = services.filter((s: { is_healthy?: boolean }) => s.is_healthy === true).length
         unhealthyServices = totalServices - healthyServices
         avgResponseTime = Math.round(
-          services.reduce((sum: number, s: any) => sum + (s.response_time_ms || 0), 0) / services.length
+          services.reduce((sum: number, s: { response_time_ms?: number }) => sum + (s.response_time_ms || 0), 0) / services.length
         )
       }
 
@@ -115,9 +115,9 @@ export default function AdminSettingsPage() {
         // Don't throw, just skip this data
       } else if (alerts && alerts.length > 0) {
         totalAlerts = alerts.length
-        criticalAlerts = alerts.filter((a: any) => a.severity === 'critical').length
-        warningAlerts = alerts.filter((a: any) => a.severity === 'warning').length
-        infoAlerts = alerts.filter((a: any) => a.severity === 'info').length
+        criticalAlerts = alerts.filter((a: { severity?: string }) => a.severity === 'critical').length
+        warningAlerts = alerts.filter((a: { severity?: string }) => a.severity === 'warning').length
+        infoAlerts = alerts.filter((a: { severity?: string }) => a.severity === 'info').length
       }
 
       setAlertStats({ 
@@ -137,10 +137,11 @@ export default function AdminSettingsPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStats()
     const interval = setInterval(fetchStats, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleClearCache = async () => {
     setLoadingAction('cache')
