@@ -70,7 +70,7 @@ export default async function BackupPage() {
   )
 }
 
-function StatCard({ label, value, color = 'black' }: any) {
+function StatCard({ label, value, color = 'black' }: { label: string; value: string | number; color?: string }) {
   return (
     <div className="bg-white ring-1 ring-black/8 rounded-xl p-4 shadow-sm">
       <p className="text-[10px] font-semibold text-black/60 uppercase">{label}</p>

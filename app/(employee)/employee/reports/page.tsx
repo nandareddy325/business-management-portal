@@ -12,6 +12,16 @@ const statusStyle: Record<string, string> = {
   pending:     'text-amber-700',
 }
 
+interface Report {
+  id: string
+  status?: string
+  report_date: string
+  task_description?: string
+  project_name?: string
+  hours_spent?: number | string
+  manager_comment?: string
+}
+
 export default async function EmployeeReportsPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -70,7 +80,7 @@ export default async function EmployeeReportsPage() {
           {/* §1 — Today's report */}
           {todayReport && (
             <div className="bg-emerald-50/40 border-t border-[#B8860B]/25 px-6 py-4 lg:px-8">
-              <p className="text-[9px] tracking-[3px] text-emerald-700 font-semibold mb-3 uppercase" style={mono}>§1 — Today's Submission</p>
+              <p className="text-[9px] tracking-[3px] text-emerald-700 font-semibold mb-3 uppercase" style={mono}>§1 — Today&apos;s Submission</p>
               <p className="text-[15px] text-[#1C1712] mb-2" style={serif}>{todayReport.task_description}</p>
               {(todayReport.project_name || todayReport.hours_spent) && (
                 <div className="flex items-center gap-4 text-[11px] text-emerald-700 mb-2">
@@ -101,7 +111,7 @@ export default async function EmployeeReportsPage() {
             </div>
 
             <div>
-              {(reports ?? []).map((r: any, idx) => {
+              {(reports as Report[] ?? []).map((r, idx) => {
                 const color = statusStyle[r.status] ?? 'text-[#9A8F82]'
                 return (
                   <div key={r.id} className={`px-6 lg:px-8 py-3.5 ${idx > 0 ? 'border-t border-[#F0EAE0]' : ''}`}>

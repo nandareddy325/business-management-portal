@@ -1,7 +1,16 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getAuditLogs, getAuditLogStats } from '@/lib/supabase/queries/admin'
-import { Activity, Search, Filter, Download, Calendar } from 'lucide-react'
+import { Activity, Download } from 'lucide-react'
+
+interface AuditLog {
+  id: string
+  action: string
+  action_type?: string
+  status?: string
+  created_at: string
+  user?: { email?: string } | null
+}
 
 export default async function AuditLogsPage() {
   const supabase = await createServerSupabaseClient()
@@ -18,7 +27,7 @@ export default async function AuditLogsPage() {
   if (!profile) redirect('/login')
 
   // Fetch real audit logs
-  const { data: logs, error } = await getAuditLogs(
+  const { data: logs } = await getAuditLogs(
     supabase,
     profile.company_id,
     {},
@@ -84,7 +93,7 @@ export default async function AuditLogsPage() {
               </thead>
               <tbody className="divide-y divide-black/[0.04]">
                 {logs && logs.length > 0 ? (
-                  logs.map((log: any) => (
+                  (logs as AuditLog[]).map((log) => (
                     <tr key={log.id} className="hover:bg-black/[0.02] transition-colors">
                       <td className="px-5 py-3">
                         <div>

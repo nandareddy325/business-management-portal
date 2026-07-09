@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { BarChart3, TrendingUp, Users, CreditCard, Building2, Zap, Clock, AlertCircle, Activity, RefreshCw } from 'lucide-react'
+import { BarChart3, TrendingUp, Users, CreditCard, Building2, Clock, AlertCircle, Activity, RefreshCw } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 
 interface DashboardStats {
@@ -56,7 +56,7 @@ export default function AdminDashboardPage() {
         .select('*')
 
       const totalCompanies = companies?.length || 0
-      const activeCompanies = companies?.filter((c: any) => c.plan_status?.toLowerCase() === 'active').length || 0
+      const activeCompanies = companies?.filter((c: { plan_status?: string }) => c.plan_status?.toLowerCase() === 'active').length || 0
 
       // === FETCH USERS ===
       const { data: profiles } = await supabase
@@ -64,7 +64,7 @@ export default function AdminDashboardPage() {
         .select('*')
 
       const totalUsers = profiles?.length || 0
-      const activeUsers = profiles?.filter((p: any) => p.is_active === true).length || 0
+      const activeUsers = profiles?.filter((p: { is_active?: boolean }) => p.is_active === true).length || 0
 
       // === FETCH SUBSCRIPTIONS ===
       const { data: subscriptions } = await supabase
@@ -80,10 +80,10 @@ export default function AdminDashboardPage() {
         .select('is_healthy, response_time_ms')
 
       const totalServices = systemStatus?.length || 0
-      const healthyServices = systemStatus?.filter((s: any) => s.is_healthy === true).length || 0
+      const healthyServices = systemStatus?.filter((s: { is_healthy?: boolean }) => s.is_healthy === true).length || 0
       const systemHealth = totalServices > 0 ? Math.round((healthyServices / totalServices) * 100) : 0
       const avgResponseTime = systemStatus && systemStatus.length > 0
-        ? Math.round(systemStatus.reduce((sum: number, s: any) => sum + (s.response_time_ms || 0), 0) / systemStatus.length)
+        ? Math.round(systemStatus.reduce((sum: number, s: { response_time_ms?: number }) => sum + (s.response_time_ms || 0), 0) / systemStatus.length)
         : 0
 
       // === FETCH ALERTS ===
@@ -122,7 +122,7 @@ export default function AdminDashboardPage() {
         'system_health_check': '🏥 System health check'
       }
 
-      const recentActivity = (auditLogs || []).map((log: any) => {
+      const recentActivity = (auditLogs || []).map((log: { id: string; action_type?: string; action?: string; created_at: string }) => {
         const actionLabel = activityMap[log.action_type] || `📌 ${log.action}`
         const [icon, title] = actionLabel.split(' ')
         
@@ -163,10 +163,11 @@ export default function AdminDashboardPage() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDashboardData()
     const interval = setInterval(fetchDashboardData, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'L'
@@ -189,7 +190,7 @@ export default function AdminDashboardPage() {
               <p className="text-xs font-bold tracking-widest uppercase text-[#B8860B]">Dashboard</p>
             </div>
             <h1 className="font-serif text-3xl text-[#1C1712]">Admin Overview</h1>
-            <p className="text-sm text-[#9A8F82] mt-1">Welcome back! Here's your system overview.</p>
+            <p className="text-sm text-[#9A8F82] mt-1">Welcome back! Here&apos;s your system overview.</p>
           </div>
           <button
             onClick={fetchDashboardData}
