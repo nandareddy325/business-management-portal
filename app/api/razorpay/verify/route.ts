@@ -51,8 +51,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, payment_id: razorpay_payment_id })
 
-  } catch (err: any) {
-    console.error('❌ Verify error:', err?.message)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    console.error('❌ Verify error:', (err instanceof Error ? err.message : undefined))
+    return NextResponse.json({ error: (err instanceof Error ? err.message : 'Unknown error') }, { status: 500 })
   }
 }

@@ -27,10 +27,12 @@ export async function POST(req: NextRequest) {
     console.log('✅ Order created:', order.id)
     return NextResponse.json(order)
 
-  } catch (err: any) {
-    console.error('❌ Razorpay create-order error:', err?.message)
+  } catch (err: unknown) {
+    const razorpayError = err as { error?: { description?: string } }
+    const message = razorpayError?.error?.description || (err instanceof Error ? err.message : undefined) || 'Order creation failed'
+    console.error('❌ Razorpay create-order error:', message)
     return NextResponse.json(
-      { error: err?.error?.description || err?.message || 'Order creation failed' },
+      { error: message },
       { status: 500 }
     )
   }

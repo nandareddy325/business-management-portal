@@ -365,7 +365,7 @@ function PipelineSection() {
           <h2 className="font-serif text-3xl md:text-5xl text-[#1C1712] mb-4">
             7-stage pipeline — <em className="italic font-normal text-[#B8860B]">live & visual</em>
           </h2>
-          <p className="text-[#7A6E60] max-w-lg mx-auto">Every lead's journey mapped from first contact to deal closure. Nothing slips through the cracks.</p>
+          <p className="text-[#7A6E60] max-w-lg mx-auto">Every lead&apos;s journey mapped from first contact to deal closure. Nothing slips through the cracks.</p>
         </div>
 
         {/* Stage cards */}
@@ -508,12 +508,13 @@ function TestimonialsCarousel() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     goTo(0)
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
       if (progRef.current)  clearInterval(progRef.current)
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const t = testimonials[current]
 
@@ -528,12 +529,12 @@ function TestimonialsCarousel() {
         </div>
 
         <div className="bg-white border border-[#E2D9C8] rounded-2xl p-6 md:p-10 relative overflow-hidden shadow-lg">
-          <span className="absolute top-4 left-8 font-serif text-8xl text-[#B8860B] opacity-10 leading-none select-none italic">"</span>
+          <span className="absolute top-4 left-8 font-serif text-8xl text-[#B8860B] opacity-10 leading-none select-none italic">&ldquo;</span>
           <div className="flex gap-1 mb-5">
             {[...Array(5)].map((_, i) => <span key={i} className="text-[#B8860B] text-sm">★</span>)}
           </div>
           <p className="text-[#4A4035] text-sm md:text-base font-light leading-relaxed mb-8 min-h-[70px] md:min-h-[80px]">
-            "{t.text}"
+            &ldquo;{t.text}&rdquo;
           </p>
           <div className="flex items-center gap-4 border-t border-[#E2D9C8] pt-6">
             <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xs font-semibold flex-shrink-0"
@@ -1056,7 +1057,7 @@ export default function LandingPage() {
         <section id="support" className="bg-white py-16 md:py-24">
           <div className="text-center px-4">
             <p className="text-xs font-bold text-[#B8860B] uppercase tracking-[4px] mb-4">Support</p>
-            <h2 className="font-serif text-3xl md:text-5xl text-[#1C1712] mb-4 md:mb-5">We're here to help</h2>
+            <h2 className="font-serif text-3xl md:text-5xl text-[#1C1712] mb-4 md:mb-5">We&apos;re here to help</h2>
             <p className="text-[#7A6E60] mb-8 md:mb-10 text-base md:text-lg">Our team responds within 24 hours. For urgent issues, WhatsApp us directly.</p>
           </div>
           <div className="max-w-6xl mx-auto px-4 md:px-6 grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16 items-start">
@@ -1080,12 +1081,12 @@ export default function LandingPage() {
             </div>
             <div className="bg-[#F7F5F1] border border-[#E2D9C8] rounded-2xl p-6 md:p-8 shadow-sm">
               <h3 className="font-serif text-2xl text-[#1C1712] mb-1">Send us a message</h3>
-              <p className="text-sm text-[#9A8F82] mb-6">We'll get back to you within 24 hours.</p>
+              <p className="text-sm text-[#9A8F82] mb-6">We&apos;ll get back to you within 24 hours.</p>
               {supportSent ? (
                 <div className="text-center py-10 md:py-14">
                   <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✅</div>
                   <p className="font-bold text-[#1C1712] text-lg">Message sent!</p>
-                  <p className="text-sm text-[#9A8F82] mt-2">We'll reply within 24 hours.</p>
+                  <p className="text-sm text-[#9A8F82] mt-2">We&apos;ll reply within 24 hours.</p>
                 </div>
               ) : (
                 <div className="space-y-4">

@@ -60,9 +60,9 @@ export async function POST(req: NextRequest) {
       lead_id: lead.id
     })
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Webhook error:', err)
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    return NextResponse.json({ error: (err instanceof Error ? err.message : 'Unknown error') }, { status: 500 })
   }
 }
 
