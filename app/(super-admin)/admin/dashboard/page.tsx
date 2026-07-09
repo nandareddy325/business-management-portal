@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react'
 import { BarChart3, TrendingUp, Users, CreditCard, Building2, Clock, AlertCircle, Activity, RefreshCw } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
+import { QuickAccessGrid } from '@/components/super-admin/dashboard'
 
 interface DashboardStats {
   totalRevenue: number
@@ -253,6 +254,9 @@ export default function AdminDashboardPage() {
             )
           })}
         </div>
+
+        {/* Quick Access */}
+        <QuickAccessGrid />
 
         {/* Recent Activity */}
         <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
