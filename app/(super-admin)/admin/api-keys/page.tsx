@@ -3,8 +3,8 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { getAPIKeys } from '@/lib/supabase/queries/admin'
-import { Plus, Zap, GitBranch, Webhook } from 'lucide-react'
-import { KeysTable, IntegrationCard } from '@/components/super-admin/api-keys'
+import { Zap, GitBranch, Webhook } from 'lucide-react'
+import { KeysTable, IntegrationCard, GenerateKeyModal } from '@/components/super-admin/api-keys'
 
 export default async function APIKeysPage() {
   const supabase = await createServerSupabaseClient()
@@ -20,11 +20,15 @@ export default async function APIKeysPage() {
   if (!profile) redirect('/login')
 
   const { data: keys } = await getAPIKeys(supabase, profile.company_id)
+  const activeCount = keys?.filter(k => k.status === 'active').length ?? 0
 
+  // These third-party integrations need their own OAuth app credentials
+  // (Zapier app, GitHub OAuth app) to actually connect — not yet configured.
+  // Shown as "available" rather than falsely claiming "connected".
   const integrations = [
-    { name: 'Zapier', status: 'connected' as const, description: 'Workflow automation', icon: <Zap size={18} className="text-amber-600" /> },
-    { name: 'GitHub', status: 'connected' as const, description: 'Repository sync', icon: <GitBranch size={18} className="text-black/60" /> },
-    { name: 'Webhooks', status: 'connected' as const, description: 'Real-time events', icon: <Webhook size={18} className="text-blue-600" /> },
+    { name: 'Zapier', status: 'available' as const, description: 'Workflow automation', icon: <Zap size={18} className="text-amber-600" /> },
+    { name: 'GitHub', status: 'available' as const, description: 'Repository sync', icon: <GitBranch size={18} className="text-black/60" /> },
+    { name: 'Webhooks', status: activeCount > 0 ? 'connected' as const : 'available' as const, description: 'Real-time events via your API keys', icon: <Webhook size={18} className="text-blue-600" />, users: activeCount },
   ]
 
   return (
@@ -32,9 +36,7 @@ export default async function APIKeysPage() {
       <div className="sticky top-0 z-10 border-b border-black/8 bg-[#F5F0E8]/95 backdrop-blur-xl px-4 sm:px-8 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <h1 className="text-xl font-bold text-[#1C1712]">API Keys & Integrations</h1>
-          <button className="px-4 py-2 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-all flex items-center gap-2 shadow-md">
-            <Plus size={14} /> Generate Key
-          </button>
+          <GenerateKeyModal />
         </div>
       </div>
 

@@ -2,6 +2,7 @@
 // Real Supabase queries for admin tables
 
 import { SupabaseClient } from '@supabase/supabase-js'
+import { randomBytes, createHash } from 'crypto'
 import type {
   AuditLogInsert, AuditLogFilters, AuditLogActionType, AuditLogResourceType,
   APIKeyInsert, APIKeyUpdate,
@@ -130,18 +131,26 @@ export async function createAPIKey(
   supabase: SupabaseClient,
   key: APIKeyInsert
 ) {
-  // In real implementation, generate and hash the actual API key
-  const generatedKey = `sk_${key.environment}_${Math.random().toString(36).substr(2, 9)}`
-  
-  return await supabase
+  // Cryptographically secure key: gk_live_<40 random hex chars> / gk_test_<...>
+  const envTag = key.environment === 'production' ? 'live' : 'test'
+  const secret = randomBytes(24).toString('hex')
+  const plaintextKey = `gk_${envTag}_${secret}`
+  const keyHash = createHash('sha256').update(plaintextKey).digest('hex')
+  const keyPrefix = plaintextKey.slice(0, 12)
+
+  const { data, error } = await supabase
     .from('api_keys')
     .insert([{
       ...key,
-      key_prefix: generatedKey.substring(0, 10),
-      key_hash: generatedKey // Should be hashed in production
+      key_prefix: keyPrefix,
+      key_hash: keyHash,
+      status: 'active',
     }])
     .select()
     .single()
+
+  // plaintextKey is returned only here — it is NOT stored anywhere, only the hash is persisted
+  return { data, error, plaintextKey: error ? null : plaintextKey }
 }
 
 export async function updateAPIKey(
