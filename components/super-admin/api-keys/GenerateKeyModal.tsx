@@ -1,17 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, X, Copy, Check, AlertTriangle, Loader2 } from 'lucide-react'
 import { generateAPIKeyAction } from '@/app/(super-admin)/admin/api-keys/actions'
 
 export function GenerateKeyModal() {
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const [name, setName] = useState('')
   const [environment, setEnvironment] = useState<'development' | 'production'>('development')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [plaintextKey, setPlaintextKey] = useState('')
   const [copied, setCopied] = useState(false)
+
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- standard client-mounted guard for portal/SSR safety
+  useEffect(() => { setMounted(true) }, [])
 
   function reset() {
     setName('')
@@ -59,11 +64,11 @@ export function GenerateKeyModal() {
         <Plus size={14} /> Generate Key
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !loading && close()} />
+      {open && mounted && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !loading && close()} />
 
-          <div className="relative bg-white rounded-2xl ring-1 ring-black/8 shadow-2xl w-full max-w-md p-6">
+          <div className="relative bg-white rounded-2xl ring-1 ring-black/8 shadow-2xl w-full max-w-md p-6 my-8">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-sm font-bold text-[#1C1712]">
                 {plaintextKey ? 'Key generated' : 'Generate API key'}
@@ -157,7 +162,8 @@ export function GenerateKeyModal() {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )
