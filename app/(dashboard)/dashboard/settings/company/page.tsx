@@ -1,5 +1,4 @@
 ﻿'use client'
-// @ts-nocheck
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
@@ -12,7 +11,9 @@ const DELETE_OPTIONS = [
 
 const BRAND_COLORS = ['#B8860B', '#7C3AED', '#0891B2', '#059669', '#DB2777', '#DC2626']
 
-function SectionCard({ icon, iconBg, title, desc, children, delay }: any) {
+function SectionCard({ icon, iconBg, title, desc, children, delay }: {
+  icon: string; iconBg: string; title: string; desc: string; children: React.ReactNode; delay: number
+}) {
   return (
     <div className="fade-in bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden"
       style={{ animationDelay: `${delay}s`, boxShadow: '0 1px 2px rgba(28,23,18,0.03), 0 6px 18px rgba(28,23,18,0.05)' }}>
@@ -28,11 +29,13 @@ function SectionCard({ icon, iconBg, title, desc, children, delay }: any) {
   )
 }
 
-function FieldLabel({ children }: any) {
+function FieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="block text-[10px] font-bold text-[#7A6E60] uppercase tracking-wide mb-1.5">{children}</label>
 }
 
-function TextField({ value, onChange, placeholder, editing }: any) {
+function TextField({ value, onChange, placeholder, editing }: {
+  value: string; onChange: (v: string) => void; placeholder: string; editing: boolean
+}) {
   if (!editing) {
     return (
       <div className="readonly-field w-full rounded-xl px-3.5 py-2.5 text-sm">
@@ -70,14 +73,18 @@ export default function CompanySettingsPage() {
 
   // Lead reassignment
   const [autoReassign, setAutoReassign] = useState(false)
-  const [cres, setCres] = useState<any[]>([])
+  const [cres, setCres] = useState<{ user_id: string; full_name: string; designation?: string; is_active: boolean }[]>([])
   const [fromCre, setFromCre] = useState('')
   const [toCre, setToCre] = useState('')
   const [activeLeadCount, setActiveLeadCount] = useState<number | null>(null)
   const [reassigning, setReassigning] = useState(false)
   const [reassignResult, setReassignResult] = useState<string | null>(null)
 
-  const [snapshot, setSnapshot] = useState<any>(null)
+  const [snapshot, setSnapshot] = useState<{
+    gstNumber: string; businessAddress: string; businessPhone: string; businessHours: string;
+    brandColor: string; invoicePrefix: string; quotationValidityDays: number;
+    defaultSftRate: string; autoDeleteDays: number | null; logoUrl: string
+  } | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -325,7 +332,7 @@ export default function CompanySettingsPage() {
         {isEditing && (
           <div className="edit-banner flex items-center gap-2.5 px-4 py-3 rounded-xl" style={{ background: '#FFFBEB', border: '1px solid #FDE68A' }}>
             <span className="text-sm">✏️</span>
-            <p className="text-[11px] font-semibold" style={{ color: '#92400E' }}>You're editing company settings. Changes are not saved until you click "Save Changes".</p>
+            <p className="text-[11px] font-semibold" style={{ color: '#92400E' }}>You&apos;re editing company settings. Changes are not saved until you click &ldquo;Save Changes&rdquo;.</p>
           </div>
         )}
 
@@ -435,7 +442,7 @@ export default function CompanySettingsPage() {
                 <div className="flex items-center justify-between px-4 py-3.5 rounded-xl" style={{ background: '#FAFAF8', border: '1px solid #F0EBE0' }}>
                   <div>
                     <p className="text-xs font-bold text-[#1C1712]">Auto-reassign on approved leave</p>
-                    <p className="text-[10px] text-[#9A8F82] mt-0.5">When a CRE's leave gets approved, prompt admin to reassign automatically</p>
+                    <p className="text-[10px] text-[#9A8F82] mt-0.5">When a CRE&apos;s leave gets approved, prompt admin to reassign automatically</p>
                   </div>
                   <div onClick={toggleAutoReassign}
                     className="toggle-switch w-11 h-6 rounded-full flex items-center px-0.5 flex-shrink-0"

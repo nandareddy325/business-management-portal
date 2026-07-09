@@ -1,23 +1,31 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
 import {
-  Users, TrendingUp, CheckCircle, Clock, IndianRupee,
-  FileText, Calendar, ArrowRight, Building2, Target,
+  Users, TrendingUp, CheckCircle, IndianRupee,
+  FileText, Calendar, ArrowRight, Target,
   PhoneCall, AlertCircle, Briefcase
 } from 'lucide-react'
 
+const industryIcons: Record<string, string> = {
+  'interior-design': '🛋️',
+  'real-estate': '🏠',
+  'hospital': '🏥',
+  'b2b-business': '🤝',
+  'clinics': '🩺',
+}
+
 export default function OverallDashboard() {
   const router = useRouter()
-  const supabase = createBrowserClient(
+  const supabase = useMemo(() => createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  ), [])
 
   const [userName, setUserName] = useState('User')
-  const [companyId, setCompanyId] = useState<string | null>(null)
+  const [, setCompanyId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Stats
@@ -32,14 +40,6 @@ export default function OverallDashboard() {
     totalInvoices: 0, paidAmount: 0, pendingAmount: 0, invoiceCount: 0,
   })
   const [activeIndustries, setActiveIndustries] = useState<{ slug: string; name: string; icon: string }[]>([])
-
-  const industryIcons: Record<string, string> = {
-    'interior-design': '🛋️',
-    'real-estate': '🏠',
-    'hospital': '🏥',
-    'b2b-business': '🤝',
-    'clinics': '🩺',
-  }
 
   useEffect(() => {
     const init = async () => {
@@ -65,10 +65,10 @@ export default function OverallDashboard() {
           .eq('company_id', cid)
           .eq('is_active', true)
         if (ci) {
-          setActiveIndustries(ci.map((c: any) => ({
-            slug: c.industries?.slug,
-            name: c.industries?.name,
-            icon: industryIcons[c.industries?.slug] ?? '🏢',
+          setActiveIndustries((ci as unknown as { industries: { slug: string; name: string } | null }[]).map((c) => ({
+            slug: c.industries?.slug ?? '',
+            name: c.industries?.name ?? '',
+            icon: industryIcons[c.industries?.slug ?? ''] ?? '🏢',
           })).filter(i => i.slug))
         }
 
@@ -135,7 +135,7 @@ export default function OverallDashboard() {
       finally { setLoading(false) }
     }
     init()
-  }, [])
+  }, [router, supabase])
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'

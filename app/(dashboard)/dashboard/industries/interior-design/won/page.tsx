@@ -19,8 +19,8 @@ export default async function WonPage() {
     .eq('pipeline_stage', 'won')
     .order('created_at', { ascending: false })
 
-  const totalRevenue = leads?.reduce((s, l: any) => s + Number(l.budget || 0), 0) ?? 0
-  const thisMonth    = leads?.filter((l: any) => { const d = new Date(l.created_at); const n = new Date(); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear() }).length ?? 0
+  const totalRevenue = leads?.reduce((s, l: { budget?: string | number }) => s + Number(l.budget || 0), 0) ?? 0
+  const thisMonth    = leads?.filter((l: { created_at: string }) => { const d = new Date(l.created_at); const n = new Date(); return d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear() }).length ?? 0
 
   return (
     <div className="space-y-5 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
