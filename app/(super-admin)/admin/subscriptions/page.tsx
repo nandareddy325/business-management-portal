@@ -1,6 +1,7 @@
 // app/(super-admin)/admin/tenants/[id]/page.tsx
 import { createClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import {
   Building2, Users, TrendingUp, ArrowLeft,
   Calendar, Activity, ChevronRight,
@@ -109,12 +110,12 @@ export default async function TenantDetailPage({
       {/* Sticky top bar */}
       <div className="sticky top-0 z-10 border-b border-white/5 bg-[#0A0A0D]/80 backdrop-blur-xl px-4 sm:px-8 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-          <a
+          <Link
             href="/admin/tenants"
             className="flex items-center gap-1.5 text-xs font-semibold text-white/30 hover:text-amber-400 transition-colors"
           >
             <ArrowLeft size={13} /> Back to Tenants
-          </a>
+          </Link>
           <div className="flex items-center gap-2">
             {isLifetime && (
               <span className="flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full ring-1 bg-amber-500/15 text-amber-300 ring-amber-500/30">
@@ -257,7 +258,7 @@ export default async function TenantDetailPage({
             </div>
           ) : (
             <div className="divide-y divide-white/[0.04]">
-              {(recentLeads ?? []).map((lead: any) => (
+              {(recentLeads as { lead_name: string; created_at: string; status?: string }[] ?? []).map((lead) => (
                 <div
                   key={lead.lead_name + lead.created_at}
                   className="flex items-center justify-between px-5 sm:px-6 py-3.5 hover:bg-white/[0.02] transition-colors gap-3"

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,6 +36,22 @@ const SLABEL: Record<string,string> = {
   quotation:'QUOTATION', closing:'CLOSING', won:'WON', lost:'LOST'
 }
 
+
+interface Activity {
+  id: string
+  lead_id: string
+  description: string
+}
+
+interface Lead {
+  id: string
+  pipeline_stage?: string
+  status?: string
+  sitevisit_date?: string
+  quotation_date?: string
+  followup_date?: string
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
@@ -59,11 +74,11 @@ export async function GET(req: NextRequest) {
     const actsRes = await fetch(actsUrl, {
       headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}` }
     })
-    const acts: any[] = actsRes.ok ? await actsRes.json() : []
+    const acts: Activity[] = actsRes.ok ? await actsRes.json() : []
 
     // ── Step 2: Fetch lead data for called leads ──
-    const calledIds = [...new Set(acts.map((a: any) => a.lead_id))] as string[]
-    const ldm: Record<string,any> = {}
+    const calledIds = [...new Set(acts.map((a: Activity) => a.lead_id))] as string[]
+    const ldm: Record<string, Lead> = {}
 
     if (calledIds.length > 0) {
       const BATCH = 200
@@ -73,7 +88,7 @@ export async function GET(req: NextRequest) {
           `${SURL}/rest/v1/leads?id=in.(${b.join(',')})&company_id=eq.${companyId}&select=id,pipeline_stage,status,sitevisit_date,quotation_date,followup_date`,
           { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}` } }
         )
-        if (r.ok) { const d = await r.json(); d.forEach((l: any) => { ldm[l.id]=l }) }
+        if (r.ok) { const d = await r.json(); d.forEach((l: Lead) => { ldm[l.id]=l }) }
       }
     }
 
@@ -95,16 +110,16 @@ export async function GET(req: NextRequest) {
 
     freshCalled.forEach(lid => {
       const sk = toKey(ldm[lid]?.pipeline_stage||'')
-      const la = acts.filter((a: any) => a.lead_id===lid)
+      const la = acts.filter((a: Activity) => a.lead_id===lid)
       if (freshSt[sk]) { freshSt[sk].count++; freshSt[sk].calls+=la.length }
-      la.forEach((a: any) => { const o=parseOutcome(a.description); freshOut[o]=(freshOut[o]||0)+1 })
+      la.forEach((a: Activity) => { const o=parseOutcome(a.description); freshOut[o]=(freshOut[o]||0)+1 })
     })
 
     followupCalled.forEach(lid => {
       const sk = toKey(ldm[lid]?.pipeline_stage||'')
-      const la = acts.filter((a: any) => a.lead_id===lid)
+      const la = acts.filter((a: Activity) => a.lead_id===lid)
       if (followupSt[sk]) { followupSt[sk].count++; followupSt[sk].calls+=la.length }
-      la.forEach((a: any) => {
+      la.forEach((a: Activity) => {
         const o=parseOutcome(a.description)
         followOut[o]=(followOut[o]||0)+1
         fuMap[o]=(fuMap[o]||0)+1
@@ -118,10 +133,10 @@ export async function GET(req: NextRequest) {
       `${SURL}/rest/v1/lead_activities?user_id=eq.${creId}&type=eq.call&created_at=gte.${encodeURIComponent(thirtyAgo.toISOString())}&select=lead_id&limit=2000`,
       { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}` } }
     )
-    const allActsData: any[] = allActsRes.ok ? await allActsRes.json() : []
-    const allLeadIds = [...new Set(allActsData.map((a: any) => a.lead_id))] as string[]
+    const allActsData: { lead_id: string }[] = allActsRes.ok ? await allActsRes.json() : []
+    const allLeadIds = [...new Set(allActsData.map((a: { lead_id: string }) => a.lead_id))] as string[]
 
-    const allLdm: Record<string,any> = { ...ldm }
+    const allLdm: Record<string, Lead> = { ...ldm }
     const missing = allLeadIds.filter(id => !allLdm[id])
     if (missing.length > 0) {
       for (let i=0; i<missing.length; i+=200) {
@@ -130,7 +145,7 @@ export async function GET(req: NextRequest) {
           `${SURL}/rest/v1/leads?id=in.(${b.join(',')})&company_id=eq.${companyId}&select=id,pipeline_stage,status,sitevisit_date,quotation_date,followup_date`,
           { headers: { apikey: SKEY, Authorization: `Bearer ${SKEY}` } }
         )
-        if (r.ok) { const d = await r.json(); d.forEach((l: any) => { allLdm[l.id]=l }) }
+        if (r.ok) { const d = await r.json(); d.forEach((l: Lead) => { allLdm[l.id]=l }) }
       }
     }
 
@@ -139,9 +154,9 @@ export async function GET(req: NextRequest) {
     const now         = new Date()
 
     const verified      = calledIds.filter(id=>(ldm[id]?.status||'').toLowerCase()==='verified').length
-    const uncalledFresh = allLeadData.filter((l: any)=>isFresh(l.pipeline_stage)&&!calledSet.has(l.id)).length
-    const pending       = allLeadData.filter((l: any)=>l.followup_date&&new Date(l.followup_date)<=now&&!calledSet.has(l.id)).length
-    const noFollowup    = allLeadData.filter((l: any)=>isFollowup(l.pipeline_stage)&&!l.followup_date).length
+    const uncalledFresh = allLeadData.filter((l: Lead)=>isFresh(l.pipeline_stage||'')&&!calledSet.has(l.id)).length
+    const pending       = allLeadData.filter((l: Lead)=>l.followup_date&&new Date(l.followup_date)<=now&&!calledSet.has(l.id)).length
+    const noFollowup    = allLeadData.filter((l: Lead)=>isFollowup(l.pipeline_stage||'')&&!l.followup_date).length
 
     const fvd  = freshCalled.filter(id=>{const d=ldm[id]?.sitevisit_date;return d&&new Date(d).toLocaleDateString('en-CA',{timeZone:'Asia/Kolkata'})===istDate}).length
     const fvc  = freshCalled.filter(id=>ldm[id]?.sitevisit_date).length
@@ -150,8 +165,8 @@ export async function GET(req: NextRequest) {
     const fuvc = followupCalled.filter(id=>ldm[id]?.sitevisit_date).length
     const fuq  = followupCalled.filter(id=>ldm[id]?.quotation_date).length
 
-    const freshCalls    = acts.filter((a: any)=>isFresh(ldm[a.lead_id]?.pipeline_stage||'')).length
-    const followupCalls = acts.filter((a: any)=>isFollowup(ldm[a.lead_id]?.pipeline_stage||'')).length
+    const freshCalls    = acts.filter((a: Activity)=>isFresh(ldm[a.lead_id]?.pipeline_stage||'')).length
+    const followupCalls = acts.filter((a: Activity)=>isFollowup(ldm[a.lead_id]?.pipeline_stage||'')).length
 
     return NextResponse.json({
       totalLeads: calledIds.length,

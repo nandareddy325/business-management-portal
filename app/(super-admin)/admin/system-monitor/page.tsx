@@ -31,7 +31,7 @@ export default function SystemMonitor() {
         <p>Last update: {lastUpdate}</p>
         {health?.services && (
           <div className="mt-4">
-            {Object.entries(health.services).map(([service, data]: any) => (
+            {Object.entries(health.services).map(([service, data]: [string, { status: string; responseTime?: number }]) => (
               <div key={service} className="p-2 border-b">
                 <strong>{service}:</strong> {data.status} 
                 {data.responseTime && ` (${data.responseTime}ms)`}
