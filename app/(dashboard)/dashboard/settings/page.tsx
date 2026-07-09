@@ -1,6 +1,5 @@
 ﻿'use client'
-// @ts-nocheck
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const GRADIENTS = [
@@ -36,7 +35,9 @@ function useCountUp(target: number, duration = 700) {
   return value
 }
 
-function StatCard({ label, value, color, icon, delay, sub }: any) {
+function StatCard({ label, value, color, icon, delay, sub }: {
+  label: string; value: number; color: string; icon: string; delay: number; sub?: string
+}) {
   const count = useCountUp(value)
   return (
     <div
@@ -59,12 +60,25 @@ function StatCard({ label, value, color, icon, delay, sub }: any) {
   )
 }
 
+interface User {
+  id: string
+  full_name?: string
+  email?: string
+  role?: string
+  created_at: string
+  designation?: string
+  department?: string
+  permissions?: string[]
+  is_active?: boolean
+  employee_code?: string
+}
+
 export default function UsersSettingsPage() {
   const [loading, setLoading] = useState(true)
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<User[]>([])
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'staff'>('all')
-  const [companyId, setCompanyId] = useState<string | null>(null)
+  const [, setCompanyId] = useState<string | null>(null)
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
 
@@ -90,7 +104,7 @@ export default function UsersSettingsPage() {
           .select('user_id, designation, department, permissions, is_active, employee_code')
           .eq('company_id', profile.company_id)
 
-        const empMap: Record<string, any> = {}
+        const empMap: Record<string, { designation?: string; department?: string; permissions?: string[]; is_active?: boolean; employee_code?: string }> = {}
         employees?.forEach(e => { empMap[e.user_id] = e })
 
         const merged = (profiles || []).map(p => ({
@@ -238,7 +252,7 @@ export default function UsersSettingsPage() {
                 { key: 'admin', label: 'Admins' },
                 { key: 'staff', label: 'Staff' },
               ].map(opt => (
-                <button key={opt.key} onClick={() => setRoleFilter(opt.key as any)}
+                <button key={opt.key} onClick={() => setRoleFilter(opt.key as 'all' | 'admin' | 'staff')}
                   className="seg-btn text-[10px] font-bold px-3 py-1.5 rounded-lg"
                   style={{
                     background: roleFilter === opt.key ? '#1C1712' : 'transparent',

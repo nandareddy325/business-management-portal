@@ -7,13 +7,6 @@ import { AttendanceStatusDropdown } from '@/components/hr/attendance-status-drop
 
 export const dynamic = 'force-dynamic'
 
-const STATUS_CONFIG: Record<string, { bg: string; color: string; label: string; icon: string }> = {
-  present:  { bg: '#F0FDF4', color: '#16A34A', label: 'Present',  icon: '✅' },
-  absent:   { bg: '#FEF2F2', color: '#DC2626', label: 'Absent',   icon: '❌' },
-  half_day: { bg: '#FFFBEB', color: '#D97706', label: 'Half Day', icon: '🕐' },
-  leave:    { bg: '#EFF6FF', color: '#2563EB', label: 'Leave',    icon: '🏖️' },
-}
-
 const avatarColors = [
   { bg: '#EFF6FF', text: '#1D4ED8' },
   { bg: '#F0FDF4', text: '#166534' },
@@ -22,6 +15,23 @@ const avatarColors = [
   { bg: '#FFF1F2', text: '#BE123C' },
   { bg: '#ECFEFF', text: '#0E7490' },
 ]
+
+interface Employee {
+  id: string
+  full_name: string
+  designation?: string
+  department?: string
+}
+
+interface AttendanceRecord {
+  id?: string
+  employee_id: string
+  status?: string
+  check_in?: string
+  check_out?: string
+  notes?: string
+  leave_type?: string
+}
 
 const deptStyles: Record<string, { bg: string; text: string }> = {
   Design:     { bg: '#EFF6FF', text: '#1D4ED8' },
@@ -45,7 +55,7 @@ const fmtIST = (iso: string) =>
     timeZone: 'Asia/Kolkata'
   })
 
-export default async function AttendancePage({ searchParams }: { searchParams: Promise<any> }) {
+export default async function AttendancePage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   const params = await searchParams
   const supabase = await createServerSupabaseClient()
 
@@ -64,19 +74,19 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
     .from('employees').select('id, full_name, designation, department')
     .eq('company_id', profile.company_id).eq('is_active', true).order('full_name')
 
-  const employeeIds = (employees ?? []).map((e: any) => e.id)
+  const employeeIds = (employees ?? []).map((e: { id: string }) => e.id)
 
   const { data: attendance } = employeeIds.length > 0
     ? await supabase.from('attendance').select('*').in('employee_id', employeeIds).eq('attendance_date', today)
     : { data: [] }
 
-  const attendanceMap = Object.fromEntries((attendance ?? []).map((a: any) => [a.employee_id, a]))
+  const attendanceMap: Record<string, AttendanceRecord> = Object.fromEntries((attendance ?? []).map((a: AttendanceRecord) => [a.employee_id, a]))
 
   const totalCount    = employees?.length ?? 0
   const markedCount   = attendance?.length ?? 0
-  const presentCount  = attendance?.filter((a: any) => a.status === 'present').length ?? 0
-  const absentCount   = attendance?.filter((a: any) => a.status === 'absent').length ?? 0
-  const leaveCount    = attendance?.filter((a: any) => ['half_day', 'leave'].includes(a.status)).length ?? 0
+  const presentCount  = attendance?.filter((a: AttendanceRecord) => a.status === 'present').length ?? 0
+  const absentCount   = attendance?.filter((a: AttendanceRecord) => a.status === 'absent').length ?? 0
+  const leaveCount    = attendance?.filter((a: AttendanceRecord) => ['half_day', 'leave'].includes(a.status ?? '')).length ?? 0
   const unmarkedCount = totalCount - markedCount
   const presentPct    = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0
 
@@ -127,7 +137,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
         <div className="rounded-2xl p-4" style={{ background:'#fff', border:'1px solid #E8E2D8', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
           <div className="flex items-center justify-between mb-2">
             <div>
-              <p className="text-xs font-bold text-[#1C1712]">Today's Attendance Progress</p>
+              <p className="text-xs font-bold text-[#1C1712]">Today&apos;s Attendance Progress</p>
               <p className="text-[10px] text-[#9A8F82]">{markedCount} marked · {unmarkedCount} pending</p>
             </div>
             <p className="text-xl font-black" style={{ color: presentPct >= 80 ? '#16A34A' : presentPct >= 50 ? '#D97706' : '#DC2626' }}>
@@ -175,7 +185,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
               </tr>
             </thead>
             <tbody>
-              {(employees ?? []).map((emp: any, i: number) => {
+              {(employees as Employee[] ?? []).map((emp, i: number) => {
                 const rec = attendanceMap[emp.id]
                 const av  = avatarColors[i % avatarColors.length]
                 const dept = deptStyles[emp.department] ?? deptStyles['Other']
@@ -230,7 +240,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
 
         {/* Mobile Cards */}
         <div className="md:hidden divide-y divide-[#F0EBE0]">
-          {(employees ?? []).map((emp: any, i: number) => {
+          {(employees as Employee[] ?? []).map((emp, i: number) => {
             const rec  = attendanceMap[emp.id]
             const av   = avatarColors[i % avatarColors.length]
             const dept = deptStyles[emp.department] ?? deptStyles['Other']
