@@ -1,7 +1,8 @@
-﻿'use client'
+'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { ArrowLeft, Save } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 
@@ -15,19 +16,24 @@ function getErrorMessage(err: unknown, fallback: string): string {
   return fallback
 }
 
+function generateInvoiceNo(): string {
+  const now = new Date()
+  return `INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.floor(Math.random() * 9000) + 1000}`
+}
+
 export default function NewInvoicePage() {
   const router = useRouter()
-  const supabase = createBrowserClient(
+  const supabase = useMemo(() => createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  ), [])
 
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(false)
   const [companyId, setCompanyId] = useState('')
 
-  const [form, setForm] = useState({
-    invoice_no: `INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${Math.floor(Math.random() * 9000) + 1000}`,
+  const [form, setForm] = useState(() => ({
+    invoice_no: generateInvoiceNo(),
     client_id: '',
     client_name: '',
     amount: '',
@@ -35,7 +41,7 @@ export default function NewInvoicePage() {
     status: 'pending',
     due_date: '',
     notes: '',
-  })
+  }))
 
   useEffect(() => {
     const init = async () => {
@@ -49,7 +55,7 @@ export default function NewInvoicePage() {
       }
     }
     init()
-  }, [])
+  }, [supabase])
 
   const handleSubmit = async () => {
     if (!form.amount) { alert('Amount enter cheyyi!'); return }
@@ -82,10 +88,10 @@ export default function NewInvoicePage() {
     <div className="p-4 md:p-6 space-y-6 max-w-2xl mx-auto">
 
       <div>
-        <a href="/dashboard/industries/interior-design/finance/invoices"
+        <Link href="/dashboard/industries/interior-design/finance/invoices"
           className="flex items-center gap-1.5 text-xs font-semibold text-[#9A8F82] hover:text-[#B8860B] transition-colors mb-4">
           <ArrowLeft size={14} /> Back to Invoices
-        </a>
+        </Link>
         <p className="text-xs font-bold tracking-widest uppercase text-[#B8860B] mb-1">Finance</p>
         <h1 className="font-serif text-2xl md:text-3xl text-[#1C1712]">New Invoice</h1>
       </div>

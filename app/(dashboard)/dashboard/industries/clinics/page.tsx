@@ -90,8 +90,10 @@ export default function ClinicsDashboard() {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login?industry=clinics'); return }
-      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
+      setUserEmail(user.email ?? '')
+      const { data: profile } = await supabase.from('profiles').select('full_name, role').eq('id', user.id).single()
       if (profile?.full_name) setUserName(profile.full_name.split(' ')[0])
+      if (profile?.role) setUserRole(profile.role)
     }
     getUser()
   }, [router])
@@ -184,7 +186,7 @@ export default function ClinicsDashboard() {
                   <span className="text-xs font-semibold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full">{todayApts.length} patients</span>
                 </div>
                 <div className="flex flex-col gap-2">
-                  {todayApts.map((apt, i) => (
+                  {todayApts.map((apt) => (
                     <div key={apt.id} className={`flex items-center gap-3 p-3 rounded-xl ${apt.status === 'waiting' ? 'bg-blue-50 border border-blue-200' : 'bg-[#F5F0E8]'}`}>
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 ${apt.status === 'waiting' ? 'bg-blue-600 text-white' : 'bg-[#E2D9C8] text-[#7A6E60]'}`}>{apt.token}</div>
                       <div className="flex-1 min-w-0">

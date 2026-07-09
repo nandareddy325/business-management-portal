@@ -89,8 +89,10 @@ export default function HospitalDashboard() {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login?industry=hospital'); return }
-      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single()
+      setUserEmail(user.email ?? '')
+      const { data: profile } = await supabase.from('profiles').select('full_name, role').eq('id', user.id).single()
       if (profile?.full_name) setUserName(profile.full_name.split(' ')[0])
+      if (profile?.role) setUserRole(profile.role)
     }
     getUser()
   }, [router])

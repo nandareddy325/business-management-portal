@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { FileText, Plus, AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react'
 
 const statusBadge: Record<string, string> = {
@@ -8,6 +9,15 @@ const statusBadge: Record<string, string> = {
   sent:     'bg-blue-100 text-blue-700',
   rejected: 'bg-red-100 text-red-600',
   draft:    'bg-[#F5F0E8] text-[#9A8F82]',
+}
+
+interface Quotation {
+  id: string
+  quotation_no: string
+  amount: number
+  status?: string | null
+  created_at: string
+  client?: { name: string } | null
 }
 
 export default async function QuotationsFinancePage() {
@@ -26,7 +36,7 @@ export default async function QuotationsFinancePage() {
     .eq('company_id', profile.company_id)
     .order('created_at', { ascending: false })
 
-  const all = quotations ?? []
+  const all: Quotation[] = quotations ?? []
   const totalValue    = all.reduce((s, q) => s + Number(q.amount || 0), 0)
   const countApproved = all.filter(q => q.status === 'approved').length
   const countPending  = all.filter(q => q.status === 'pending' || q.status === 'sent').length
@@ -41,11 +51,11 @@ export default async function QuotationsFinancePage() {
           <h1 className="font-serif text-2xl md:text-3xl text-[#1C1712]">Quotations</h1>
           <p className="text-sm text-[#9A8F82] mt-1">{all.length} total quotations</p>
         </div>
-        <a href="/dashboard/industries/interior-design/finance/quotations/new"
+        <Link href="/dashboard/industries/interior-design/finance/quotations/new"
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
           style={{ background: '#1C1712' }}>
           <Plus size={15} /> New Quotation
-        </a>
+        </Link>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -93,7 +103,7 @@ export default async function QuotationsFinancePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F0EBE0]">
-                {all.map((q: any) => (
+                {all.map((q) => (
                   <tr key={q.id} className="hover:bg-[#FFFBEF] transition-colors">
                     <td className="px-5 py-3">
                       <p className="text-sm font-semibold text-[#1C1712]">{q.quotation_no}</p>
@@ -101,7 +111,7 @@ export default async function QuotationsFinancePage() {
                     <td className="px-5 py-3 text-sm text-[#9A8F82]">{q.client?.name ?? '—'}</td>
                     <td className="px-5 py-3 text-sm font-bold text-[#1C1712]">₹{Number(q.amount).toLocaleString('en-IN')}</td>
                     <td className="px-5 py-3">
-                      <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full capitalize ${statusBadge[q.status] ?? statusBadge.draft}`}>
+                      <span className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full capitalize ${statusBadge[q.status ?? 'draft'] ?? statusBadge.draft}`}>
                         {q.status ?? 'draft'}
                       </span>
                     </td>

@@ -1,5 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { TrendingDown, Plus, AlertCircle, Tag } from 'lucide-react'
 
 interface Expense {
@@ -48,11 +49,11 @@ export default async function ExpensesPage() {
           <h1 className="font-serif text-2xl md:text-3xl text-[#1C1712]">Expenses</h1>
           <p className="text-sm text-[#9A8F82] mt-1">{all.length} expense entries</p>
         </div>
-        <a href="/dashboard/industries/interior-design/finance/expenses/new"
+        <Link href="/dashboard/industries/interior-design/finance/expenses/new"
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white"
           style={{ background: '#1C1712' }}>
           <Plus size={15} /> Add Expense
-        </a>
+        </Link>
       </div>
 
       {/* Total Banner */}

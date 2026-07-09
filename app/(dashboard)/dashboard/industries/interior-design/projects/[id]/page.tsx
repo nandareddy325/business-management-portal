@@ -13,14 +13,47 @@ const DEFAULT_MILESTONES = [
   { milestone_name: 'Closing', percentage: 5, sort_order: 5 },
 ]
 
+interface Project {
+  id: string
+  company_id: string
+  client_name?: string
+  project_name?: string
+  phone?: string
+  budget?: number | string
+  deadline?: string
+  house_type?: string
+  location?: string
+  mode_of_work?: string
+  status?: string
+}
+
+interface Milestone {
+  id: string
+  milestone_name: string
+  percentage: number
+  expected_amount?: number
+  received_amount?: number | string
+  sort_order?: number
+  updated_at?: string
+}
+
+interface Payment {
+  id: string
+  milestone_id: string
+  amount: number
+  payment_date: string
+  notes?: string | null
+  project_id?: string | string[]
+}
+
 export default function ProjectDetailPage() {
   const { id } = useParams()
   const router = useRouter()
   const supabase = createClientSupabaseClient()
 
-  const [project, setProject] = useState<any>(null)
-  const [milestones, setMilestones] = useState<any[]>([])
-  const [companyId, setCompanyId] = useState('')
+  const [project, setProject] = useState<Project | null>(null)
+  const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [, setCompanyId] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -39,7 +72,7 @@ export default function ProjectDetailPage() {
   const [downloadingInvoice, setDownloadingInvoice] = useState(false)
 
   // Dated payment entries (single global "+ Add Payment" form)
-  const [payments, setPayments] = useState<any[]>([])
+  const [payments, setPayments] = useState<Payment[]>([])
   const [showAddPayment, setShowAddPayment] = useState(false)
   const [paymentDate, setPaymentDate] = useState('')
   const [paymentAmount, setPaymentAmount] = useState('')
@@ -229,7 +262,7 @@ export default function ProjectDetailPage() {
       }
 
       showToast('Invoice downloaded!')
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
       showToast('Failed to generate invoice', 'error')
     }
@@ -306,17 +339,13 @@ export default function ProjectDetailPage() {
       setPayments(pays ?? [])
     }
     load()
-  }, [id])
-
-  // If a milestone has dated payment entries logged, those are the source of
-  // truth for its received amount; otherwise fall back to the manually
-  // entered received_amount field.
-  const getMilestoneReceived = (m: any) => {
+  }, [id, supabase])
+  const getMilestoneReceived = (m: Milestone) => {
     const logged = payments.filter(p => p.milestone_id === m.id)
     if (logged.length > 0) return logged.reduce((s, p) => s + Number(p.amount || 0), 0)
     return Number(m.received_amount || 0)
   }
-  const getMilestonePayments = (m: any) =>
+  const getMilestonePayments = (m: Milestone) =>
     payments.filter(p => p.milestone_id === m.id).sort((a, b) => a.payment_date.localeCompare(b.payment_date))
 
   const totalExpected = milestones.reduce((s, m) => s + Number(m.expected_amount || 0), 0)
@@ -389,7 +418,7 @@ export default function ProjectDetailPage() {
     }
 
     setMilestones(recalculated)
-    setProject((p: any) => ({ ...p, budget: newBudget }))
+    setProject((p) => p ? { ...p, budget: newBudget } : p)
     setBudgetSaving(false)
     setEditingBudget(false)
     showToast('Budget updated to ' + fmt(newBudget))
@@ -426,7 +455,7 @@ export default function ProjectDetailPage() {
     const sorted = [...milestones].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))
 
     let remaining = amt
-    const rowsToInsert: any[] = []
+    const rowsToInsert: Omit<Payment, 'id'>[] = []
     const milestoneNewTotals: Record<string, number> = {}
 
     for (const m of sorted) {

@@ -148,7 +148,7 @@ export default function InvoiceDetailPage() {
       setLoading(false)
     }
     load()
-  }, [id])
+  }, [id, supabase])
 
   const lineTotal = lineItems.reduce((s, i) => s + (i.qty * i.rate), 0)
 

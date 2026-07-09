@@ -5,6 +5,18 @@ import { NewLeadsTable } from '@/components/interior/new-leads-table'
 
 export const dynamic = 'force-dynamic'
 
+interface Lead {
+  id: string
+  lead_name: string
+  phone?: string
+  email?: string
+  source?: string
+  budget?: string
+  city?: string
+  interest?: string
+  created_at: string
+}
+
 export default async function NewLeadsPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -24,7 +36,7 @@ export default async function NewLeadsPage() {
 
   const today = new Date().toDateString()
   const todayCount = leads?.filter(l => new Date(l.created_at).toDateString() === today).length ?? 0
-  const withBudget = leads?.filter((l: any) => l.budget).length ?? 0
+  const withBudget = (leads as Lead[] | null)?.filter((l) => l.budget).length ?? 0
 
   return (
     <div className="space-y-5 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>

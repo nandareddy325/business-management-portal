@@ -22,6 +22,18 @@ const SOURCE_CONFIG: Record<string, { bg: string; color: string; icon: string }>
 const ini = (name: string) =>
   name?.split(' ').map((x: string) => x[0]).join('').slice(0, 2).toUpperCase() || '?'
 
+interface Lead {
+  id: string
+  lead_name: string
+  phone?: string
+  source?: string
+  budget?: string | number
+  city?: string
+  notes?: string
+  created_at: string
+  property_type?: string
+}
+
 export default async function LostPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -40,17 +52,17 @@ export default async function LostPage() {
     .order('created_at', { ascending: false })
 
   // Stats
-  const thisMonth = leads?.filter((l: any) => {
+  const thisMonth = (leads as Lead[] | null)?.filter((l) => {
     const d = new Date(l.created_at)
     const now = new Date()
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
   }).length ?? 0
 
-  const lostBudget = leads?.reduce((s, l: any) => s + Number(l.budget || 0), 0) ?? 0
+  const lostBudget = (leads as Lead[] | null)?.reduce((s, l) => s + Number(l.budget || 0), 0) ?? 0
 
   // Source breakdown
-  const sourceCounts: Record<string, number> = {}
-  leads?.forEach((l: any) => {
+  const sourceCounts: Record<string, number> = {};
+  (leads as Lead[] | null)?.forEach((l) => {
     const src = l.source || 'Other'
     sourceCounts[src] = (sourceCounts[src] || 0) + 1
   })
@@ -148,7 +160,7 @@ export default async function LostPage() {
                 </tr>
               </thead>
               <tbody>
-                {leads.map((l: any, i: number) => {
+                {(leads as Lead[]).map((l, i: number) => {
                   const g   = GRADIENTS[i % GRADIENTS.length]
                   const src = SOURCE_CONFIG[l.source] ?? SOURCE_CONFIG['Other']
                   return (
@@ -209,7 +221,7 @@ export default async function LostPage() {
 
           {/* Mobile Cards */}
           <div className="md:hidden divide-y divide-[#F0EBE0]">
-            {leads.map((l: any, i: number) => {
+            {(leads as Lead[]).map((l, i: number) => {
               const g   = GRADIENTS[i % GRADIENTS.length]
               const src = SOURCE_CONFIG[l.source] ?? SOURCE_CONFIG['Other']
               return (
