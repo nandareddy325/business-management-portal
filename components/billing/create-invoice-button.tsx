@@ -130,7 +130,7 @@ export function CreateInvoiceButton({ companyId }: Props) {
 
               <div>
                 <label className="text-xs text-[#7A6E60] mb-1 block font-medium">Notes</label>
-                <textarea name="notes" value={form.notes} onChange={handleChange as any}
+                <textarea name="notes" value={form.notes} onChange={handleChange}
                   placeholder="Invoice notes or description..."
                   rows={2}
                   className="w-full bg-white border border-[#DDD5C4] rounded-xl px-3 py-2.5 text-sm text-[#1C1712] placeholder-[#C4BAB0] outline-none focus:border-[#B8860B] transition-colors resize-none" />

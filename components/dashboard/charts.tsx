@@ -80,11 +80,11 @@ export function RevenueChart() {
       const expensesByMonth: Record<string, number> = {}
       months.forEach(m => { revenueByMonth[m.key] = 0; expensesByMonth[m.key] = 0 })
 
-      ;(invoices || []).forEach((inv: any) => {
+      ;(invoices || []).forEach((inv: { invoice_date?: string; total_amount?: number }) => {
         const key = inv.invoice_date?.slice(0, 7)
         if (key && revenueByMonth[key] !== undefined) revenueByMonth[key] += Number(inv.total_amount) || 0
       })
-      ;(expenses || []).forEach((exp: any) => {
+      ;(expenses || []).forEach((exp: { created_at?: string; amount?: number }) => {
         const key = exp.created_at?.slice(0, 7)
         if (key && expensesByMonth[key] !== undefined) expensesByMonth[key] += Number(exp.amount) || 0
       })
@@ -155,7 +155,7 @@ export function ConversionChart() {
       const { data: leads } = await supabase.from('leads').select('pipeline_stage').eq('company_id', profile.company_id)
       const total = leads?.length || 0
       const counts: Record<string, number> = {}
-      ;(leads || []).forEach((l: any) => {
+      ;(leads || []).forEach((l: { pipeline_stage?: string }) => {
         const stage = l.pipeline_stage || 'new'
         counts[stage] = (counts[stage] || 0) + 1
       })

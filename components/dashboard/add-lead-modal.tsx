@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import {
   X, Plus, Trash2, User, Users, ChevronDown,
   Upload, FileSpreadsheet, AlertCircle, CheckCircle2,
@@ -224,9 +224,9 @@ export function AddLeadModal({ isOpen, onClose, onLeadsAdded, industry = 'genera
           .in('phone', phonesInBatch)
 
         if (existingInDB && existingInDB.length > 0) {
-          const dupPhones = new Set(existingInDB.map((e: any) => String(e.phone).trim()))
+          const dupPhones = new Set(existingInDB.map((e: { phone: string }) => String(e.phone).trim()))
           setDbDuplicatePhones(dupPhones)
-          const dupList = existingInDB.map((e: any) => `${e.phone} (${e.lead_name})`).join(', ')
+          const dupList = existingInDB.map((e: { phone: string; lead_name: string }) => `${e.phone} (${e.lead_name})`).join(', ')
           setErrors([`⚠ Already exists in DB: ${dupList}`])
           setLoading(false); return
         }

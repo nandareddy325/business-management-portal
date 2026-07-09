@@ -86,7 +86,7 @@ export function AttendanceMini({ employeeId }: { employeeId?: string }) {
           .lte('date', endStr)
 
         const byDate: Record<string, DBStatus> = {}
-        ;(records || []).forEach((r: any) => { byDate[r.date] = r.status })
+        ;(records || []).forEach((r: { date: string; status: DBStatus }) => { byDate[r.date] = r.status })
 
         const arr: DisplayCode[] = []
         let p = 0, a = 0, l = 0

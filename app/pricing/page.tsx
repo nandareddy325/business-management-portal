@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 // ── DATA ──────────────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ function WhatIncludedSection() {
         <div className="text-center mb-10 md:mb-14">
           <p className="text-xs font-bold text-[#B8860B] uppercase tracking-[4px] mb-3">Every Plan Includes</p>
           <h2 className="font-serif text-3xl md:text-4xl text-[#1C1712] mb-3">
-            No hidden features. <em className="italic font-normal text-[#B8860B]">Everything's in.</em>
+            No hidden features. <em className="italic font-normal text-[#B8860B]">Everything&apos;s in.</em>
           </h2>
           <p className="text-[#7A6E60] text-sm md:text-base max-w-md mx-auto">
             One plan, all features. No Starter vs Pro feature gates. Everything below is included from day one.
@@ -206,11 +206,26 @@ export default function GKCRMPricing() {
     return s;
   });
 
-  const [summary, setSummary] = useState<{
-    rows: { plan: typeof PLANS[0]; industries: { id: string; label: string }[]; base: number; discount: number; final: number }[];
-    total: number;
-    savings: number;
-  }>({ rows: [], total: 0, savings: 0 });
+  const summary = useMemo(() => {
+    const groups: Record<string, { id: string; label: string }[]> = {};
+    PLANS.forEach((p) => (groups[p.id] = []));
+    INDUSTRIES.forEach((ind) => {
+      const s = state[ind.id];
+      if (s.active && s.plan) groups[s.plan].push({ id: ind.id, label: ind.label });
+    });
+    const rows: { plan: typeof PLANS[0]; industries: { id: string; label: string }[]; base: number; discount: number; final: number }[] = [];
+    let total = 0, savings = 0;
+    PLANS.forEach((p) => {
+      const group = groups[p.id];
+      if (!group.length) return;
+      const base = p.price * group.length;
+      const discount = group.length > 1 ? Math.round(base * BUNDLE_DISCOUNT) : 0;
+      savings += discount;
+      total += base - discount;
+      rows.push({ plan: p, industries: group, base, discount, final: base - discount });
+    });
+    return { rows, total, savings };
+  }, [state]);
 
   const [showSummary, setShowSummary] = useState(false);
 
@@ -226,27 +241,6 @@ export default function GKCRMPricing() {
   function selectPlan(indId: string, planId: string) {
     setState((prev) => ({ ...prev, [indId]: { active: true, plan: planId } }));
   }
-
-  useEffect(() => {
-    const groups: Record<string, { id: string; label: string }[]> = {};
-    PLANS.forEach((p) => (groups[p.id] = []));
-    INDUSTRIES.forEach((ind) => {
-      const s = state[ind.id];
-      if (s.active && s.plan) groups[s.plan].push({ id: ind.id, label: ind.label });
-    });
-    const rows: typeof summary.rows = [];
-    let total = 0, savings = 0;
-    PLANS.forEach((p) => {
-      const group = groups[p.id];
-      if (!group.length) return;
-      const base = p.price * group.length;
-      const discount = group.length > 1 ? Math.round(base * BUNDLE_DISCOUNT) : 0;
-      savings += discount;
-      total += base - discount;
-      rows.push({ plan: p, industries: group, base, discount, final: base - discount });
-    });
-    setSummary({ rows, total, savings });
-  }, [state]);
 
   function handleStartTrial() {
     router.push("/signup?industry=interior&plan=pro");
@@ -376,8 +370,6 @@ export default function GKCRMPricing() {
                 {INDUSTRIES.map((ind) => {
                   const s = state[ind.id];
                   const locked = ind.locked;
-                  const plan = PLANS[0];
-
                   return (
                     <div key={ind.id}
                       className={`border rounded-2xl transition-all duration-300 overflow-hidden ${
@@ -544,7 +536,7 @@ export default function GKCRMPricing() {
             <div className="relative flex flex-col md:flex-row items-center justify-between gap-6">
               <div>
                 <p className="text-xs font-bold text-[#B8860B] uppercase tracking-[4px] mb-2">Questions?</p>
-                <h3 className="font-serif text-2xl md:text-3xl text-white mb-2">We're here before you sign up</h3>
+                <h3 className="font-serif text-2xl md:text-3xl text-white mb-2">We&apos;re here before you sign up</h3>
                 <p className="text-sm text-white/50">Talk to our team — no sales pitch, just honest answers.</p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 flex-shrink-0">
