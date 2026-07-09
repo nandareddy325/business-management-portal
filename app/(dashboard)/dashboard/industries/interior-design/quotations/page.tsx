@@ -5,6 +5,19 @@ import { QuotationsClient } from '@/components/interior/quotations-client'
 
 export const dynamic = 'force-dynamic'
 
+interface Lead {
+  id: string
+  lead_name: string
+  phone?: string
+  email?: string
+  source?: string
+  budget?: string
+  city?: string
+  interest?: string
+  notes?: string
+  created_at: string
+}
+
 export default async function QuotationsPage() {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -19,7 +32,7 @@ export default async function QuotationsPage() {
     .eq('pipeline_stage', 'quotation')
     .order('created_at', { ascending: false })
 
-  const totalBudget = leads?.reduce((s, l: any) => s + Number(l.budget || 0), 0) ?? 0
+  const totalBudget = (leads as Lead[] | null)?.reduce((s, l) => s + Number(l.budget || 0), 0) ?? 0
 
   return (
     <div className="space-y-5 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>

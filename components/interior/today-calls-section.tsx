@@ -380,7 +380,7 @@ export function TodayCallsSection({
         return
       }
 
-      let query = supabase
+      const query = supabase
         .from('leads')
         .select('id, lead_name, phone, city, budget, pipeline_stage, sitevisit_status, created_at')
         .eq('company_id', companyId)

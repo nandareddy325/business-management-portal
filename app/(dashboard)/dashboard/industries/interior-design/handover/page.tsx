@@ -5,6 +5,19 @@ import { Phone } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
+interface Lead {
+  id: string
+  lead_name: string
+  phone: string
+  city?: string
+  budget?: string
+  property_type?: string
+  pipeline_stage?: string
+  handover_date: string
+  interest?: string
+  created_at: string
+}
+
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 const MONTH_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
@@ -40,7 +53,7 @@ export default async function HandoverPage() {
   const allLeads = leads ?? []
 
   // Group by month-year
-  const grouped: Record<string, { key: string; month: number; year: number; leads: any[] }> = {}
+  const grouped: Record<string, { key: string; month: number; year: number; leads: Lead[] }> = {}
 
   allLeads.forEach(lead => {
     const d = new Date(lead.handover_date)
@@ -130,7 +143,7 @@ export default async function HandoverPage() {
         {/* Month summary chips */}
         {sortedGroups.length > 0 && (
           <div className="fu2 flex flex-wrap gap-2">
-            {sortedGroups.map((grp, i) => {
+            {sortedGroups.map((grp) => {
               const color = MONTH_COLORS[grp.month]
               const isThisMonth = grp.month === thisMonth && grp.year === thisYear
               return (
@@ -153,7 +166,7 @@ export default async function HandoverPage() {
           <div className="fu3 rounded-3xl p-16 text-center" style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.05)' }}>
             <div className="text-5xl mb-4">📦</div>
             <p className="text-base font-black" style={{ color:'#C4BAB0' }}>No handover dates set yet</p>
-            <p className="text-sm mt-1" style={{ color:'#D4CEC8' }}>Open a lead → click "Handover Date" button</p>
+            <p className="text-sm mt-1" style={{ color:'#D4CEC8' }}>Open a lead → click &ldquo;Handover Date&rdquo; button</p>
           </div>
         )}
 

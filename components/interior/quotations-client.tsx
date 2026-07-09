@@ -91,7 +91,7 @@ export function QuotationsClient({ leads, count, totalBudget }: { leads: Lead[];
             <span className="text-[10px] font-bold text-[#9A8F82]">Showing</span>
             <span className="text-[10px] font-black text-[#1C1712]">{filteredLeads.length}</span>
             <span className="text-[10px] text-[#9A8F82]">of {count} leads</span>
-            {searchQuery && <span className="text-[10px] bg-[#F5F0E8] text-[#7A6E60] px-2 py-0.5 rounded-full border border-[#E2D9C8]">🔍 "{searchQuery}"</span>}
+            {searchQuery && <span className="text-[10px] bg-[#F5F0E8] text-[#7A6E60] px-2 py-0.5 rounded-full border border-[#E2D9C8]">🔍 &ldquo;{searchQuery}&rdquo;</span>}
             {dateActive && fromDate && <span className="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">📅 {fromDate} → {toDate || 'today'}</span>}
           </div>
         )}

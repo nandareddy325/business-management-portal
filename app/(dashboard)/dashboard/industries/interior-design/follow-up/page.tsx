@@ -7,6 +7,35 @@ import { fetchAllLeads } from '@/lib/fetch-all-leads'
 
 export const dynamic = 'force-dynamic'
 
+interface Lead {
+  id: string
+  lead_name: string
+  phone?: string
+  email?: string
+  source?: string
+  budget?: string
+  city?: string
+  interest?: string
+  notes?: string | null
+  created_at: string
+  pipeline_stage?: string | null
+  property_type?: string
+  company_id: string
+  industry: string
+}
+
+interface LeadWithDate extends Lead {
+  date: string | null
+}
+
+interface Activity {
+  id: string
+  lead_id: string
+  description: string
+  type: string
+  created_at: string
+}
+
 // Extract date from description like "📅 04 Jul 2026, 11:00 am"
 const extractDateFromDescription = (desc: string): string | null => {
   if (!desc) return null
@@ -44,7 +73,7 @@ export default async function FollowUpPage() {
 
   // Paginated fetch — bypasses Supabase's default 1000-row cap
   // (confirmed via SQL: total leads = 1079, not 1000).
-  const allLeads = await fetchAllLeads(
+  const allLeads = await fetchAllLeads<Lead>(
     supabase,
     profile.company_id,
     'interior-design',
@@ -67,7 +96,7 @@ export default async function FollowUpPage() {
     .order('created_at', { ascending: false })
 
   const leadActivityMap = new Map<string, string>()
-  activities?.forEach((a: any) => {
+  ;(activities as Activity[] | null)?.forEach((a) => {
     if (!leadActivityMap.has(a.lead_id)) {
       const dateStr = extractDateFromDescription(a.description)
       if (dateStr) {
@@ -80,12 +109,12 @@ export default async function FollowUpPage() {
   // Enrich ALL Follow Up leads with a date where we have one — leads
   // without a logged date keep date: null and show up in the
   // "No Date Set" section inside FollowUpClient instead of vanishing.
-  const leadsWithDates = followUpLeads
-    .map((l: any) => ({
+  const leadsWithDates: LeadWithDate[] = followUpLeads
+    .map((l): LeadWithDate => ({
       ...l,
       date: leadActivityMap.get(l.id) || null,
     }))
-    .sort((a: any, b: any) => {
+    .sort((a, b) => {
       if (!a.date && !b.date) return 0
       if (!a.date) return 1
       if (!b.date) return -1

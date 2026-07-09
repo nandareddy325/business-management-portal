@@ -1,7 +1,6 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
 
 const GRADIENTS = [
   ['#7C3AED', '#4F46E5'], ['#0891B2', '#0E7490'], ['#059669', '#047857'],
@@ -29,8 +28,25 @@ const ini = (name: string) =>
 
 const LEAD_BASE = '/dashboard/industries/interior-design/leads'
 
+interface TableLead {
+  id: string
+  lead_name: string
+  phone?: string
+  email?: string
+  source?: string
+  budget?: string | number
+  city?: string
+  interest?: string
+  notes?: string
+  date?: string
+  created_at: string
+  property_type?: string
+  sitevisit_date?: string
+  quotation_date?: string
+}
+
 interface Props {
-  leads: any[]
+  leads: TableLead[]
   count: number
   columns?: string[]
   emptyIcon?: string
@@ -50,7 +66,7 @@ export function LeadTable({
 }: Props) {
   const router = useRouter()
 
-  const budget = (l: any) => {
+  const budget = (l: TableLead) => {
     const b = parseFloat(String(l.budget || '').replace(/[^0-9.]/g, ''))
     return l.budget ? (isNaN(b) ? l.budget : '₹' + b.toLocaleString('en-IN')) : null
   }
@@ -84,7 +100,7 @@ export function LeadTable({
             </tr>
           </thead>
           <tbody>
-            {leads.map((l: any, i: number) => {
+            {leads.map((l: TableLead, i: number) => {
               const g   = GRADIENTS[i % GRADIENTS.length]
               const src = SOURCE_CONFIG[l.source] ?? SOURCE_CONFIG['Other']
               const int = INTEREST_CONFIG[l.interest] ?? { bg: '#F5F0E8', color: '#7A6E60' }
@@ -96,7 +112,7 @@ export function LeadTable({
                   className="border-b border-[#F7F5F1] last:border-0 hover:bg-[#FDFAF8] transition-colors cursor-pointer">
                   
                   {/* Render columns in the EXACT order they appear in the columns array */}
-                  {columns.map((col, colIdx) => {
+                  {columns.map((col) => {
                     // # Column
                     if (col === '#') {
                       return (
@@ -278,7 +294,7 @@ export function LeadTable({
 
       {/* Mobile Cards */}
       <div className="md:hidden divide-y divide-[#F0EBE0]">
-        {leads.map((l: any, i: number) => {
+        {leads.map((l: TableLead, i: number) => {
           const g   = GRADIENTS[i % GRADIENTS.length]
           const src = SOURCE_CONFIG[l.source] ?? SOURCE_CONFIG['Other']
           const int = INTEREST_CONFIG[l.interest] ?? { bg: '#F5F0E8', color: '#7A6E60' }
