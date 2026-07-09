@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Native mobile app scaffolding/build output — not our source code
+    "android/**",
+    "ios/**",
   ]),
   {
     rules: {
