@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { Plus, X, Copy, Check, AlertTriangle, Loader2 } from 'lucide-react'
 import { generateAPIKeyAction } from '@/app/(super-admin)/admin/api-keys/actions'
 
 export function GenerateKeyModal() {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [name, setName] = useState('')
@@ -43,6 +45,7 @@ export function GenerateKeyModal() {
       return
     }
     setPlaintextKey(result.plaintextKey)
+    router.refresh()
   }
 
   async function handleCopy() {

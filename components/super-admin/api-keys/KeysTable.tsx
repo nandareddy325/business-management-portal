@@ -2,6 +2,7 @@
 // ============================================================================
 'use client'
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { APIKey } from '@/types/admin'
 import { Copy, Check, Trash2, Ban, Loader2 } from 'lucide-react'
 import { revokeAPIKeyAction, deleteAPIKeyAction } from '@/app/(super-admin)/admin/api-keys/actions'
@@ -12,6 +13,7 @@ interface KeysTableProps {
 }
 
 export function KeysTable({ keys, loading }: KeysTableProps) {
+  const router = useRouter()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -38,6 +40,7 @@ export function KeysTable({ keys, loading }: KeysTableProps) {
       const result = await revokeAPIKeyAction(key.id, key.name)
       setPendingId(null)
       if (result.error) setError(result.error)
+      else router.refresh()
     })
   }
 
@@ -49,6 +52,7 @@ export function KeysTable({ keys, loading }: KeysTableProps) {
       const result = await deleteAPIKeyAction(key.id, key.name)
       setPendingId(null)
       if (result.error) setError(result.error)
+      else router.refresh()
     })
   }
 
