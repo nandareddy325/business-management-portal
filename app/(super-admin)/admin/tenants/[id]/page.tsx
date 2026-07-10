@@ -7,7 +7,7 @@ import {
   Building2, Users, TrendingUp, ArrowLeft,
   CreditCard, CheckCircle2, XCircle, Crown, RefreshCw,
   Brain, Zap, Target, BarChart3, Sparkles,
-  Lock, Server, Clock, DollarSign, Calendar
+  Lock, Server, Clock, DollarSign, Calendar, Receipt
 } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useParams } from 'next/navigation'
@@ -20,9 +20,13 @@ interface Company {
   plan: string
   is_active: boolean
   created_at: string
-  plan_status?: string
-  trial_ends_at?: string
   owner_email?: string
+}
+
+interface Subscription {
+  status: string
+  activated_at: string | null
+  total_amount: number
 }
 
 export default function TenantDetailPage() {
@@ -30,6 +34,7 @@ export default function TenantDetailPage() {
   const id = params.id as string
 
   const [company, setCompany] = useState<Company | null>(null)
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [totalLeads, setTotalLeads] = useState(0)
   const [totalUsers, setTotalUsers] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -44,7 +49,6 @@ export default function TenantDetailPage() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      // Fetch company
       const { data: companyData } = await supabase
         .from('companies')
         .select('*')
@@ -53,7 +57,14 @@ export default function TenantDetailPage() {
 
       if (companyData) setCompany(companyData)
 
-      // Fetch leads count ONLY
+      const { data: subData } = await supabase
+        .from('company_subscriptions')
+        .select('status, activated_at, total_amount')
+        .eq('company_id', id)
+        .single()
+
+      if (subData) setSubscription(subData)
+
       const { count: leadsCount } = await supabase
         .from('leads')
         .select('*', { count: 'exact', head: true })
@@ -61,7 +72,6 @@ export default function TenantDetailPage() {
 
       setTotalLeads(leadsCount || 0)
 
-      // Fetch users count ONLY
       const { count: usersCount } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
@@ -97,8 +107,8 @@ export default function TenantDetailPage() {
   }
 
   const isLifetime = company?.plan === 'lifetime'
+  const isSubActive = subscription?.status === 'active'
 
-  // AI-Calculated Metrics (Summary only, no detailed data access)
   const healthScore = Math.min(100, Math.round((totalLeads * 10 + totalUsers * 15) / (totalLeads + totalUsers || 1)))
   const storageUsage = Math.round((totalLeads * 0.5) % 100)
   const apiUsage = Math.round((totalUsers * 15) % 100)
@@ -147,10 +157,20 @@ export default function TenantDetailPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#F5F0E8]">
+    <div className="min-h-screen bg-[#F5F0E8]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap');
+        .serif-font { font-family: 'DM Serif Display', serif; }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        .gold-shimmer {
+          background: linear-gradient(90deg, #B8860B 0%, #E8C547 50%, #B8860B 100%);
+          background-size: 200% auto;
+          animation: shimmer 3s linear infinite;
+        }
+      `}</style>
 
       {/* Sticky Header */}
-      <div className="sticky top-0 z-10 border-b border-[#E8E2D8] bg-[#F5F0E8]/80 backdrop-blur-xl px-4 sm:px-8 py-4">
+      <div className="sticky top-0 z-10 border-b border-[#E8E2D8] bg-[#F5F0E8]/85 backdrop-blur-xl px-4 sm:px-8 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <Link href="/admin/tenants" className="flex items-center gap-1.5 text-xs font-semibold text-[#9A8F82] hover:text-[#B8860B] transition-colors">
             <ArrowLeft size={13} /> Back to Tenants
@@ -172,28 +192,35 @@ export default function TenantDetailPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 space-y-8">
 
-        {/* Hero Section */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-              isLifetime ? 'bg-amber-100' : 'bg-[#F5F0E8] border border-[#E8E2D8]'
-            }`}>
-              {isLifetime ? <Crown size={24} className="text-amber-700" /> : <Building2 size={24} className="text-[#B8860B]" />}
+        {/* ── HERO — Dark Premium Banner ─────────────────────────── */}
+        <div className="relative rounded-3xl overflow-hidden p-8"
+          style={{ background: 'linear-gradient(135deg, #1C1712 0%, #2a1f14 45%, #1C1712 100%)' }}>
+          <div className="absolute inset-0 opacity-[0.06]" style={{
+            backgroundImage: 'radial-gradient(circle at 15% 20%, #B8860B, transparent 45%), radial-gradient(circle at 85% 80%, #B8860B, transparent 45%)',
+          }} />
+          <div className="relative flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4">
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 border ${
+                isLifetime ? 'bg-amber-500/10 border-amber-500/30' : 'bg-white/5 border-white/10'
+              }`}>
+                {isLifetime ? <Crown size={26} className="text-amber-400" /> : <Building2 size={26} className="text-[#E8C547]" />}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[9px] font-bold tracking-[3px] uppercase text-[#B8860B] mb-1.5">Tenant Profile</p>
+                <h1 className="serif-font text-3xl text-white leading-tight">{company?.name}</h1>
+                <p className="text-sm text-white/40 mt-1">{company?.email}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-[9px] font-bold tracking-widest uppercase text-[#B8860B] mb-1">Tenant</p>
-              <h1 className="text-2xl font-bold text-[#1C1712]">{company?.name}</h1>
-              <p className="text-sm text-[#9A8F82]">{company?.email}</p>
-            </div>
+            <button
+              onClick={fetchData}
+              disabled={loading}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 hover:scale-[1.03] active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg, #B8860B, #D97706)', boxShadow: '0 8px 24px rgba(184,134,11,0.35)', color: '#fff' }}
+            >
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              Refresh
+            </button>
           </div>
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#B8860B] hover:bg-[#A0760A] text-white rounded-xl font-semibold text-sm transition-all disabled:opacity-50"
-          >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            Refresh
-          </button>
         </div>
 
         {/* Main Stats Grid */}
@@ -201,15 +228,17 @@ export default function TenantDetailPage() {
           {statCards.map(card => {
             const Icon = card.icon
             return (
-              <div key={card.label} className="bg-white border border-[#E8E2D8] rounded-2xl p-5 hover:shadow-md transition-shadow">
+              <div key={card.label}
+                className="bg-white border border-[#E8E2D8] rounded-2xl p-5 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-900/5 transition-all duration-300 group">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#F5F0E8] flex items-center justify-center">
-                    <Icon size={16} style={{ color: card.color }} />
+                  <div className="w-10 h-10 rounded-xl bg-[#F5F0E8] flex items-center justify-center group-hover:bg-amber-50 transition-colors">
+                    <Icon size={17} style={{ color: card.color }} />
                   </div>
                   <span className={`text-[10px] font-bold ${card.trendColor}`}>{card.trend}</span>
                 </div>
                 <p className="text-2xl font-bold text-[#1C1712]">{card.value}</p>
                 <p className="text-xs text-[#9A8F82] mt-1">{card.label}</p>
+                <div className="mt-3 h-0.5 w-0 bg-[#B8860B] group-hover:w-full transition-all duration-500 rounded-full" />
               </div>
             )
           })}
@@ -292,28 +321,61 @@ export default function TenantDetailPage() {
             </div>
           </div>
 
-          {/* Billing & Subscription */}
-          <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden">
-            <div className="flex items-center gap-2.5 px-5 py-4 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
-              <DollarSign size={13} className="text-[#B8860B]" />
-              <h3 className="text-sm font-bold text-[#1C1712]">Subscription Info</h3>
+          {/* ── Subscription Info — Premium Billing Card ──────────── */}
+          <div className="rounded-2xl overflow-hidden border border-[#E8E2D8]"
+            style={{ background: 'linear-gradient(160deg, #1C1712 0%, #241b12 100%)' }}>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-[#B8860B]/15 flex items-center justify-center">
+                  <Receipt size={13} className="text-[#E8C547]" />
+                </div>
+                <h3 className="text-sm font-bold text-white/90">Subscription &amp; Billing</h3>
+              </div>
+              <span className={`flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                isSubActive ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' : 'bg-white/10 text-white/40 border border-white/10'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${isSubActive ? 'bg-emerald-400 animate-pulse' : 'bg-white/30'}`} />
+                {subscription?.status
+                  ? subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)
+                  : 'No Subscription'}
+              </span>
             </div>
-            <div className="space-y-4 p-5">
+
+            {/* Amount Hero */}
+            <div className="px-5 pt-5 pb-4">
+              <p className="text-[10px] text-white/30 uppercase tracking-[2px] font-bold mb-1">Amount Paid</p>
+              <p className="serif-font text-4xl gold-shimmer bg-clip-text text-transparent">
+                {subscription?.total_amount ? `₹${subscription.total_amount.toLocaleString('en-IN')}` : '₹0'}
+              </p>
+              <p className="text-[11px] text-white/25 mt-1">
+                {subscription?.activated_at
+                  ? `Activated on ${new Date(subscription.activated_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                  : 'Not yet activated'}
+              </p>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-white/8 mx-5" />
+
+            {/* Detail rows */}
+            <div className="p-5 space-y-3.5">
               {[
-                { label: 'Plan Status', value: company?.plan_status ?? '—', icon: CreditCard },
-                { label: 'Trial Ends', value: company?.trial_ends_at ? new Date(company?.trial_ends_at).toLocaleDateString('en-IN') : 'N/A', icon: Calendar },
                 { label: 'Data Points', value: `${dataPoints}`, icon: BarChart3 },
                 { label: 'Users Count', value: `${totalUsers}`, icon: Users },
-                { label: 'Status', value: company?.is_active ? '✓ Active' : '✗ Inactive', icon: CheckCircle2 },
+                { label: 'Account Status', value: company?.is_active ? 'Active' : 'Inactive', icon: CheckCircle2, accent: company?.is_active },
               ].map(item => {
                 const Icon = item.icon
                 return (
-                  <div key={item.label} className="flex items-start gap-3">
-                    <Icon size={13} className="text-[#D3CBBB] mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-[10px] text-[#9A8F82] font-semibold uppercase tracking-wide">{item.label}</p>
-                      <p className="text-sm font-semibold text-[#1C1712] mt-0.5">{item.value}</p>
+                  <div key={item.label} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <Icon size={13} className="text-white/25" />
+                      <p className="text-xs text-white/50">{item.label}</p>
                     </div>
+                    <p className={`text-xs font-bold ${item.accent === false ? 'text-red-400' : 'text-white/85'}`}>
+                      {item.value}
+                    </p>
                   </div>
                 )
               })}
