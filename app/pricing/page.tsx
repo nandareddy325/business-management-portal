@@ -242,7 +242,10 @@ export default function GKCRMPricing() {
     setState((prev) => ({ ...prev, [indId]: { active: true, plan: planId } }));
   }
 
+  const canStartTrial = summary.total > 0;
+
   function handleStartTrial() {
+    if (!canStartTrial) return;
     router.push("/signup?industry=interior&plan=pro");
   }
 
@@ -302,7 +305,13 @@ export default function GKCRMPricing() {
       </div>
 
       <button onClick={handleStartTrial}
-        className="w-full bg-[#B8860B] text-white py-3.5 rounded-xl text-sm font-bold hover:bg-[#9A7009] transition-all duration-300 shadow-lg shadow-amber-900/30 mb-3">
+        disabled={!canStartTrial}
+        aria-disabled={!canStartTrial}
+        className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all duration-300 mb-3 ${
+          canStartTrial
+            ? 'bg-[#B8860B] text-white hover:bg-[#9A7009] shadow-lg shadow-amber-900/30 cursor-pointer'
+            : 'bg-white/10 text-white/30 cursor-not-allowed shadow-none'
+        }`}>
         Start Free Trial →
       </button>
 
@@ -482,7 +491,13 @@ export default function GKCRMPricing() {
                   </div>
                 )}
                 <button onClick={handleStartTrial}
-                  className="w-full bg-[#B8860B] text-white py-4 rounded-xl font-bold hover:bg-[#9A7009] transition-all">
+                  disabled={!canStartTrial}
+                  aria-disabled={!canStartTrial}
+                  className={`w-full py-4 rounded-xl font-bold transition-all ${
+                    canStartTrial
+                      ? 'bg-[#B8860B] text-white hover:bg-[#9A7009] cursor-pointer'
+                      : 'bg-[#D5CFC3] text-[#9A8F82] cursor-not-allowed'
+                  }`}>
                   Start Free Trial →
                 </button>
                 <p className="text-center text-xs text-[#9A8F82]">14-day free · No credit card</p>

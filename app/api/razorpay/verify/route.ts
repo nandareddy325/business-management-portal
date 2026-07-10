@@ -35,10 +35,11 @@ export async function POST(req: NextRequest) {
         company_id: companyId,
         plan_config: planConfig,
         status: 'active',
+        total_amount: planConfig?.total ?? planConfig?.amount ?? 0,
         razorpay_order_id,
         razorpay_payment_id,
         activated_at: new Date().toISOString(),
-      })
+      }, { onConflict: 'company_id' })
 
       await supabase
         .from('companies')
