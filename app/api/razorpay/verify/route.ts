@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
+import Razorpay from 'razorpay'
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
@@ -29,13 +30,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
     }
 
+    // ── Razorpay order నుండి actual amount fetch చెయ్యి ────────
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID!,
+      key_secret: process.env.RAZORPAY_KEY_SECRET!,
+    })
+
+    let amountInRupees = 0
+    try {
+      const orderDetails = await razorpay.orders.fetch(razorpay_order_id)
+      amountInRupees = Number(orderDetails.amount) / 100 // paise → rupees
+    } catch (fetchErr) {
+      console.error('⚠️ Could not fetch order amount:', fetchErr)
+    }
+
     // ── Supabase update — companyId ఉంటేనే ──────────────────
     if (companyId) {
       await supabase.from('company_subscriptions').upsert({
         company_id: companyId,
         plan_config: planConfig,
         status: 'active',
-        total_amount: planConfig?.total ?? planConfig?.amount ?? 0,
+        total_amount: amountInRupees,
         razorpay_order_id,
         razorpay_payment_id,
         activated_at: new Date().toISOString(),
@@ -47,7 +62,7 @@ export async function POST(req: NextRequest) {
         .eq('id', companyId)
     } else {
       // Signup flow — payment verified, company baad create avutundi
-      console.log('✅ Payment verified (pre-signup):', razorpay_payment_id)
+      console.log('✅ Payment verified (pre-signup):', razorpay_payment_id, '₹' + amountInRupees)
     }
 
     return NextResponse.json({ success: true, payment_id: razorpay_payment_id })
