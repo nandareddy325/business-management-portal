@@ -163,10 +163,13 @@ export default function TenantDetailPage() {
         .serif-font { font-family: 'DM Serif Display', serif; }
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
         .gold-shimmer {
-          background: linear-gradient(90deg, #B8860B 0%, #E8C547 50%, #B8860B 100%);
-          background-size: 200% auto;
-          animation: shimmer 3s linear infinite;
-        }
+  background: linear-gradient(90deg, #B8860B 0%, #E8C547 50%, #B8860B 100%);
+  background-size: 200% auto;
+  animation: shimmer 3s linear infinite;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
       `}</style>
 
       {/* Sticky Header */}
