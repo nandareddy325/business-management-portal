@@ -12,6 +12,7 @@ interface Tenant {
   plan_status: string
   is_active: boolean
   trial_ends: string | null
+  subscription_activated_at?: string | null
   created_at: string
   industry?: string
 }
@@ -58,25 +59,48 @@ export default function AdminTenantsPage() {
 }, [])
 
   const totalPages = Math.ceil(total / 15)
-  
-  const getTrialStatus = (trialEnds: string | null, plan: string) => {
-  if (!trialEnds || plan !== 'trial') {
-    return { text: '—', color: 'text-gray-500' }
-  }
 
-  const endDate = new Date(trialEnds)
-  const today = new Date()
-  const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  // Returns { label: 'Trial Ends' | 'Plan Ends', text: string, color: string }
+  const getEndDateStatus = (tenant: Tenant) => {
+    if (tenant.plan === 'trial') {
+      if (!tenant.trial_ends) {
+        return { label: 'Trial Ends', text: '—', color: 'text-gray-500' }
+      }
+      const endDate = new Date(tenant.trial_ends)
+      const today = new Date()
+      const daysLeft = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
-  if (daysLeft < 0) {
-    return { text: 'Expired', color: 'text-red-600' }
-  } else if (daysLeft <= 7) {
-    return { text: `${daysLeft} days`, color: 'text-amber-600' }
-  } else {
-    return { text: `${daysLeft} days`, color: 'text-green-600' }
+      if (daysLeft < 0) {
+        return { label: 'Trial Ends', text: 'Expired', color: 'text-red-600' }
+      } else if (daysLeft <= 7) {
+        return { label: 'Trial Ends', text: `${daysLeft} days`, color: 'text-amber-600' }
+      } else {
+        return { label: 'Trial Ends', text: `${daysLeft} days`, color: 'text-green-600' }
+      }
+    }
+
+    if (tenant.plan === 'lifetime') {
+      return { label: 'Plan Ends', text: 'Never', color: 'text-emerald-600' }
+    }
+
+    // Paid plan — calculate renewal as activated_at + 1 calendar month
+    if (tenant.subscription_activated_at) {
+      const renewalDate = new Date(tenant.subscription_activated_at)
+      renewalDate.setMonth(renewalDate.getMonth() + 1)
+      const today = new Date()
+      const daysLeft = Math.ceil((renewalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+
+      if (daysLeft < 0) {
+        return { label: 'Plan Ends', text: 'Overdue', color: 'text-red-600' }
+      } else if (daysLeft <= 5) {
+        return { label: 'Plan Ends', text: `${daysLeft} days`, color: 'text-amber-600' }
+      } else {
+        return { label: 'Plan Ends', text: `${daysLeft} days`, color: 'text-green-600' }
+      }
+    }
+
+    return { label: 'Plan Ends', text: '—', color: 'text-gray-500' }
   }
-}
-  
 
   const getStatusBadge = (status: string) => {
   const badges: Record<string, string> = {
@@ -139,7 +163,7 @@ export default function AdminTenantsPage() {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Plan</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Trial Ends</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Trial Ends / Plan Ends</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Joined</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -162,7 +186,7 @@ export default function AdminTenantsPage() {
                   </tr>
                 ) : (
                   tenants.map((tenant) => {
-                    const trial = getTrialStatus(tenant.trial_ends, tenant.plan)
+                    const endStatus = getEndDateStatus(tenant)
                     return (
                       <tr key={tenant.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4">
@@ -185,10 +209,13 @@ export default function AdminTenantsPage() {
                              {!tenant.is_active ? 'Inactive' : tenant.plan === 'trial' ? 'Trial' : 'Active'}
                           </span>
                         </td>
-                        <td className={`px-6 py-4 text-sm font-semibold ${trial.color}`}>
-                          <div className="flex items-center gap-1">
-                            {trial.text !== '—' && <Calendar size={13} />}
-                            {trial.text}
+                        <td className={`px-6 py-4 text-sm font-semibold ${endStatus.color}`}>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">{endStatus.label}</span>
+                            <div className="flex items-center gap-1">
+                              {endStatus.text !== '—' && <Calendar size={13} />}
+                              {endStatus.text}
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-600">
