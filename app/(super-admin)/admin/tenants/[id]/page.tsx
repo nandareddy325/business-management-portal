@@ -6,7 +6,7 @@ import {
   Building2, Users, TrendingUp, ArrowLeft,
   CreditCard, CheckCircle2, XCircle, Crown, RefreshCw,
   Brain, Zap, Target, BarChart3, Sparkles,
-  Lock, Server, Clock, DollarSign, Calendar
+  Lock, Server, Clock, DollarSign, Calendar, AlertTriangle
 } from 'lucide-react'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
@@ -50,6 +50,16 @@ export default async function TenantDetailPage({
   const storageUsage = Math.round(((totalLeads ?? 0) * 0.5) % 100)
   const apiUsage = Math.round(((totalUsers ?? 0) * 15) % 100)
   const dataPoints = (totalLeads ?? 0) + (totalUsers ?? 0)
+
+  // Renewal date = activated_at + 30 days (computed; no stored expiry column yet)
+  let renewalDate: Date | null = null
+  let daysRemaining: number | null = null
+  if (subscription?.activated_at) {
+    renewalDate = new Date(subscription.activated_at)
+    renewalDate.setMonth(renewalDate.getMonth() + 1)
+    const diffMs = renewalDate.getTime() - Date.now()
+    daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+  }
 
   const statCards = [
     {
@@ -119,6 +129,19 @@ export default async function TenantDetailPage({
         ? new Date(subscription.activated_at).toLocaleDateString('en-IN')
         : 'N/A',
       icon: Calendar,
+    },
+    {
+      label: 'Renews On',
+      value: renewalDate ? renewalDate.toLocaleDateString('en-IN') : 'N/A',
+      icon: Calendar,
+    },
+    {
+      label: 'Days Remaining',
+      value: daysRemaining !== null
+        ? (daysRemaining > 0 ? `${daysRemaining} days` : 'Expired')
+        : 'N/A',
+      icon: daysRemaining !== null && daysRemaining <= 5 ? AlertTriangle : Clock,
+      danger: daysRemaining !== null && daysRemaining <= 5,
     },
     { label: 'Data Points', value: `${dataPoints}`, icon: BarChart3 },
     { label: 'Users Count', value: `${totalUsers ?? 0}`, icon: Users },
@@ -269,10 +292,10 @@ export default async function TenantDetailPage({
                 const Icon = item.icon
                 return (
                   <div key={item.label} className="flex items-start gap-3">
-                    <Icon size={13} className="text-[#D3CBBB] mt-0.5 flex-shrink-0" />
+                    <Icon size={13} className={`mt-0.5 flex-shrink-0 ${item.danger ? 'text-red-400' : 'text-[#D3CBBB]'}`} />
                     <div className="flex-1">
                       <p className="text-[10px] text-[#9A8F82] font-semibold uppercase tracking-wide">{item.label}</p>
-                      <p className="text-sm font-semibold text-[#1C1712] mt-0.5">{item.value}</p>
+                      <p className={`text-sm font-semibold mt-0.5 ${item.danger ? 'text-red-600' : 'text-[#1C1712]'}`}>{item.value}</p>
                     </div>
                   </div>
                 )
