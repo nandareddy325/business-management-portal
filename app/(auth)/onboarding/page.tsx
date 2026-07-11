@@ -1,11 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-const PLAN_ID = 'pro'
-const PLAN_PRICE = 10000
+// Marketing display info — pricing/page.tsx లో ఉన్న PLANS తో సరిపోలాలి.
+// ⚠️ 'pro' కి ఇంకా Razorpay Plan create అవ్వలేదు — select చేస్తే checkout error వస్తుంది (expected, ఇప్పటికి).
+const PLAN_INFO: Record<string, { label: string; price: number; features: string[] }> = {
+  starter: { label: 'Starter',      price: 999,   features: ['Lead pipeline', 'Client management', 'Quotations (PDF)', 'Email support'] },
+  pro:     { label: 'Professional', price: 10000, features: ['Everything in Starter', 'HRMS & attendance', 'GST billing', 'Priority support'] },
+}
 
 function fmt(n: number) { return '₹' + n.toLocaleString('en-IN') }
 
@@ -19,7 +23,7 @@ interface PendingSignup {
 
 interface RazorpaySuccessResponse {
   razorpay_payment_id: string
-  razorpay_order_id: string
+  razorpay_subscription_id: string
   razorpay_signature: string
 }
 
@@ -37,11 +41,18 @@ function getErrorMessage(err: unknown, fallback: string): string {
   return fallback
 }
 
-export default function OnboardingPage() {
+function OnboardingInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // pricing page నుండి వచ్చిన plan — లేకపోతే Starter default
+  const planId = (searchParams.get('plan') || 'starter') as keyof typeof PLAN_INFO
+  const planInfo = PLAN_INFO[planId] ?? PLAN_INFO.starter
+
   const [pendingSignup, setPendingSignup] = useState<PendingSignup | null>(null)
   const [loading, setLoading] = useState(false)
   const [paying, setPaying] = useState(false)
+  const [activating, setActivating] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -61,7 +72,8 @@ export default function OnboardingPage() {
     document.body.appendChild(script)
   }, [])
 
-  async function createAccount(status: 'trial' | 'active') {
+  // ── Account create చేయి (trial గా ఎప్పుడూ ముందు — paid అయినా, trial అయినా) ──
+  async function createAccount(): Promise<string> {
     if (!pendingSignup) throw new Error('No signup data found')
     const { fullName, companyName, email, phone, password } = pendingSignup
 
@@ -80,7 +92,6 @@ export default function OnboardingPage() {
 
     if (!userId) throw new Error('Could not get user ID')
 
-    // Check existing company
     const { data: existingProfile } = await supabase.from('profiles').select('company_id').eq('id', userId).maybeSingle()
     if (existingProfile?.company_id) {
       localStorage.removeItem('gk_pending_signup')
@@ -88,31 +99,28 @@ export default function OnboardingPage() {
       return existingProfile.company_id
     }
 
-    // Create company
-    const { data: company, error: ce } = await supabase.from('companies').insert({ name: companyName, plan: status }).select().single()
+    const { data: company, error: ce } = await supabase.from('companies').insert({ name: companyName, plan: 'trial' }).select().single()
     if (ce) throw ce
     const companyId = company.id
 
-    // Add interior-design industry
     const { data: ind } = await supabase.from('industries').select('id').eq('slug', 'interior-design').single()
     if (ind?.id) {
       await supabase.from('company_industries').upsert({
-        company_id: companyId, industry_id: ind.id, plan: PLAN_ID, is_active: true,
+        company_id: companyId, industry_id: ind.id, plan: planId, is_active: true,
       }, { onConflict: 'company_id,industry_id' })
     }
 
-    // Create profile
     await supabase.from('profiles').upsert({
       id: userId, company_id: companyId, full_name: fullName, email, phone, role: 'tenant_admin',
     })
 
-    // Save subscription
+    // ఎప్పుడూ 'trial' గా create చేయి — paid path లో ఇది webhook ద్వారా 'active' కి upgrade అవుతుంది
     await supabase.from('company_subscriptions').insert({
       company_id: companyId,
-      plan_config: { 'interior-design': PLAN_ID },
-      status,
-      trial_ends_at: status === 'trial' ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() : null,
-      total_amount: PLAN_PRICE,
+      plan_config: { 'interior-design': planId },
+      status: 'trial',
+      trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      total_amount: planInfo.price,
     })
 
     localStorage.removeItem('gk_pending_signup')
@@ -123,7 +131,7 @@ export default function OnboardingPage() {
   async function handleFreeTrial() {
     setLoading(true); setError('')
     try {
-      await createAccount('trial')
+      await createAccount()
       window.location.href = '/dashboard/industries/interior-design'
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Failed to create account'))
@@ -131,40 +139,62 @@ export default function OnboardingPage() {
     }
   }
 
+  async function waitForActivation(company_id: string): Promise<boolean> {
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, 2000))
+      try {
+        const res = await fetch(`/api/subscription/status?company_id=${company_id}`)
+        const data = await res.json()
+        if (data.status === 'active') return true
+      } catch {
+        // ignore, retry
+      }
+    }
+    return false
+  }
+
   async function handleCheckout() {
     setLoading(true); setError('')
     try {
-      const res = await fetch('/api/razorpay/create-order', {
+      // Step 1: Account ముందుగా trial గా create చేయి — subscription notes కి company_id కావాలి
+      setPaying(true)
+      const companyId = await createAccount()
+
+      // Step 2: Razorpay Subscription create చేయి
+      const res = await fetch('/api/razorpay/create-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: PLAN_PRICE * 100, companyId: 'pending', planConfig: { 'interior-design': PLAN_ID } }),
+        body: JSON.stringify({ companyId, planName: planId }),
       })
-      const order = await res.json()
-      if (!order.id) throw new Error(order.error || 'Order create failed')
+      const subscription = await res.json()
+
+      if (!res.ok || !subscription.id) {
+        // Account ఇప్పటికే trial గా create అయ్యింది — payment fail అయినా account safe
+        throw new Error(
+          subscription.error ||
+          `Checkout not available for ${planInfo.label} plan yet. Your account was created on free trial — you can upgrade later from Settings.`
+        )
+      }
+      setPaying(false)
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: 'INR',
+        subscription_id: subscription.id,
         name: 'GK CRM',
-        description: 'Interior Design — Professional Plan',
-        order_id: order.id,
+        description: `Interior Design — ${planInfo.label} Plan`,
         prefill: { name: pendingSignup?.fullName || '', email: pendingSignup?.email || '', contact: pendingSignup?.phone || '' },
         theme: { color: '#B8860B' },
-        modal: { ondismiss: () => { setLoading(false); setPaying(false) } },
-        handler: async (response: RazorpaySuccessResponse) => {
-          setPaying(true)
-          try {
-            const companyId = await createAccount('active')
-            await fetch('/api/razorpay/verify', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...response, companyId, planConfig: { 'interior-design': PLAN_ID } }),
-            })
+        modal: { ondismiss: () => { setLoading(false) } },
+        handler: async (_response: RazorpaySuccessResponse) => {
+          // Activation webhook ద్వారా జరుగుతుంది — ఇక్కడ DB touch చేయట్లేదు
+          setLoading(false)
+          setActivating(true)
+          const activated = await waitForActivation(companyId)
+          if (activated) {
             window.location.href = '/dashboard/industries/interior-design'
-          } catch (e: unknown) {
-            setError(getErrorMessage(e, 'Account creation failed after payment'))
-            setPaying(false); setLoading(false)
+          } else {
+            setActivating(false)
+            setError('Payment received! Activation is taking longer than usual — your trial account works meanwhile. Refresh in a minute or contact support@gkcrm.in.')
           }
         },
       }
@@ -172,14 +202,13 @@ export default function OnboardingPage() {
       const RazorpayCtor = (window as unknown as { Razorpay: new (options: unknown) => RazorpayInstance }).Razorpay
       const rzp = new RazorpayCtor(options)
       rzp.on('payment.failed', (response: RazorpayFailureResponse) => {
-        setError('Payment failed: ' + response.error.description)
-        setLoading(false); setPaying(false)
+        setError('Payment failed: ' + response.error.description + ' — your account is on free trial, you can retry payment from Settings.')
+        setLoading(false)
       })
-      setLoading(false)
       rzp.open()
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Checkout failed'))
-      setLoading(false)
+      setLoading(false); setPaying(false)
     }
   }
 
@@ -194,7 +223,9 @@ export default function OnboardingPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
         @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes spin    { to{transform:rotate(360deg)} }
         .slide-up { animation: slideUp 0.45s cubic-bezier(0.22,1,0.36,1) forwards; }
+        .spin     { animation: spin 1s linear infinite; }
       `}</style>
 
       <div className="min-h-screen" style={{ background: '#F5F0E8', fontFamily: "'DM Sans', sans-serif" }}>
@@ -205,6 +236,16 @@ export default function OnboardingPage() {
               <div className="w-10 h-10 border-2 border-[#B8860B] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
               <p className="font-semibold text-[#1C1712]">Creating your account...</p>
               <p className="text-sm text-[#9A8F82] mt-1">Please wait</p>
+            </div>
+          </div>
+        )}
+
+        {activating && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(28,23,18,0.7)' }}>
+            <div className="bg-white rounded-2xl p-8 text-center">
+              <div className="spin" style={{ width: 40, height: 40, border: '3px solid #FDE68A', borderTopColor: '#B8860B', borderRadius: '50%', margin: '0 auto 16px' }} />
+              <p className="font-semibold text-[#1C1712]">Activating your plan...</p>
+              <p className="text-sm text-[#9A8F82] mt-1">Payment received, finishing setup</p>
             </div>
           </div>
         )}
@@ -246,13 +287,13 @@ export default function OnboardingPage() {
                 <p style={{ fontSize: 12, color: '#9A8F82', margin: 0 }}>Projects, leads &amp; vendors</p>
               </div>
               <div style={{ marginLeft: 'auto', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '6px 14px', textAlign: 'center' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: '#B8860B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Professional</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: '#1C1712' }}>{fmt(PLAN_PRICE)}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#B8860B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{planInfo.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: '#1C1712' }}>{fmt(planInfo.price)}</div>
                 <div style={{ fontSize: 10, color: '#7A6E60' }}>10 users / month</div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {['Unlimited leads', 'Pipeline + HRMS', 'Priority support', 'Finance'].map(f => (
+              {planInfo.features.map(f => (
                 <span key={f} style={{ fontSize: 11, background: '#fffbeb', color: '#B8860B', padding: '4px 12px', borderRadius: 20, fontWeight: 600 }}>✓ {f}</span>
               ))}
             </div>
@@ -262,10 +303,10 @@ export default function OnboardingPage() {
           <div style={{ background: '#1C1712', borderRadius: 20, padding: 24, marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Total / month</span>
-              <span style={{ fontSize: 32, fontWeight: 700, color: '#fff' }}>{fmt(PLAN_PRICE)}</span>
+              <span style={{ fontSize: 32, fontWeight: 700, color: '#fff' }}>{fmt(planInfo.price)}</span>
             </div>
             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textAlign: 'right', marginBottom: 20 }}>
-              ≈ {fmt(Math.round(PLAN_PRICE / 30))}/day
+              ≈ {fmt(Math.round(planInfo.price / 30))}/day
             </div>
 
             {error && (
@@ -280,7 +321,7 @@ export default function OnboardingPage() {
                 background: loading ? 'rgba(184,134,11,0.5)' : '#B8860B',
                 color: '#fff', fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
               }}>
-              {loading ? '⏳ Processing...' : `Pay ${fmt(PLAN_PRICE)} →`}
+              {loading ? '⏳ Processing...' : `Pay ${fmt(planInfo.price)} →`}
             </button>
 
             <button onClick={handleFreeTrial} disabled={loading}
@@ -300,5 +341,17 @@ export default function OnboardingPage() {
         </div>
       </div>
     </>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F0E8' }}>
+        <div className="w-8 h-8 border-2 border-[#B8860B] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <OnboardingInner />
+    </Suspense>
   )
 }
