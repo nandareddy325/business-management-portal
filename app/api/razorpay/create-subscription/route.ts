@@ -3,9 +3,9 @@ import Razorpay from 'razorpay'
 
 // Razorpay Dashboard → Subscriptions → Plans లో create చేసిన Plan ID ఇక్కడ పెట్టు
 const RAZORPAY_PLAN_IDS: Record<string, string> = {
-  starter: process.env.RAZORPAY_PLAN_STARTER!, // ఉదా. plan_QwErTy123456
-  // professional: process.env.RAZORPAY_PLAN_PROFESSIONAL!,
-  // business: process.env.RAZORPAY_PLAN_BUSINESS!,
+  starter: process.env.RAZORPAY_PLAN_STARTER!,
+  professional: process.env.RAZORPAY_PLAN_PROFESSIONAL!,
+  business: process.env.RAZORPAY_PLAN_BUSINESS!,
 }
 
 export async function POST(req: NextRequest) {

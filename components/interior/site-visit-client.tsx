@@ -55,7 +55,7 @@ const parseFilterDate = (dateStr: string) => {
   return d
 }
 
-type StatFilter = 'total' | 'overdue' | 'today' | 'completed'
+type StatFilter = 'total' | 'overdue' | 'today' | 'remaining' | 'completed'
 
 export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number }) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -181,11 +181,12 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
       </div>
 
       {/* Stats Cards — clickable filters */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
           { key: 'total' as const,     label: 'Total',     value: filteredLeads.length,   color: '#0891B2', icon: '🏠' },
           { key: 'overdue' as const,   label: 'Overdue',   value: overdueLeads.length,    color: '#DC2626', icon: '⚠️' },
           { key: 'today' as const,     label: 'Today',     value: todayLeads.length,      color: '#16A34A', icon: '📅' },
+          { key: 'remaining' as const, label: 'Remaining', value: pendingLeads.length,    color: '#EA580C', icon: '⏳' },
           { key: 'completed' as const, label: 'Completed', value: completedLeads.length,  color: '#059669', icon: '✅' },
         ].map((s, i) => {
           const isActive = activeStatFilter === s.key
@@ -242,7 +243,7 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
         </div>
       ) : (
         <div className="space-y-4">
-          {(activeStatFilter === 'total' || activeStatFilter === 'overdue') && overdueLeads.length > 0 && (
+          {(activeStatFilter === 'total' || activeStatFilter === 'remaining' || activeStatFilter === 'overdue') && overdueLeads.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className="text-sm">⚠️</span>
@@ -253,7 +254,7 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
             </div>
           )}
 
-          {(activeStatFilter === 'total' || activeStatFilter === 'today') && todayLeads.length > 0 && (
+          {(activeStatFilter === 'total' || activeStatFilter === 'remaining' || activeStatFilter === 'today') && todayLeads.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className="text-sm">📅</span>
@@ -264,7 +265,7 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
             </div>
           )}
 
-          {activeStatFilter === 'total' && tomorrowLeads.length > 0 && (
+          {(activeStatFilter === 'total' || activeStatFilter === 'remaining') && tomorrowLeads.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className="text-sm">🔜</span>
@@ -275,7 +276,7 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
             </div>
           )}
 
-          {activeStatFilter === 'total' && upcomingLeads.length > 0 && (
+          {(activeStatFilter === 'total' || activeStatFilter === 'remaining') && upcomingLeads.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className="text-sm">📆</span>
@@ -286,7 +287,7 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
             </div>
           )}
 
-          {activeStatFilter === 'total' && noDateLeads.length > 0 && (
+          {(activeStatFilter === 'total' || activeStatFilter === 'remaining') && noDateLeads.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2 px-1">
                 <span className="text-sm">❓</span>
@@ -311,6 +312,7 @@ export function SiteVisitClient({ leads, count }: { leads: Lead[]; count: number
           {activeStatFilter !== 'total' && (
             (activeStatFilter === 'overdue' && overdueLeads.length === 0) ||
             (activeStatFilter === 'today' && todayLeads.length === 0) ||
+            (activeStatFilter === 'remaining' && pendingLeads.length === 0) ||
             (activeStatFilter === 'completed' && completedLeads.length === 0)
           ) && (
             <div className="bg-white border border-[#E8E2D8] rounded-2xl py-16 text-center shadow-sm">

@@ -7,8 +7,9 @@ import { supabase } from '@/lib/supabase'
 // Marketing display info — pricing/page.tsx లో ఉన్న PLANS తో సరిపోలాలి.
 // ⚠️ 'pro' కి ఇంకా Razorpay Plan create అవ్వలేదు — select చేస్తే checkout error వస్తుంది (expected, ఇప్పటికి).
 const PLAN_INFO: Record<string, { label: string; price: number; features: string[] }> = {
-  starter: { label: 'Starter',      price: 999,   features: ['Lead pipeline', 'Client management', 'Quotations (PDF)', 'Email support'] },
-  pro:     { label: 'Professional', price: 10000, features: ['Everything in Starter', 'HRMS & attendance', 'GST billing', 'Priority support'] },
+  starter:      { label: 'Starter',      price: 999,  features: ['Lead pipeline', 'Client management', 'Quotations (PDF)', 'Email support'] },
+  professional: { label: 'Professional', price: 2999, features: ['Everything in Starter', 'HRMS & attendance', 'GST billing', 'Priority support'] },
+  business:     { label: 'Business',     price: 5999, features: ['Everything in Professional', 'Unlimited leads', 'Advanced analytics', 'Faster support SLA'] },
 }
 
 function fmt(n: number) { return '₹' + n.toLocaleString('en-IN') }

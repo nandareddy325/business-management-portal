@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 interface RazorpaySuccessResponse {
@@ -33,11 +34,22 @@ function getErrorMessage(err: unknown, fallback: string): string {
   return fallback
 }
 
-const PLAN_NAME = 'starter'
-const PLAN_PRICE = 999
+// ⚠️ pricing/page.tsx, onboarding/page.tsx తో సరిపోలాలి
+const PLAN_INFO: Record<string, { label: string; price: number; users: string; features: string[] }> = {
+  starter:      { label: 'Starter',      price: 999,  users: '10 users', features: ['Lead pipeline', 'Client management', 'Quotations (PDF)', 'Email support'] },
+  professional: { label: 'Professional', price: 2999, users: '20 users', features: ['Everything in Starter', 'HRMS & attendance', 'GST billing', 'Priority support'] },
+  business:     { label: 'Business',     price: 5999, users: '50 users', features: ['Everything in Professional', 'Unlimited leads', 'Advanced analytics', 'Faster support SLA'] },
+}
+
 function fmt(n: number) { return '₹' + n.toLocaleString('en-IN') }
 
-export default function SubscriptionRenewClient() {
+function SubscriptionRenewInner() {
+  const searchParams = useSearchParams()
+  // ?plan=professional వస్తే upgrade flow, లేకపోతే current trial/starter renewal (default)
+  const planId = (searchParams.get('plan') || 'starter') as keyof typeof PLAN_INFO
+  const planInfo = PLAN_INFO[planId] ?? PLAN_INFO.starter
+  const isUpgrade = searchParams.get('plan') != null
+
   const [companyName, setCompanyName] = useState('')
   const [companyId, setCompanyId]     = useState<string | null>(null)
   const [loading, setLoading]         = useState(false)
@@ -47,7 +59,6 @@ export default function SubscriptionRenewClient() {
   const [isExpired, setIsExpired]     = useState(false)
 
   useEffect(() => {
-    // Load Razorpay script
     if (!document.querySelector('script[src*="razorpay"]')) {
       const script = document.createElement('script')
       script.src = 'https://checkout.razorpay.com/v1/checkout.js'
@@ -107,7 +118,6 @@ export default function SubscriptionRenewClient() {
     loadCompany()
   }, [])
 
-  // Webhook activate చేసేదాకా poll చేయి (max ~20 seconds)
   async function waitForActivation(company_id: string): Promise<boolean> {
     for (let i = 0; i < 10; i++) {
       await new Promise((r) => setTimeout(r, 2000))
@@ -127,20 +137,18 @@ export default function SubscriptionRenewClient() {
     setLoading(true); setError('')
 
     try {
-      // Step 1: Razorpay Subscription create చేయి (recurring, Orders API కాదు)
       const res = await fetch('/api/razorpay/create-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyId, planName: PLAN_NAME }),
+        body: JSON.stringify({ companyId, planName: planId }),
       })
 
       const subscription = await res.json()
 
       if (!res.ok || !subscription.id) {
-        throw new Error(subscription.error || subscription.message || `Subscription creation failed (${res.status})`)
+        throw new Error(subscription.error || subscription.message || `Checkout not available for ${planInfo.label} yet (${res.status})`)
       }
 
-      // Step 2: Prefill కోసం user profile fetch చేయి
       const { data: { user } } = await supabase.auth.getUser()
       const { data: profile }  = await supabase
         .from('profiles').select('full_name, email, phone').eq('id', user!.id).single()
@@ -148,12 +156,11 @@ export default function SubscriptionRenewClient() {
       const rzpKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID
       if (!rzpKey) throw new Error('Payment gateway not configured. Contact support.')
 
-      // Step 3: Razorpay Checkout — subscription_id తో open చేయి (order_id కాదు)
       const options: RazorpayOptions = {
         key: rzpKey,
         subscription_id: subscription.id,
         name: 'GK CRM',
-        description: 'Interior Design — Starter Plan',
+        description: `Interior Design — ${planInfo.label} Plan`,
         prefill: {
           name:    profile?.full_name || '',
           email:   profile?.email    || '',
@@ -161,18 +168,12 @@ export default function SubscriptionRenewClient() {
         },
         theme: { color: '#B8860B' },
         handler: async (_response: RazorpaySuccessResponse) => {
-          // ⚠️ ఇక్కడ DB update చేయట్లేదు — activation Razorpay webhook
-          // (app/api/webhooks/razorpay/route.ts) ద్వారా server-side జరుగుతుంది.
-          // Client ఇక్కడ కేవలం webhook confirm చేసేదాకా wait చేసి redirect చేస్తుంది.
           setLoading(false)
           setActivating(true)
-
           const activated = await waitForActivation(companyId)
-
           if (activated) {
             window.location.href = '/dashboard/industries/interior-design'
           } else {
-            // Webhook ఇంకా రాలేదు — payment success అయ్యింది, కానీ activation delay అవుతోంది
             setActivating(false)
             setError('Payment received! Activation is taking longer than usual — refresh this page in a minute, or contact support@gkcrm.in if it doesn\'t update.')
           }
@@ -195,8 +196,6 @@ export default function SubscriptionRenewClient() {
     }
   }
 
-  const features = ['Lead pipeline', 'Client management', 'Quotations (PDF)', 'Email support']
-
   return (
     <>
       <style>{`
@@ -212,7 +211,6 @@ export default function SubscriptionRenewClient() {
 
       <div style={{ minHeight:'100vh', background:'#F5F0E8', fontFamily:"'DM Sans', sans-serif", display:'flex', flexDirection:'column' }}>
 
-        {/* Header */}
         <div style={{ borderBottom:'1px solid #E2D9C8', padding:'16px 32px', display:'flex', alignItems:'center', gap:10, background:'#F5F0E8' }}>
           <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#1C1712,#2d2822)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:14, color:'#F59E0B' }}>G</div>
           <div>
@@ -221,7 +219,6 @@ export default function SubscriptionRenewClient() {
           </div>
         </div>
 
-        {/* Body */}
         <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'40px 16px' }}>
           <div style={{ width:'100%', maxWidth:480 }}>
 
@@ -233,45 +230,48 @@ export default function SubscriptionRenewClient() {
               </div>
             ) : (
             <>
-            {/* Title */}
             <div className="slide-up" style={{ textAlign:'center', marginBottom:32 }}>
-              <div className="float" style={{ fontSize:52, marginBottom:16 }}>⏰</div>
-              <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:20, padding:'4px 14px', marginBottom:16 }}>
-                <div style={{ position:'relative', width:6, height:6 }}>
-                  <div style={{ position:'absolute', inset:0, borderRadius:'50%', background:'#F59E0B', opacity:0.4, animation:'ping 1.5s infinite' }} />
-                  <div style={{ width:6, height:6, borderRadius:'50%', background:'#F59E0B' }} />
+              <div className="float" style={{ fontSize:52, marginBottom:16 }}>{isUpgrade ? '🚀' : '⏰'}</div>
+              {!isUpgrade && (
+                <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:20, padding:'4px 14px', marginBottom:16 }}>
+                  <div style={{ position:'relative', width:6, height:6 }}>
+                    <div style={{ position:'absolute', inset:0, borderRadius:'50%', background:'#F59E0B', opacity:0.4, animation:'ping 1.5s infinite' }} />
+                    <div style={{ width:6, height:6, borderRadius:'50%', background:'#F59E0B' }} />
+                  </div>
+                  <span style={{ fontSize:11, fontWeight:700, color:'#92400E', letterSpacing:'0.05em', textTransform:'uppercase' }}>
+                    {isExpired ? 'Trial Ended' : `${daysLeft} Days Left`}
+                  </span>
                 </div>
-                <span style={{ fontSize:11, fontWeight:700, color:'#92400E', letterSpacing:'0.05em', textTransform:'uppercase' }}>
-                  {isExpired ? 'Trial Ended' : `${daysLeft} Days Left`}
-                </span>
-              </div>
+              )}
               <h1 style={{ fontFamily:'Playfair Display, serif', fontSize:36, fontWeight:700, color:'#1C1712', margin:'0 0 10px', lineHeight:1.2 }}>
-                {isExpired ? <>Your free trial<br /><span style={{ color:'#B8860B', fontStyle:'italic' }}>has ended</span></> : <>Renew your<br /><span style={{ color:'#B8860B', fontStyle:'italic' }}>subscription</span></>}
+                {isUpgrade
+                  ? <>Upgrade to<br /><span style={{ color:'#B8860B', fontStyle:'italic' }}>{planInfo.label}</span></>
+                  : isExpired
+                    ? <>Your free trial<br /><span style={{ color:'#B8860B', fontStyle:'italic' }}>has ended</span></>
+                    : <>Renew your<br /><span style={{ color:'#B8860B', fontStyle:'italic' }}>subscription</span></>}
               </h1>
               {companyName && (
                 <p style={{ fontSize:14, color:'#7A6E60', margin:0 }}>
                   <strong style={{ color:'#1C1712' }}>{companyName}</strong>
-                  {isExpired && daysLeft > 0 && <span style={{ color:'#9A8F82' }}> · {daysLeft} day{daysLeft > 1 ? 's' : ''} ago</span>}
                 </p>
               )}
             </div>
 
-            {/* Plan card */}
             <div className="slide-up" style={{ background:'#fff', border:'1px solid #E2D9C8', borderRadius:20, padding:24, marginBottom:16, boxShadow:'0 4px 24px rgba(28,23,18,0.07)' }}>
               <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:18 }}>
                 <div style={{ width:48, height:48, borderRadius:14, background:'#FEF3C7', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, flexShrink:0 }}>🛋️</div>
                 <div style={{ flex:1 }}>
                   <p style={{ margin:0, fontSize:15, fontWeight:700, color:'#1C1712' }}>Interior Design</p>
-                  <p style={{ margin:0, fontSize:12, color:'#9A8F82' }}>Starter Plan · 10 users</p>
+                  <p style={{ margin:0, fontSize:12, color:'#9A8F82' }}>{planInfo.label} Plan · {planInfo.users}</p>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <p style={{ margin:0, fontSize:26, fontWeight:800, color:'#1C1712', letterSpacing:'-0.02em' }}>{fmt(PLAN_PRICE)}</p>
+                  <p style={{ margin:0, fontSize:26, fontWeight:800, color:'#1C1712', letterSpacing:'-0.02em' }}>{fmt(planInfo.price)}</p>
                   <p style={{ margin:0, fontSize:11, color:'#9A8F82' }}>per month</p>
                 </div>
               </div>
               <div style={{ height:1, background:'#F0EBE1', marginBottom:16 }} />
               <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-                {features.map(f => (
+                {planInfo.features.map(f => (
                   <span key={f} style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, fontWeight:600, color:'#B8860B', background:'#FEF9EE', border:'1px solid #FDE68A', padding:'5px 12px', borderRadius:20 }}>
                     <span style={{ color:'#B8860B', fontWeight:700 }}>✓</span> {f}
                   </span>
@@ -279,14 +279,13 @@ export default function SubscriptionRenewClient() {
               </div>
             </div>
 
-            {/* Payment card */}
             <div className="slide-up" style={{ background:'#1C1712', borderRadius:20, padding:24, boxShadow:'0 8px 40px rgba(28,23,18,0.15)' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
                 <span style={{ fontSize:13, color:'rgba(255,255,255,0.45)' }}>Due today</span>
-                <span style={{ fontSize:32, fontWeight:800, color:'#fff', letterSpacing:'-0.02em' }}>{fmt(PLAN_PRICE)}</span>
+                <span style={{ fontSize:32, fontWeight:800, color:'#fff', letterSpacing:'-0.02em' }}>{fmt(planInfo.price)}</span>
               </div>
               <p style={{ fontSize:11, color:'rgba(255,255,255,0.2)', textAlign:'right', margin:'0 0 20px' }}>
-                ≈ {fmt(Math.round(PLAN_PRICE / 30))}/day · Renews monthly automatically
+                ≈ {fmt(Math.round(planInfo.price / 30))}/day · Renews monthly automatically
               </p>
 
               {error && (
@@ -305,7 +304,7 @@ export default function SubscriptionRenewClient() {
                   boxShadow: loading ? 'none' : '0 4px 20px rgba(184,134,11,0.35)',
                   transition:'all 0.2s',
                 }}>
-                {loading ? '⏳ Processing...' : !companyId ? 'Loading...' : `Pay ${fmt(PLAN_PRICE)} & Continue →`}
+                {loading ? '⏳ Processing...' : !companyId ? 'Loading...' : `Pay ${fmt(planInfo.price)} & Continue →`}
               </button>
 
               <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
@@ -324,5 +323,17 @@ export default function SubscriptionRenewClient() {
         </div>
       </div>
     </>
+  )
+}
+
+export default function SubscriptionRenewClient() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#F5F0E8' }}>
+        <div style={{ width:32, height:32, border:'2px solid #B8860B', borderTopColor:'transparent', borderRadius:'50%' }} className="spin-fallback" />
+      </div>
+    }>
+      <SubscriptionRenewInner />
+    </Suspense>
   )
 }

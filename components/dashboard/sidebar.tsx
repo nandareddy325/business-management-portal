@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
@@ -7,17 +7,16 @@ import { X, ChevronDown, LogOut } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 import { getStageCounts, type CanonicalStage } from '@/lib/stage-utils'
 import { fetchAllLeads } from '@/lib/fetch-all-leads'
-import { INDUSTRY_META, isIndustryEnabled, type IndustrySlug } from '@/config/industries.config'
 
 interface SidebarProps { isOpen: boolean; onClose: () => void }
 
-const INDUSTRIES: Record<string, { label: string; icon: string; slug: string }> =
-  Object.fromEntries(
-    (Object.keys(INDUSTRY_META) as IndustrySlug[]).map((slug) => [
-      slug,
-      { label: INDUSTRY_META[slug].name, icon: INDUSTRY_META[slug].icon, slug },
-    ])
-  )
+const INDUSTRIES: Record<string, { label: string; icon: string; slug: string }> = {
+  'interior-design': { label: 'Interior Design', icon: '🛋️', slug: 'interior-design' },
+  'real-estate':     { label: 'Real Estate',     icon: '🏠', slug: 'real-estate' },
+  'hospital':        { label: 'Hospital',         icon: '🏥', slug: 'hospital' },
+  'b2b-business':    { label: 'B2B Business',    icon: '🤝', slug: 'b2b-business' },
+  'clinics':         { label: 'Clinics',          icon: '🩺', slug: 'clinics' },
+}
 
 const SECTION_PERMISSION: Record<string, string> = {
   'PIPELINE':    'pipeline',
@@ -98,6 +97,8 @@ function buildNavGroups(industrySlug: string) {
         { label: 'Site Visit', icon: '🏠', href: `${IND}/site-visit` },
         { label: 'Quotations', icon: '💰', href: `${IND}/quotations` },
         { label: 'Won',        icon: '🏆', href: `${IND}/won`        },
+        { label: 'Lost',       icon: '❌', href: `${IND}/lost`       },
+        { label: 'Handover',   icon: '📦', href: `${IND}/handover`   },
       ],
     },
     {
@@ -151,7 +152,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   useEffect(() => {
     if (industryFromUrl) {
       localStorage.setItem('gk-active-industry', industryFromUrl)
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional mount/route-driven sync, not a render-time side effect
       setCurrentIndustrySlug(industryFromUrl)
     } else {
       const saved = localStorage.getItem('gk-active-industry')
@@ -160,7 +160,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, [pathname, industryFromUrl])
 
   const currentIndustry = INDUSTRIES[currentIndustrySlug]
-  const { adminNavGroups, employeeNavGroups } = useMemo(() => buildNavGroups(currentIndustrySlug), [currentIndustrySlug])
+  const { adminNavGroups, employeeNavGroups, IND } = useMemo(() => buildNavGroups(currentIndustrySlug), [currentIndustrySlug])
 
   const [role, setRole] = useState<'admin' | 'employee'>('employee')
   const [userName, setUserName] = useState('User')
@@ -171,6 +171,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     new: 0, followup: 0, rnr: 0, sitevisit: 0, quotation: 0, won: 0, lost: 0,
   })
   const [totalLeads, setTotalLeads] = useState(0)
+  const [handoverCount, setHandoverCount] = useState(0)
   const [industryDropdownOpen, setIndustryDropdownOpen] = useState(false)
   const [empPermissions, setEmpPermissions] = useState<string[]>(['pipeline'])
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -192,6 +193,14 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (!leads) return
     setStageCounts(getStageCounts(leads))
     setTotalLeads(leads.length)
+
+    const { count } = await supabase
+      .from('leads')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', companyId)
+      .eq('industry', 'interior-design')
+      .not('handover_date', 'is', null)
+    setHandoverCount(count ?? 0)
   }
 
   useEffect(() => {
@@ -213,10 +222,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             const { data: company } = await supabase.from('companies').select('name').eq('id', profile.company_id).single()
             if (company?.name) setUserCompany(company.name)
             const { data: ci } = await supabase.from('company_industries').select('industries(slug)').eq('company_id', profile.company_id).eq('is_active', true)
-            if (ci) {
-              const dbEnabledSlugs = ci.map((c: { industries?: { slug?: string }[] }) => c.industries?.[0]?.slug).filter(Boolean)
-              setActiveIndustries(dbEnabledSlugs.filter((slug: string) => isIndustryEnabled(slug as IndustrySlug)))
-            }
+            if (ci) setActiveIndustries(ci.map((c: any) => c.industries?.slug).filter(Boolean))
 
             await refreshStageCounts(profile.company_id)
           }
@@ -233,7 +239,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       } catch (err) { console.error('Sidebar init:', err) }
     }
     init()
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
   }, [pathname])
 
   useEffect(() => {
@@ -246,7 +251,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         await refreshStageCounts(profile.company_id)
       }).subscribe()
     return () => { supabase.removeChannel(channel) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
   }, [])
 
   useEffect(() => {
@@ -271,6 +275,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const getBadge = (href: string) => {
     const IND_BASE = `/dashboard/industries/${currentIndustrySlug}`
+    if (href === `${IND_BASE}/handover`) {
+      return handoverCount ? String(handoverCount) : null
+    }
     const stageMap: Record<string, CanonicalStage | '__total__'> = {
       [`${IND_BASE}/new-leads`]:  'new',
       [`${IND_BASE}/follow-up`]:  'followup',
@@ -321,6 +328,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (href.includes('/rnr'))       return { background: '#FEE2E2', color: '#DC2626' }
     if (href.includes('/won'))       return { background: '#DCFCE7', color: '#15803D' }
     if (href.includes('/lost'))      return { background: '#FEE2E2', color: '#DC2626' }
+    if (href.includes('/handover'))  return { background: '#ECFEFF', color: '#0891B2' }
     return { background: '#F0F0EE', color: '#888' }
   }
 

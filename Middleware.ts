@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const CRM_MODULES = ['pipeline', 'projects', 'hr', 'finance']
+
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request })
 
@@ -20,11 +22,9 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
   // ── Public pages — no auth needed ──────────────────────────
-  // ✅ /subscription/renew removed — logged-in users need lifetime check
   const publicPaths = ['/login', '/signup', '/onboarding']
   if (!user) {
     if (publicPaths.some(p => path.startsWith(p))) return response
-    // Not logged in trying to access /subscription/renew → login
     if (path.startsWith('/subscription/renew')) return response
     return NextResponse.redirect(new URL('/login', request.url))
   }
@@ -39,9 +39,23 @@ export async function middleware(request: NextRequest) {
   const role = profile?.role
   const companyId = profile?.company_id
 
-  // Employee → only /employee/*
+  // Employee → /employee/*, UNLESS they've been granted CRM module
+  // permissions (pipeline/projects/hr/finance) on their employee record,
+  // in which case they're allowed into /dashboard too.
   if (role === 'employee' && path.startsWith('/dashboard')) {
-    return NextResponse.redirect(new URL('/employee', request.url))
+    const { data: employee } = await supabase
+      .from('employees')
+      .select('permissions')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    const hasCRMAccess = Array.isArray(employee?.permissions) &&
+      employee.permissions.some((p: string) => CRM_MODULES.includes(p))
+
+    if (!hasCRMAccess) {
+      return NextResponse.redirect(new URL('/employee', request.url))
+    }
+    // else: fall through, allow access to /dashboard
   }
 
   // Super admin → /admin/*
@@ -62,7 +76,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ── Trial expiry check — dashboard pages only ───────────────
+  // ── Trial expiry check — dashboard pages only ────────────────
   const isDashboardPath = path.startsWith('/dashboard') || path.startsWith('/crm') ||
     path.startsWith('/billing') || path.startsWith('/hr') ||
     path.startsWith('/reports') || path.startsWith('/settings')

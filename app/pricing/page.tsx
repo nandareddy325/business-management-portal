@@ -24,13 +24,22 @@ const PLANS = [
     features: ["Lead pipeline (7-stage)", "Client management", "Quotations (PDF)", "Basic dashboard", "Email support"],
   },
   {
-    id: "pro",
+    id: "professional",
     label: "Professional",
-    price: 10000,
+    price: 2999,
     users: "Up to 20 users",
     color: "#B8860B",
     bgLight: "#fffbeb",
     features: ["Everything in Starter", "HRMS & attendance", "GST billing & invoices", "Priority support", "Real-time dashboard", "Advanced reports"],
+  },
+  {
+    id: "business",
+    label: "Business",
+    price: 5999,
+    users: "Up to 50 users",
+    color: "#7C3AED",
+    bgLight: "#f5f3ff",
+    features: ["Everything in Professional", "Unlimited leads", "Advanced analytics", "Priority support (faster SLA)", "WhatsApp/AI tools — free when launched"],
   },
 ];
 
@@ -530,17 +539,8 @@ export default function GKCRMPricing() {
             <div className="pricing-sticky" style={{ position: 'sticky', top: 24, alignSelf: 'start' }}>
               { renderSummary() }
 
-              {/* Guarantee badge */}
-              <div className="mt-4 bg-white border border-[#E2D9C8] rounded-2xl p-4 flex items-center gap-3">
-                <span className="text-2xl flex-shrink-0">🛡️</span>
-                <div>
-                  <p className="text-xs font-bold text-[#1C1712]">7-day money-back guarantee</p>
-                  <p className="text-[11px] text-[#9A8F82]">Not satisfied? Full refund, no questions asked.</p>
-                </div>
-              </div>
-
               {/* Support note */}
-              <div className="mt-3 text-center">
+              <div className="mt-4 text-center">
                 <p className="text-[11px] text-[#9A8F82]">
                   Need a custom plan?{" "}
                   <a href="https://wa.me/919876543210" target="_blank" rel="noreferrer"
