@@ -127,7 +127,7 @@ function buildNavGroups(industrySlug: string) {
     {
       section: 'ACCOUNT', icon: '🔑',
       items: [
-        { label: 'My Account', icon: '👤', href: '/dashboard/settings/users' },
+        { label: 'My Account', icon: '👤', href: '/employee/profile' },
       ],
     },
   ]
