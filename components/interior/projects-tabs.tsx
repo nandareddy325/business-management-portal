@@ -2,15 +2,17 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { FolderOpen, Users, Palette, Package } from 'lucide-react'
+import { FolderOpen, Users, Palette, Package, FileText } from 'lucide-react'
 
 const BASE = '/dashboard/industries/interior-design/projects'
+const QUOTATIONS_HREF = '/dashboard/industries/interior-design/finance/quotations'
 
 const TABS = [
-  { key: 'all',       label: 'All Projects', href: BASE,                    icon: FolderOpen },
-  { key: 'clients',   label: 'Clients',      href: `${BASE}/clients`,       icon: Users      },
-  { key: 'designs',   label: 'Designs',      href: `${BASE}/designs`,       icon: Palette    },
-  { key: 'materials', label: 'Materials',    href: `${BASE}/materials`,     icon: Package    },
+  { key: 'all',        label: 'All Projects', href: BASE,                 icon: FolderOpen },
+  { key: 'clients',    label: 'Clients',      href: `${BASE}/clients`,    icon: Users      },
+  { key: 'designs',    label: 'Designs',      href: `${BASE}/designs`,    icon: Palette    },
+  { key: 'materials',  label: 'Materials',    href: `${BASE}/materials`,  icon: Package    },
+  { key: 'quotations', label: 'Quotations',   href: QUOTATIONS_HREF,      icon: FileText   },
 ]
 
 export default function ProjectsTabs({ active: _active }: { active?: string }) {

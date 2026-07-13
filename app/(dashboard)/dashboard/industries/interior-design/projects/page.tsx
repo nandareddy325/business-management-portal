@@ -1,4 +1,4 @@
-﻿import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ProjectsTabs from '@/components/interior/projects-tabs'
 import { AddProjectButton } from '@/components/interior/add-project-button'
@@ -19,6 +19,27 @@ interface ProjectRow {
   source: 'lead_won' | 'manual' | null
   assigned_to: string | null
   notes: string | null
+}
+
+interface QuotationRow {
+  id: string
+  quotation_no: string
+  amount: number
+  status: string | null
+  created_at: string
+  // Supabase types a `client:id_clients(name)` foreign-key join as an
+  // array (even though it's a to-one relationship in practice), so this
+  // must be typed as an array — not a single object — or TypeScript
+  // rejects the cast at build time.
+  client?: { name: string; company_id?: string }[] | null
+}
+
+// What we pass down per matched project — the most recent quotation
+// for that client, keyed by a normalized version of the client's name.
+export interface QuotationInfo {
+  quotation_no: string
+  amount: number
+  status: string | null
 }
 
 export default async function AllProjectsPage() {
@@ -51,6 +72,44 @@ export default async function AllProjectsPage() {
     }
   }
 
+  // ── Quotations, matched to projects by client name ──
+  // NOTE: the `quotations` table currently links to a client via
+  // `client:id_clients(name)`, not directly to a project (no project_id
+  // column exists yet). Matching is therefore done on a normalized
+  // client name — good enough for now, but if two different clients
+  // happen to share an identical name, this could attach the wrong
+  // quotation. Adding a `project_id` column to `quotations` would make
+  // this exact instead of name-based.
+  const quotationsByClient: Record<string, QuotationInfo> = {}
+  if (companyId) {
+    // `quotations` has no company_id column of its own — it only links to
+    // a client via client_id (FK to id_clients.id). To scope quotations to
+    // this company, we filter on the JOINED id_clients row's company_id
+    // instead, using `!inner` so the filter actually applies to the join.
+    const { data: quotations } = await supabase
+      .from('quotations')
+      .select('id, quotation_no, amount, status, created_at, client:id_clients!inner(name, company_id)')
+      .eq('client.company_id', companyId)
+      .order('created_at', { ascending: false })
+
+    const normalize = (n: string) => n.trim().toLowerCase()
+
+    ;(quotations as QuotationRow[] | null)?.forEach(q => {
+      const clientName = q.client?.[0]?.name
+      if (!clientName) return
+      const key = normalize(clientName)
+      // Quotations are ordered newest-first, so the first one we see per
+      // client is the most recent — skip if we've already recorded one.
+      if (!quotationsByClient[key]) {
+        quotationsByClient[key] = {
+          quotation_no: q.quotation_no,
+          amount: Number(q.amount || 0),
+          status: q.status,
+        }
+      }
+    })
+  }
+
   return (
     <div className="min-h-screen p-4 sm:p-6" style={{ background: '#F5F0E8' }}>
       <div className="max-w-7xl mx-auto space-y-5">
@@ -66,7 +125,7 @@ export default async function AllProjectsPage() {
 
         <ProjectsTabs />
 
-        <ProjectsListClient initialProjects={projects} />
+        <ProjectsListClient initialProjects={projects} quotationsByClient={quotationsByClient} />
       </div>
     </div>
   )

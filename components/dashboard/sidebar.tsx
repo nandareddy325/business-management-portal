@@ -52,9 +52,10 @@ function buildNavGroups(industrySlug: string) {
       section: 'PROJECTS', icon: '🏗️',
       items: [
         { label: 'All Projects', icon: '🏗️', href: `${IND}/projects`  },
-        { label: 'Clients',   icon: '👥', href: `${IND}/projects/clients`   },
-        { label: 'Designs',   icon: '🎨', href: `${IND}/projects/designs`   },
-        { label: 'Materials', icon: '📦', href: `${IND}/projects/materials` },
+        { label: 'Clients',    icon: '👥', href: `${IND}/projects/clients`   },
+        { label: 'Designs',    icon: '🎨', href: `${IND}/projects/designs`   },
+        { label: 'Materials',  icon: '📦', href: `${IND}/projects/materials` },
+        { label: 'Quotations', icon: '📋', href: `${IND}/finance/quotations` },
       ],
     },
     {
@@ -105,7 +106,8 @@ function buildNavGroups(industrySlug: string) {
       section: 'PROJECTS', icon: '🏗️',
       items: [
         { label: 'My Projects', icon: '🏗️', href: `${IND}/projects` },
-        { label: 'Clients', icon: '👥', href: `${IND}/projects/clients` },
+        { label: 'Clients',    icon: '👥', href: `${IND}/projects/clients`   },
+        { label: 'Quotations', icon: '📋', href: `${IND}/finance/quotations` },
       ],
     },
     {

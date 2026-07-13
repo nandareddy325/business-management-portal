@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Search, IndianRupee, Calendar, Zap, UserCircle2 } from 'lucide-react'
+import { Search, IndianRupee, Calendar, Zap, UserCircle2, FileText } from 'lucide-react'
 
 type Project = {
   id: string
@@ -19,6 +19,12 @@ type Project = {
   notes: string | null
 }
 
+interface QuotationInfo {
+  quotation_no: string
+  amount: number
+  status: string | null
+}
+
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
   { value: 'planning', label: 'Planning' },
@@ -32,6 +38,14 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }>
   in_progress: { bg: '#FFF4D6', text: '#B8860B', label: 'In Progress' },
   completed:   { bg: '#DFF3E3', text: '#2F9E4F', label: 'Completed' },
   on_hold:     { bg: '#FBE3E3', text: '#C24444', label: 'On Hold' },
+}
+
+const QUOTATION_STATUS_STYLES: Record<string, { bg: string; text: string }> = {
+  approved: { bg: '#DFF3E3', text: '#2F9E4F' },
+  pending:  { bg: '#FFF4D6', text: '#B8860B' },
+  sent:     { bg: '#E3EEFB', text: '#2563EB' },
+  rejected: { bg: '#FBE3E3', text: '#C24444' },
+  draft:    { bg: '#EDE8DF', text: '#7A6E60' },
 }
 
 function daysSince(dateStr: string) {
@@ -69,7 +83,15 @@ function formatCurrency(n: number | null) {
   return '₹' + n.toLocaleString('en-IN')
 }
 
-export function ProjectsListClient({ initialProjects }: { initialProjects: Project[] }) {
+const normalize = (n: string) => n.trim().toLowerCase()
+
+export function ProjectsListClient({
+  initialProjects,
+  quotationsByClient = {},
+}: {
+  initialProjects: Project[]
+  quotationsByClient?: Record<string, QuotationInfo>
+}) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState<'recent' | 'budget_high' | 'budget_low' | 'deadline'>('recent')
@@ -152,6 +174,9 @@ export function ProjectsListClient({ initialProjects }: { initialProjects: Proje
           {filtered.map(project => {
             const statusStyle = STATUS_STYLES[project.status ?? 'planning'] ?? STATUS_STYLES.planning
             const health = healthBadge(project)
+            const quotation = project.client_name ? quotationsByClient[normalize(project.client_name)] : undefined
+            const qStyle = quotation ? (QUOTATION_STATUS_STYLES[quotation.status ?? 'draft'] ?? QUOTATION_STATUS_STYLES.draft) : null
+
             return (
               <Link
                 key={project.id}
@@ -174,7 +199,7 @@ export function ProjectsListClient({ initialProjects }: { initialProjects: Proje
                   {project.client_name || 'No client name'}
                 </p>
 
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 flex-wrap mb-3">
                   <span
                     className="text-[10px] font-bold px-2 py-1 rounded-full"
                     style={{ background: statusStyle.bg, color: statusStyle.text }}
@@ -187,6 +212,16 @@ export function ProjectsListClient({ initialProjects }: { initialProjects: Proje
                       style={{ background: health.bg, color: health.text }}
                     >
                       {health.label}
+                    </span>
+                  )}
+                  {quotation && qStyle && (
+                    <span
+                      title={`Quotation ${quotation.quotation_no}`}
+                      className="text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1"
+                      style={{ background: qStyle.bg, color: qStyle.text }}
+                    >
+                      <FileText className="w-3 h-3" />
+                      {formatCurrency(quotation.amount)} · {(quotation.status ?? 'draft')}
                     </span>
                   )}
                 </div>
