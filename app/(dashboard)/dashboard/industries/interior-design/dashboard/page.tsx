@@ -167,8 +167,8 @@ export default async function InteriorDesignDashboard() {
       <style>{`
         @keyframes fadeUp { from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)} }
         .fade-up { animation: fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) both; }
-        .card-hover { transition: all 0.2s ease; }
-        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(184,134,11,0.12); }
+        .card-hover { transition: all 0.2s cubic-bezier(0.16,1,0.3,1); }
+        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(184,134,11,0.14); }
       `}</style>
 
       <div className="px-2 md:px-4 pt-3 pb-10 space-y-4 max-w-7xl mx-auto">
@@ -181,19 +181,19 @@ export default async function InteriorDesignDashboard() {
             {isAdminOrOwner && (
             <div className="flex items-center gap-2">
               <Link href="/dashboard/industries/interior-design/analytics"
-                className="px-3 py-1.5 rounded-xl text-[11px] font-black text-white"
-                style={{ background:'linear-gradient(135deg,#B8860B,#D97706)',boxShadow:'0 3px 10px rgba(184,134,11,0.3)' }}>
+                className="px-3 py-1.5 rounded-xl text-[11px] font-black text-white transition-all hover:-translate-y-0.5"
+                style={{ background:'linear-gradient(135deg,#B8860B,#D97706)',boxShadow:'0 4px 14px rgba(184,134,11,0.32)' }}>
                 📊 Analytics
               </Link>
               <Link href="/dashboard/industries/interior-design/cre"
-                className="px-3 py-1.5 rounded-xl text-[11px] font-black text-white"
-                style={{ background:'linear-gradient(135deg,#1C1712,#2d2218)',border:'1px solid rgba(184,134,11,0.3)' }}>
+                className="px-3 py-1.5 rounded-xl text-[11px] font-black text-white transition-all hover:-translate-y-0.5"
+                style={{ background:'linear-gradient(135deg,#1C1712,#2d2218)',border:'1px solid rgba(184,134,11,0.3)', boxShadow:'0 4px 14px rgba(28,23,18,0.25)' }}>
                 📋 CRE
               </Link>
             </div>
             )}
           </div>
-          <h1 className="text-2xl font-black" style={{ color:'#1C1712' }}>Pipeline Dashboard</h1>
+          <h1 className="text-2xl font-black tracking-tight" style={{ color:'#1C1712' }}>Pipeline Dashboard</h1>
           <p className="text-sm mt-0.5" style={{ color:'#9A8F82' }}>
             Live overview · {new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
           </p>
@@ -207,12 +207,13 @@ export default async function InteriorDesignDashboard() {
             { label:'Won',         value:wonLeads,    color:'#059669', icon:'🏆', bg:'#ECFDF5' },
             { label:'Today New',   value:todayLeads,  color:'#B8860B', icon:'📅', bg:'#FFFBEB' },
           ].map((s,i) => (
-            <div key={i} className="card-hover rounded-2xl p-4" style={{ background:'#fff',border:'1px solid #E8E2D8',boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
-              <div className="flex items-center justify-between mb-3">
+            <div key={i} className="card-hover relative overflow-hidden rounded-2xl p-4" style={{ background:'#fff',border:'1px solid #EDE7DB',boxShadow:'0 1px 2px rgba(28,23,18,0.04), 0 8px 20px rgba(28,23,18,0.05)' }}>
+              <div className="absolute -bottom-8 -right-8 w-24 h-24 rounded-full opacity-[0.05]" style={{ background:s.color }} />
+              <div className="relative flex items-center justify-between mb-3">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{ background:s.bg }}>{s.icon}</div>
                 <p className="text-[9px] font-bold uppercase tracking-wider text-right" style={{ color:'#9A8F82' }}>{s.label}</p>
               </div>
-              <p className="text-3xl font-black" style={{ color:s.color }}>{s.value}</p>
+              <p className="relative text-3xl font-black tracking-tight" style={{ color:s.color }}>{s.value}</p>
             </div>
           ))}
         </div>
@@ -222,14 +223,14 @@ export default async function InteriorDesignDashboard() {
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-3" style={{ color:'#B8860B' }}>Stage Wise Count</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Link href="/dashboard/industries/interior-design/all-leads">
-              <div className="card-hover rounded-2xl p-4" style={{ background:'#fff',border:'1px solid #E8E2D8',boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div className="card-hover rounded-2xl p-4" style={{ background:'#fff',border:'1px solid #EDE7DB',boxShadow:'0 1px 2px rgba(28,23,18,0.04), 0 8px 20px rgba(28,23,18,0.05)' }}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background:'#F5F0E8',border:'1px solid #E2D9C8' }}>👥</div>
                   <p className="text-2xl font-black" style={{ color:'#1C1712' }}>{totalLeads}</p>
                 </div>
                 <p className="text-sm font-bold" style={{ color:'#1C1712' }}>All Leads</p>
                 <p className="text-[10px] mt-0.5" style={{ color:'#9A8F82' }}>All stages combined</p>
-                <div className="mt-3 h-1.5 rounded-full" style={{ background:'#F0EBE0' }}>
+                <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background:'#F0EBE0' }}>
                   <div className="h-1.5 rounded-full w-full" style={{ background:'#1C1712' }}/>
                 </div>
                 <p className="text-[9px] mt-1" style={{ color:'#C4BAB0' }}>100% of total</p>
@@ -241,7 +242,7 @@ export default async function InteriorDesignDashboard() {
               const pct = totalLeads > 0 ? Math.round((count/totalLeads)*100) : 0
               return (
                 <Link key={stage.key} href={stage.href}>
-                  <div className="card-hover rounded-2xl p-4" style={{ background:'#fff',border:'1px solid #E8E2D8',boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
+                  <div className="card-hover rounded-2xl p-4" style={{ background:'#fff',border:'1px solid #EDE7DB',boxShadow:'0 1px 2px rgba(28,23,18,0.04), 0 8px 20px rgba(28,23,18,0.05)' }}>
                     <div className="flex items-start justify-between mb-3">
                       <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background:stage.bg,border:`1px solid ${stage.border}` }}>
                         <Icon className="w-5 h-5" style={{ color:stage.color }}/>
@@ -250,7 +251,7 @@ export default async function InteriorDesignDashboard() {
                     </div>
                     <p className="text-sm font-bold" style={{ color:'#1C1712' }}>{stage.label}</p>
                     <p className="text-[10px] mt-0.5 truncate" style={{ color:'#9A8F82' }}>{stage.description}</p>
-                    <div className="mt-3 h-1.5 rounded-full" style={{ background:'#F0EBE0' }}>
+                    <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background:'#F0EBE0' }}>
                       <div className="h-1.5 rounded-full" style={{ width:`${pct}%`,background:stage.color,minWidth:count>0?'8px':'0' }}/>
                     </div>
                     <p className="text-[9px] mt-1" style={{ color:'#C4BAB0' }}>{pct}% of total</p>

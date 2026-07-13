@@ -126,13 +126,20 @@ export default async function FollowUpPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>Interior Design · Pipeline</p>
-          <h1 className="text-2xl font-bold text-[#1C1712]">Follow Up</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1C1712]">Follow Up</h1>
           <p className="text-sm text-[#9A8F82] mt-0.5">
             <span className="font-bold text-[#1C1712]">{leadsWithDates.length}</span> leads in Follow Up stage
           </p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap"
-          style={{ background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A' }}>
+        <div
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap"
+          style={{
+            background: 'linear-gradient(135deg, #FFFBEB, #FFF6DC)',
+            color: '#D97706',
+            border: '1px solid #FDE68A',
+            boxShadow: '0 4px 14px rgba(217,119,6,0.10)',
+          }}
+        >
           <Calendar className="w-4 h-4" /> Follow Up
         </div>
       </div>

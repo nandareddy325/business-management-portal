@@ -77,13 +77,20 @@ export default async function RNRPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>Interior Design · Pipeline</p>
-          <h1 className="text-2xl font-bold text-[#1C1712]">RNR</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1C1712]">RNR</h1>
           <p className="text-sm text-[#9A8F82] mt-0.5">
             <span className="font-bold text-[#1C1712]">{count}</span> leads — Ring No Response
           </p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
-          style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+        <div
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
+          style={{
+            background: 'linear-gradient(135deg, #FEF2F2, #FFF7F7)',
+            color: '#DC2626',
+            border: '1px solid #FECACA',
+            boxShadow: '0 4px 14px rgba(220,38,38,0.10)',
+          }}
+        >
           <Phone className="w-4 h-4" /> RNR Stage
         </div>
       </div>
@@ -96,7 +103,9 @@ export default async function RNRPage() {
           { label: 'Today',       value: todayLeads.length,    color: '#D97706' },
           { label: 'With Budget', value: leads.filter((l: Lead) => l.budget).length, color: '#B8860B' },
         ].map((s, i) => (
-          <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
+          <div key={i}
+            className="bg-white border border-[#EDE7DB] rounded-2xl px-4 py-3 flex items-center justify-between transition-all duration-200 hover:-translate-y-0.5"
+            style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 8px 20px rgba(28,23,18,0.05)' }}>
             <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
             <p className="font-black text-xl" style={{ color: s.color }}>{s.value}</p>
           </div>
@@ -106,7 +115,7 @@ export default async function RNRPage() {
       {/* Overdue alert */}
       {overdueLeads.length > 0 && (
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
-          style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+          style={{ background: 'linear-gradient(90deg,#FEF2F2,#FFF8F8)', border: '1px solid #FECACA' }}>
           <Phone className="w-4 h-4 text-red-600 flex-shrink-0" />
           <p className="text-sm font-bold text-red-700">
             {overdueLeads.length} callback{overdueLeads.length > 1 ? 's' : ''} overdue — retry calling them!

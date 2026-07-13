@@ -95,10 +95,10 @@ export default async function HandoverPage() {
         .fu1{animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) 0.00s both}
         .fu2{animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) 0.07s both}
         .fu3{animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) 0.14s both}
-        .card-hvr{transition:all 0.18s ease}
-        .card-hvr:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.09)!important}
+        .card-hvr{transition:all 0.2s cubic-bezier(0.16,1,0.3,1)}
+        .card-hvr:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,0.11)!important}
         .lead-row{transition:background 0.15s ease}
-        .lead-row:hover{background:rgba(184,134,11,0.04)}
+        .lead-row:hover{background:rgba(184,134,11,0.05)}
       `}</style>
 
       <div className="px-4 md:px-6 pt-5 pb-10 max-w-5xl mx-auto space-y-4">
@@ -117,8 +117,15 @@ export default async function HandoverPage() {
                 <span className="font-black" style={{ color:'#1A1612' }}>{allLeads.length}</span> leads with handover dates
               </p>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold"
-              style={{ background:'#ECFEFF', color:'#0891B2', border:'1px solid #A5F3FC' }}>
+            <div
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-bold"
+              style={{
+                background: 'linear-gradient(135deg,#ECFEFF,#F3FEFF)',
+                color: '#0891B2',
+                border: '1px solid #A5F3FC',
+                boxShadow: '0 4px 14px rgba(8,145,178,0.10)',
+              }}
+            >
               📦 Handover
             </div>
           </div>
@@ -132,9 +139,9 @@ export default async function HandoverPage() {
             { label:'Next Month', value:nextMonthCount,   color:'#D97706', bg:'#FFFBEB', border:'#FDE68A' },
             { label:'Overdue',    value:overdueCount,     color:'#DC2626', bg:'#FEF2F2', border:'#FECACA' },
           ].map((s,i) => (
-            <div key={i} className="card-hvr rounded-2xl px-4 py-3 flex items-center justify-between"
-              style={{ background:s.bg, border:`1px solid ${s.border}`, boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
-              <p className="text-xs font-bold" style={{ color:s.color, opacity:0.7 }}>{s.label}</p>
+            <div key={i} className="card-hvr relative overflow-hidden rounded-2xl px-4 py-3 flex items-center justify-between"
+              style={{ background:s.bg, border:`1px solid ${s.border}`, boxShadow:'0 1px 2px rgba(0,0,0,0.03), 0 8px 20px rgba(0,0,0,0.05)' }}>
+              <p className="text-xs font-bold" style={{ color:s.color, opacity:0.75 }}>{s.label}</p>
               <p className="text-2xl font-black" style={{ color:s.color }}>{s.value}</p>
             </div>
           ))}
@@ -148,7 +155,7 @@ export default async function HandoverPage() {
               const isThisMonth = grp.month === thisMonth && grp.year === thisYear
               return (
                 <a key={grp.key} href={`#month-${grp.key}`}
-                  className="flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-bold transition-all hover:scale-105"
+                  className="flex items-center gap-2 px-3 py-2 rounded-2xl text-xs font-bold transition-all hover:scale-105 hover:-translate-y-0.5"
                   style={{ background: isThisMonth ? color : `${color}15`, color: isThisMonth ? '#fff' : color, border:`1.5px solid ${isThisMonth ? color : color+'30'}`, boxShadow: isThisMonth ? `0 4px 14px ${color}40` : 'none' }}>
                   {MONTHS[grp.month]} {grp.year !== thisYear ? grp.year : ''}
                   <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black"
@@ -163,7 +170,7 @@ export default async function HandoverPage() {
 
         {/* No leads */}
         {sortedGroups.length === 0 && (
-          <div className="fu3 rounded-3xl p-16 text-center" style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.05)' }}>
+          <div className="fu3 rounded-3xl p-16 text-center" style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.05)', boxShadow:'0 1px 2px rgba(0,0,0,0.03), 0 12px 28px rgba(0,0,0,0.06)' }}>
             <div className="text-5xl mb-4">📦</div>
             <p className="text-base font-black" style={{ color:'#C4BAB0' }}>No handover dates set yet</p>
             <p className="text-sm mt-1" style={{ color:'#D4CEC8' }}>Open a lead → click &ldquo;Handover Date&rdquo; button</p>
@@ -179,7 +186,7 @@ export default async function HandoverPage() {
           return (
             <div key={grp.key} id={`month-${grp.key}`}
               className="fu3 rounded-3xl overflow-hidden"
-              style={{ background:'#fff', border:`1.5px solid ${color}25`, boxShadow:'0 4px 20px rgba(0,0,0,0.06)', animationDelay:`${gi * 0.04}s` }}>
+              style={{ background:'#fff', border:`1.5px solid ${color}25`, boxShadow:'0 1px 2px rgba(0,0,0,0.03), 0 14px 32px rgba(0,0,0,0.07)', animationDelay:`${gi * 0.04}s` }}>
 
               {/* Month header */}
               <div className="flex items-center justify-between px-5 py-4"
@@ -226,7 +233,7 @@ export default async function HandoverPage() {
 
                         {/* Avatar */}
                         <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-black text-white flex-shrink-0"
-                          style={{ background:`linear-gradient(135deg,${c1},${c2})` }}>
+                          style={{ background:`linear-gradient(135deg,${c1},${c2})`, boxShadow:`0 3px 10px ${c1}40` }}>
                           {ini(lead.lead_name || '?')}
                         </div>
 
@@ -262,8 +269,8 @@ export default async function HandoverPage() {
 
                       {/* Call — sibling <a> outside Link, not nested */}
                       <a href={`tel:${lead.phone}`}
-                        className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
-                        style={{ background:'#ECFDF5', border:'1px solid #A7F3D0' }}>
+                        className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:scale-110"
+                        style={{ background:'#ECFDF5', border:'1px solid #A7F3D0', boxShadow:'0 2px 8px rgba(5,150,105,0.12)' }}>
                         <Phone className="w-4 h-4" style={{ color:'#059669' }}/>
                       </a>
                     </div>

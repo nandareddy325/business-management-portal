@@ -168,25 +168,25 @@ export default async function AnalyticsPage({
         background: 'linear-gradient(135deg, #1C1712 0%, #2d2218 55%, #241a10 100%)',
         padding: '22px 24px',
         borderBottom: '1px solid rgba(184,134,11,0.25)',
-        boxShadow: '0 8px 30px rgba(0,0,0,0.25)'
+        boxShadow: '0 12px 36px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.04)'
       }}>
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/industries/interior-design/dashboard"
-              className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-xl transition-all hover:bg-white/10"
+              className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-xl transition-all hover:bg-white/10 hover:-translate-y-0.5"
               style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}>
               <ArrowLeft className="w-3.5 h-3.5" /> Back
             </Link>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[3px] mb-0.5 flex items-center gap-1.5" style={{ color: '#D9A94A' }}>
-                <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#22C55E' }} />
+                <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#22C55E', boxShadow: '0 0 8px #22C55E' }} />
                 Interior Design · Live
               </p>
               <h1 className="text-xl font-black text-white tracking-tight">Analytics Dashboard</h1>
             </div>
           </div>
           {/* Date Range Filter — links instead of state */}
-          <div className="flex items-center gap-2 p-1 rounded-2xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="flex items-center gap-2 p-1 rounded-2xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)' }}>
             {[
               { label: 'All Time', value: 'all' },
               { label: '7 Days',   value: '7' },
@@ -214,17 +214,21 @@ export default async function AnalyticsPage({
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {kpis.map((s, i) => (
             <div key={i}
-              className="relative overflow-hidden rounded-2xl p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
-              style={{ background: s.bg, border: '1px solid rgba(0,0,0,0.05)' }}>
+              className="relative overflow-hidden rounded-2xl p-4 transition-all duration-200 hover:-translate-y-1"
+              style={{ background: s.bg, border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 8px 20px rgba(28,23,18,0.05)' }}>
               <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: s.color }} />
-              <div className="flex items-center justify-between mb-2">
+              <div
+                className="absolute -bottom-8 -right-8 w-24 h-24 rounded-full opacity-[0.07]"
+                style={{ background: s.color }}
+              />
+              <div className="relative flex items-center justify-between mb-2">
                 <p className="text-[9px] font-bold text-[#9A8F82] uppercase tracking-wider">{s.label}</p>
                 <span className="text-base drop-shadow-sm">{s.icon}</span>
               </div>
-              <p className="text-2xl font-black tracking-tight" style={{ color: s.color }}>
+              <p className="relative text-2xl font-black tracking-tight" style={{ color: s.color }}>
                 {s.isStr ? s.value : (s.value as number).toLocaleString()}
               </p>
-              <p className="text-[10px] font-semibold mt-0.5" style={{ color: '#B0A798' }}>{s.sub}</p>
+              <p className="relative text-[10px] font-semibold mt-0.5" style={{ color: '#B0A798' }}>{s.sub}</p>
             </div>
           ))}
         </div>
@@ -239,7 +243,7 @@ export default async function AnalyticsPage({
         />
 
         {/* City Table — premium header, refined rows */}
-        <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-[#EDE7DB] rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 12px 28px rgba(28,23,18,0.06)' }}>
           <div className="px-4 py-3.5 border-b border-[#F0EBE0] flex items-center justify-between"
             style={{ background: 'linear-gradient(90deg,#FAFAF8,#F5F0E8)' }}>
             <p className="text-sm font-black text-[#1C1712] flex items-center gap-2">
@@ -272,7 +276,7 @@ export default async function AnalyticsPage({
                     <td className="px-4 py-3"><span className="text-sm font-bold text-[#DC2626]">{c.leads - c.won - c.active}</span></td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 rounded-full bg-[#F0EBE0] max-w-[80px]">
+                        <div className="flex-1 h-1.5 rounded-full bg-[#F0EBE0] max-w-[80px] overflow-hidden">
                           <div className="h-1.5 rounded-full transition-all" style={{
                             width: `${Math.min(parseFloat(c.convRate), 100)}%`,
                             background: parseFloat(c.convRate) > 10 ? '#059669' : parseFloat(c.convRate) > 5 ? '#D97706' : '#DC2626'

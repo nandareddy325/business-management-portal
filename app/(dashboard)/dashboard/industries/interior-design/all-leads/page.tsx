@@ -151,16 +151,23 @@ export default function AllLeadsPage() {
   const convRate    = totalLeads > 0 ? ((wonCount / totalLeads) * 100).toFixed(1) : '0'
 
   return (
-    <div className="space-y-4 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
+    <div className="space-y-5 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
 
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>Interior Design · Pipeline</p>
-          <h1 className="text-2xl font-bold text-[#1C1712]">All Leads</h1>
+          <h1 className="text-2xl font-bold text-[#1C1712] tracking-tight">All Leads</h1>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
-          style={{ background: '#F5F3FF', color: '#7C3AED', border: '1px solid #DDD6FE' }}>
+        <div
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-shadow"
+          style={{
+            background: 'linear-gradient(135deg, #F5F3FF, #EFEAFF)',
+            color: '#7C3AED',
+            border: '1px solid #DDD6FE',
+            boxShadow: '0 4px 14px rgba(124,58,237,0.10)',
+          }}
+        >
           <Users className="w-4 h-4" />All Stages
         </div>
       </div>
@@ -173,62 +180,78 @@ export default function AllLeadsPage() {
           { label: 'Won',         value: String(wonCount),    color: '#B8860B', icon: '🏆' },
           { label: 'Conversion',  value: convRate + '%',      color: '#059669', icon: '📈' },
         ].map((s, i) => (
-          <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
+          <div
+            key={i}
+            className="relative overflow-hidden bg-white border border-[#EDE7DB] rounded-2xl p-4 transition-all duration-200 hover:-translate-y-0.5"
+            style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 8px 20px rgba(28,23,18,0.05)' }}
+          >
+            <div
+              className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-[0.06]"
+              style={{ background: s.color }}
+            />
+            <div className="relative flex items-center justify-between mb-2">
               <p className="text-[9px] font-bold text-[#9A8F82] uppercase tracking-wider">{s.label}</p>
               <span className="text-base">{s.icon}</span>
             </div>
-            <p className="text-2xl font-black" style={{ color: s.color }}>{s.value}</p>
+            <p className="relative text-2xl font-black tracking-tight" style={{ color: s.color }}>{s.value}</p>
           </div>
         ))}
       </div>
 
       {/* ── Search + Date Range Bar ── */}
-      <div className="bg-white border border-[#E8E2D8] rounded-2xl p-3 shadow-sm space-y-3">
-  <div className="flex items-center gap-3 flex-wrap justify-between">
+      <div
+        className="bg-white/90 backdrop-blur border border-[#EDE7DB] rounded-2xl p-3 space-y-3"
+        style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 10px 24px rgba(28,23,18,0.05)' }}
+      >
+        <div className="flex items-center gap-3 flex-wrap justify-between">
 
-    {/* LEFT — Search */}
-    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E2D9C8] bg-[#FAFAF8] focus-within:border-[#B8860B] transition-colors w-64 flex-shrink-0">
-      <Search size={14} className="text-[#9A8F82] flex-shrink-0" />
-      <input
-        type="text"
-        value={searchQuery}
-        onChange={e => setSearchQuery(e.target.value)}
-        placeholder="Search by name or phone..."
-        className="flex-1 text-sm bg-transparent outline-none text-[#1C1712] placeholder:text-[#B8B0A0]"
-      />
-      {searchQuery && (
-        <button onClick={() => setSearchQuery('')}
-          className="w-5 h-5 rounded-full bg-[#E2D9C8] flex items-center justify-center flex-shrink-0 hover:bg-[#D0C8B8] transition-colors">
-          <X size={10} className="text-[#7A6E60]" />
-        </button>
-      )}
-    </div>
+          {/* LEFT — Search */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E2D9C8] bg-[#FAFAF8] focus-within:border-[#B8860B] focus-within:shadow-[0_0_0_3px_rgba(184,134,11,0.10)] transition-all w-64 flex-shrink-0">
+            <Search size={14} className="text-[#9A8F82] flex-shrink-0" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search by name or phone..."
+              className="flex-1 text-sm bg-transparent outline-none text-[#1C1712] placeholder:text-[#B8B0A0]"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')}
+                className="w-5 h-5 rounded-full bg-[#E2D9C8] flex items-center justify-center flex-shrink-0 hover:bg-[#D0C8B8] transition-colors">
+                <X size={10} className="text-[#7A6E60]" />
+              </button>
+            )}
+          </div>
 
-    {/* RIGHT — Date */}
-    <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
-      <Calendar size={13} className="text-[#9A8F82] flex-shrink-0" />
-      <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setDateActive(true) }}
-        className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
-      <span className="text-xs text-[#9A8F82] font-semibold">to</span>
-      <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setDateActive(true) }}
-        className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
-      {dateActive && (
-        <button onClick={clearDate}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
-          <X size={10} /> Clear
-        </button>
-      )}
-    </div>
+          {/* RIGHT — Date */}
+          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+            <Calendar size={13} className="text-[#9A8F82] flex-shrink-0" />
+            <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setDateActive(true) }}
+              className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] focus:shadow-[0_0_0_3px_rgba(184,134,11,0.10)] font-semibold transition-all" />
+            <span className="text-xs text-[#9A8F82] font-semibold">to</span>
+            <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setDateActive(true) }}
+              className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] focus:shadow-[0_0_0_3px_rgba(184,134,11,0.10)] font-semibold transition-all" />
+            {dateActive && (
+              <button onClick={clearDate}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
+                <X size={10} /> Clear
+              </button>
+            )}
+          </div>
 
-  </div>
-</div>
+        </div>
+      </div>
 
       {/* Stage Filter Chips */}
       <div className="flex flex-wrap gap-2">
         <button onClick={() => setActiveFilter(null)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
-          style={{ background: !activeFilter ? '#1C1712' : '#F5F0E8', color: !activeFilter ? '#fff' : '#7A6E60', border: `1px solid ${!activeFilter ? '#1C1712' : '#E2D9C8'}` }}>
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-150 hover:-translate-y-0.5"
+          style={{
+            background: !activeFilter ? '#1C1712' : '#F5F0E8',
+            color: !activeFilter ? '#fff' : '#7A6E60',
+            border: `1px solid ${!activeFilter ? '#1C1712' : '#E2D9C8'}`,
+            boxShadow: !activeFilter ? '0 4px 12px rgba(28,23,18,0.18)' : 'none',
+          }}>
           👥 All
           <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px]"
             style={{ background: !activeFilter ? 'rgba(255,255,255,0.2)' : '#E2D9C8', color: !activeFilter ? '#fff' : '#7A6E60' }}>
@@ -242,8 +265,13 @@ export default function AllLeadsPage() {
           const isActive = activeFilter === key
           return (
             <button key={key} onClick={() => setActiveFilter(isActive ? null : key)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
-              style={{ background: isActive ? cfg.color : cfg.bg, color: isActive ? '#fff' : cfg.color, border: `2px solid ${cfg.color}` }}>
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-150 hover:-translate-y-0.5"
+              style={{
+                background: isActive ? cfg.color : cfg.bg,
+                color: isActive ? '#fff' : cfg.color,
+                border: `2px solid ${cfg.color}`,
+                boxShadow: isActive ? `0 4px 12px ${cfg.color}40` : 'none',
+              }}>
               <span>{label}</span>
               <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px]"
                 style={{ background: isActive ? 'rgba(255,255,255,0.25)' : cfg.color, color: '#fff' }}>
@@ -256,13 +284,22 @@ export default function AllLeadsPage() {
 
       {/* Table */}
       {loading ? (
-        <div className="bg-white border border-[#E8E2D8] rounded-2xl py-20 text-center shadow-sm">
+        <div
+          className="bg-white border border-[#EDE7DB] rounded-2xl py-20 text-center"
+          style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 10px 24px rgba(28,23,18,0.05)' }}
+        >
           <div className="w-8 h-8 border-2 border-[#B8860B] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-[#9A8F82] text-sm">Loading leads...</p>
         </div>
       ) : !filteredLeads.length ? (
-        <div className="bg-white border border-[#E8E2D8] rounded-2xl py-20 text-center shadow-sm">
-          <div className="w-16 h-16 bg-[#F5F0E8] border border-[#E2D9C8] rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <div
+          className="bg-white border border-[#EDE7DB] rounded-2xl py-20 text-center"
+          style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 10px 24px rgba(28,23,18,0.05)' }}
+        >
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{ background: 'linear-gradient(135deg, #FBF7EE, #F5F0E8)', border: '1px solid #E2D9C8', boxShadow: '0 6px 16px rgba(184,134,11,0.10)' }}
+          >
             {searchQuery ? <Search className="w-7 h-7 text-[#B8860B]" /> : <Users className="w-7 h-7 text-[#B8860B]" />}
           </div>
           <p className="text-[#1C1712] font-bold">
@@ -273,7 +310,10 @@ export default function AllLeadsPage() {
           </p>
         </div>
       ) : (
-        <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
+        <div
+          className="bg-white border border-[#EDE7DB] rounded-2xl overflow-hidden"
+          style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 12px 28px rgba(28,23,18,0.06)' }}
+        >
           {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
@@ -294,11 +334,11 @@ export default function AllLeadsPage() {
                   return (
                     <tr key={l.id}
                       onClick={() => router.push(`${LEAD_BASE}/${l.id}`)}
-                      className="border-b border-[#F7F5F1] last:border-0 hover:bg-[#FDFAF8] transition-colors cursor-pointer">
+                      className="border-b border-[#F7F5F1] last:border-0 hover:bg-[#FDFAF8] transition-colors cursor-pointer group">
                       <td className="pl-5 pr-2 py-3.5"><span className="text-[10px] font-bold text-[#C4BAB0]">{i + 1}</span></td>
                       <td className="pl-2 pr-4 py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
+                          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0 transition-transform group-hover:scale-105"
                             style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 3px 10px ${g[0]}40` }}>
                             {ini(l.lead_name)}
                           </div>

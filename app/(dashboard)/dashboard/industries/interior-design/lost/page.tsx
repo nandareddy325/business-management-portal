@@ -76,13 +76,20 @@ export default async function LostPage() {
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>
             Interior Design · Pipeline
           </p>
-          <h1 className="text-2xl font-bold text-[#1C1712]">Lost / Not Interested</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1C1712]">Lost / Not Interested</h1>
           <p className="text-sm text-[#9A8F82] mt-0.5">
             <span className="font-bold text-[#1C1712]">{count ?? 0}</span> leads — convert avvaledu
           </p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
-          style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}>
+        <div
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
+          style={{
+            background: 'linear-gradient(135deg, #FEF2F2, #FFF7F7)',
+            color: '#DC2626',
+            border: '1px solid #FECACA',
+            boxShadow: '0 4px 14px rgba(220,38,38,0.10)',
+          }}
+        >
           <XCircle className="w-4 h-4" />
           Lost Stage
         </div>
@@ -101,7 +108,9 @@ export default async function LostPage() {
               : '—',
             color: '#7A6E60', isText: true },
         ].map((s, i) => (
-          <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
+          <div key={i}
+            className="bg-white border border-[#EDE7DB] rounded-2xl px-4 py-3 flex items-center justify-between transition-all duration-200 hover:-translate-y-0.5"
+            style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 8px 20px rgba(28,23,18,0.05)' }}>
             <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
             <p className={`font-black ${s.isText ? 'text-sm' : 'text-xl'}`} style={{ color: s.color }}>{s.value}</p>
           </div>
@@ -128,7 +137,7 @@ export default async function LostPage() {
 
       {/* Info Banner */}
       <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
-        style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+        style={{ background: 'linear-gradient(90deg,#FEF2F2,#FFF8F8)', border: '1px solid #FECACA' }}>
         <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
         <p className="text-sm text-red-700 font-medium">
           Ee leads future lo re-engage cheyyadaniki try cheyyi — lost permanent kaadu!
@@ -137,15 +146,16 @@ export default async function LostPage() {
 
       {/* Table / Empty */}
       {!leads?.length ? (
-        <div className="bg-white border border-[#E8E2D8] rounded-2xl py-20 text-center shadow-sm">
-          <div className="w-16 h-16 bg-[#F5F0E8] border border-[#E2D9C8] rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <div className="bg-white border border-[#EDE7DB] rounded-2xl py-20 text-center" style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 10px 24px rgba(28,23,18,0.05)' }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{ background: 'linear-gradient(135deg, #FBF7EE, #F5F0E8)', border: '1px solid #E2D9C8', boxShadow: '0 6px 16px rgba(184,134,11,0.10)' }}>
             <XCircle className="w-8 h-8 text-[#B8860B]" />
           </div>
           <p className="text-[#1C1712] font-bold text-base">No lost leads 🎉</p>
           <p className="text-[#9A8F82] text-sm mt-1">Anni leads convert avutunnay!</p>
         </div>
       ) : (
-        <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-[#EDE7DB] rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 12px 28px rgba(28,23,18,0.06)' }}>
 
           {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto">

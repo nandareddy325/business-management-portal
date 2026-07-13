@@ -212,22 +212,22 @@ export default function CREDashboardPage() {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/industries/interior-design/dashboard"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium"
-            style={{ background: 'white', color: '#7A6E60', border: '1px solid #E8E2D8' }}>
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium transition-all hover:-translate-y-0.5"
+            style={{ background: 'white', color: '#7A6E60', border: '1px solid #E8E2D8', boxShadow: '0 2px 8px rgba(28,23,18,0.04)' }}>
             <ArrowLeft className="w-4 h-4" /> Back
           </Link>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[3px]" style={{ color: '#B8860B' }}>Interior Design</p>
             {effectiveCreId ? (
               <>
-                <h1 className="text-2xl font-bold" style={{ color: '#1C1712' }}>
+                <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#1C1712' }}>
                   {isAdminOrOwner ? (creName || 'Loading...') : 'My'} — Full History
                 </h1>
                 <p className="text-sm" style={{ color: '#6B4F2A' }}>Individual CRE activity history & performance</p>
               </>
             ) : (
               <>
-                <h1 className="text-2xl font-bold" style={{ color: '#1C1712' }}>CRE Dashboard</h1>
+                <h1 className="text-2xl font-bold tracking-tight" style={{ color: '#1C1712' }}>CRE Dashboard</h1>
                 <p className="text-sm" style={{ color: '#6B4F2A' }}>Lead activity tracking and performance analytics</p>
               </>
             )}
@@ -237,7 +237,7 @@ export default function CREDashboardPage() {
             nothing to "clear" to, since they can only ever see their own data. */}
         {isAdminOrOwner && creIdParam && (
           <Link href="/dashboard/industries/interior-design/cre"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover:-translate-y-0.5"
             style={{ background: '#FFFBEB', color: '#B8860B', border: '1px solid #FDE68A' }}>
             <X className="w-3.5 h-3.5" /> Clear filter · View all CREs
           </Link>
@@ -245,14 +245,15 @@ export default function CREDashboardPage() {
       </div>
 
       {/* Date Filter */}
-      <div className="bg-white rounded-2xl p-4 mb-5 flex flex-wrap gap-3 items-center shadow-sm border border-[#E8E2D8]">
+      <div className="bg-white/90 backdrop-blur rounded-2xl p-4 mb-5 flex flex-wrap gap-3 items-center border border-[#EDE7DB]"
+        style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 10px 24px rgba(28,23,18,0.05)' }}>
         <span className="font-bold text-sm" style={{ color: '#1C1712' }}>Date Range:</span>
         <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-          className="border rounded-xl px-3 py-2 text-sm outline-none"
+          className="border rounded-xl px-3 py-2 text-sm outline-none transition-all focus:shadow-[0_0_0_3px_rgba(184,134,11,0.10)]"
           style={{ borderColor: '#B8860B', background: '#F7F5F1' }} />
         <span style={{ color: '#9A8F82' }}>to</span>
         <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-          className="border rounded-xl px-3 py-2 text-sm outline-none"
+          className="border rounded-xl px-3 py-2 text-sm outline-none transition-all focus:shadow-[0_0_0_3px_rgba(184,134,11,0.10)]"
           style={{ borderColor: '#B8860B', background: '#F7F5F1' }} />
         <button onClick={fetchAll}
           className="px-4 py-2 rounded-xl text-sm font-black text-white flex items-center gap-2 transition-all hover:scale-105"
@@ -281,19 +282,22 @@ export default function CREDashboardPage() {
               { label: 'Quotations',       value: totalQuotations, color: '#DB2777', icon: '💰' },
               { label: 'Stage Changes',    value: totalStageMoves, color: '#0891B2', icon: '🔀' },
             ].map((s, i) => (
-              <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-[#E8E2D8]">
-                <div className="flex items-center justify-between mb-2">
+              <div key={i}
+                className="relative overflow-hidden bg-white rounded-2xl p-4 border border-[#EDE7DB] transition-all duration-200 hover:-translate-y-0.5"
+                style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 8px 20px rgba(28,23,18,0.05)' }}>
+                <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-[0.06]" style={{ background: s.color }} />
+                <div className="relative flex items-center justify-between mb-2">
                   <p className="text-[9px] font-bold text-[#9A8F82] uppercase tracking-wider">{s.label}</p>
                   <span className="text-base">{s.icon}</span>
                 </div>
-                <p className="text-2xl font-black" style={{ color: s.color }}>{s.value}</p>
+                <p className="relative text-2xl font-black" style={{ color: s.color }}>{s.value}</p>
               </div>
             ))}
           </div>
 
           {/* Row 1: Activity Pie + City Bar */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E8E2D8]">
+            <div className="bg-white rounded-2xl p-5 border border-[#EDE7DB]" style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 10px 24px rgba(28,23,18,0.05)' }}>
               <h2 className="text-sm font-black mb-4" style={{ color: '#1C1712' }}>📊 Activity Type Breakdown</h2>
               {activityData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={260}>
@@ -310,7 +314,7 @@ export default function CREDashboardPage() {
               )}
             </div>
 
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E8E2D8]">
+            <div className="bg-white rounded-2xl p-5 border border-[#EDE7DB]" style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 10px 24px rgba(28,23,18,0.05)' }}>
               <h2 className="text-sm font-black mb-4" style={{ color: '#1C1712' }}>🏙️ Activities by City</h2>
               {cityData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={260}>
@@ -329,7 +333,7 @@ export default function CREDashboardPage() {
           </div>
 
           {/* User Performance Table — single row when scoped to one CRE */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E8E2D8] mb-5">
+          <div className="bg-white rounded-2xl p-5 border border-[#EDE7DB] mb-5" style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 10px 24px rgba(28,23,18,0.05)' }}>
             <h2 className="text-sm font-black mb-4" style={{ color: '#1C1712' }}>
               👤 {effectiveCreId ? 'CRE Performance Detail' : 'CRE User-wise Performance'}
             </h2>
@@ -344,7 +348,7 @@ export default function CREDashboardPage() {
                 </thead>
                 <tbody>
                   {userTableData.map((row, i) => (
-                    <tr key={i} className="border-t border-[#F0EBE0] hover:bg-[#FDFAF8]">
+                    <tr key={i} className="border-t border-[#F0EBE0] hover:bg-[#FDFAF8] transition-colors">
                       <td className="py-2.5 px-3 font-bold text-[#1C1712]">
                         {isAdminOrOwner && !effectiveCreId ? (
                           <Link href={`/dashboard/industries/interior-design/cre?cre_id=${Object.keys(userActivityMap)[i]}`}
@@ -372,7 +376,7 @@ export default function CREDashboardPage() {
 
           {/* Source Distribution — company-wide only, hidden when scoped to one CRE (leads aren't tied to a single CRE) */}
           {!effectiveCreId && (
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E8E2D8]">
+            <div className="bg-white rounded-2xl p-5 border border-[#EDE7DB]" style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 10px 24px rgba(28,23,18,0.05)' }}>
               <h2 className="text-sm font-black mb-4" style={{ color: '#1C1712' }}>📍 Lead Sources Distribution</h2>
               {sourceData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={220}>

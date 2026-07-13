@@ -27,10 +27,18 @@ export default async function WonPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>Interior Design · Pipeline</p>
-          <h1 className="text-2xl font-bold text-[#1C1712]">Won / Closing 🏆</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1C1712]">Won / Closing 🏆</h1>
           <p className="text-sm text-[#9A8F82] mt-0.5"><span className="font-bold text-[#1C1712]">{count ?? 0}</span> deals closed 🎉</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold" style={{ background: '#FFFBEB', color: '#B8860B', border: '1px solid #FDE68A' }}>
+        <div
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
+          style={{
+            background: 'linear-gradient(135deg, #FFFBEB, #FFF6DC)',
+            color: '#B8860B',
+            border: '1px solid #FDE68A',
+            boxShadow: '0 4px 14px rgba(184,134,11,0.12)',
+          }}
+        >
           <Trophy className="w-4 h-4" />Won Stage
         </div>
       </div>
@@ -40,7 +48,9 @@ export default async function WonPage() {
           { label: 'This Month',    value: String(thisMonth), color: '#059669' },
           { label: 'Total Revenue', value: totalRevenue >= 100000 ? '₹' + (totalRevenue / 100000).toFixed(1) + 'L' : totalRevenue > 0 ? '₹' + totalRevenue.toLocaleString('en-IN') : '—', color: '#B8860B' },
         ].map((s, i) => (
-          <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
+          <div key={i}
+            className="bg-white border border-[#EDE7DB] rounded-2xl px-4 py-3 flex items-center justify-between transition-all duration-200 hover:-translate-y-0.5"
+            style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 8px 20px rgba(28,23,18,0.05)' }}>
             <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
             <p className="font-black text-xl" style={{ color: s.color }}>{s.value}</p>
           </div>

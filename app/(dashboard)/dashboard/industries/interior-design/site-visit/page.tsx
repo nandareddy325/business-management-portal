@@ -74,13 +74,20 @@ export default async function SiteVisitPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>Interior Design · Pipeline</p>
-          <h1 className="text-2xl font-bold text-[#1C1712]">Site Visit</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1C1712]">Site Visit</h1>
           <p className="text-sm text-[#9A8F82] mt-0.5">
             <span className="font-bold text-[#1C1712]">{leadsWithDates.length}</span> leads in Site Visit stage
           </p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap"
-          style={{ background: '#ECFEFF', color: '#0891B2', border: '1px solid #A5F3FC' }}>
+        <div
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap"
+          style={{
+            background: 'linear-gradient(135deg, #ECFEFF, #F3FEFF)',
+            color: '#0891B2',
+            border: '1px solid #A5F3FC',
+            boxShadow: '0 4px 14px rgba(8,145,178,0.10)',
+          }}
+        >
           <MapPin className="w-4 h-4" /> Site Visit Stage
         </div>
       </div>

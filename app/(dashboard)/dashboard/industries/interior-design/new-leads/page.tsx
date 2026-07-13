@@ -47,7 +47,7 @@ export default async function NewLeadsPage() {
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>
             Interior Design · Pipeline
           </p>
-          <h1 className="text-2xl font-bold text-[#1C1712]">New Leads</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1C1712]">New Leads</h1>
           <p className="text-sm text-[#9A8F82] mt-0.5">
             <span className="font-bold text-[#1C1712]">{count ?? 0}</span> total leads
           </p>
@@ -62,7 +62,9 @@ export default async function NewLeadsPage() {
           { label: 'Added Today',     value: todayCount,  color: '#B8860B' },
           { label: 'With Budget',     value: withBudget,  color: '#059669' },
         ].map((s, i) => (
-          <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
+          <div key={i}
+            className="bg-white border border-[#EDE7DB] rounded-2xl px-4 py-3 flex items-center justify-between transition-all duration-200 hover:-translate-y-0.5"
+            style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 8px 20px rgba(28,23,18,0.05)' }}>
             <p className="text-xs text-[#7A6E60] font-medium">{s.label}</p>
             <p className="text-xl font-black" style={{ color: s.color }}>{s.value}</p>
           </div>

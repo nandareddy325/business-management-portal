@@ -39,11 +39,18 @@ export default async function QuotationsPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-1" style={{ color: '#B8860B' }}>Interior Design · Pipeline</p>
-          <h1 className="text-2xl font-bold text-[#1C1712]">Quotations</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[#1C1712]">Quotations</h1>
           <p className="text-sm text-[#9A8F82] mt-0.5"><span className="font-bold text-[#1C1712]">{count ?? 0}</span> leads</p>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
-          style={{ background: '#FDF2F8', color: '#DB2777', border: '1px solid #FBCFE8' }}>
+        <div
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold"
+          style={{
+            background: 'linear-gradient(135deg, #FDF2F8, #FFF7FB)',
+            color: '#DB2777',
+            border: '1px solid #FBCFE8',
+            boxShadow: '0 4px 14px rgba(219,39,119,0.10)',
+          }}
+        >
           <FileText className="w-4 h-4" />Quotation Stage
         </div>
       </div>
