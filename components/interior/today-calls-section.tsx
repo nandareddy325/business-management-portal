@@ -263,10 +263,10 @@ function OutcomePills({ outcomes, bg, border, color }: {
 }
 
 function PerfHeader({
-  name, perf, perfLoading, onClose, onRefresh,
+  name, perf, perfLoading, onClose, onRefresh, onViewHistory,
 }: {
   name: string; perf: PerfData | null; perfLoading: boolean
-  onClose: () => void; onRefresh: () => void
+  onClose: () => void; onRefresh: () => void; onViewHistory: () => void
 }) {
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #E2E8F0', background: '#fff' }}>
@@ -281,6 +281,11 @@ function PerfHeader({
             {perf ? `${perf.freshCalls + perf.followupCalls} calls · Uncalled: ${perf.uncalledFresh}` : perfLoading ? 'Loading...' : '—'}
           </p>
         </div>
+        <button onClick={onViewHistory}
+          className="flex-shrink-0 px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 whitespace-nowrap"
+          style={{ border: '1px solid #DDD6FE', background: '#F5F3FF', color: '#6D28D9', cursor: 'pointer' }}>
+          Full History →
+        </button>
         <button onClick={onRefresh} className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center"
           style={{ border: '1px solid #E2E8F0', background: 'transparent', cursor: 'pointer' }}>
           <RefreshCw size={11} style={{ color: '#94A3B8' }} className={perfLoading ? 'animate-spin' : ''} />
@@ -321,6 +326,7 @@ export function TodayCallsSection({
   todayCalls: Call[]; cres: CRE[]
   istDateStr: string; companyId: string
 }) {
+  const router = useRouter()
   const [selectedCRE, setSelectedCRE] = useState('all')
   const [open, setOpen]               = useState(false)
   const [perf, setPerf]               = useState<PerfData | null>(null)
@@ -415,6 +421,10 @@ export function TodayCallsSection({
 
   const handleClose   = () => { setExpandedCRE(null); setSelectedCRE('all'); setPerf(null) }
   const handleRefresh = () => { if (perf && expandedCRE) loadPerf(expandedCRE, perf.name) }
+  const handleViewHistory = () => {
+    if (!expandedCRE) return
+    router.push(`/dashboard/industries/interior-design/cre?cre_id=${expandedCRE}`)
+  }
 
   return (
     <div className="space-y-3">
@@ -467,16 +477,29 @@ export function TodayCallsSection({
                   {cres.map((cre, i) => {
                     const cnt = todayCalls.filter(c => c.user_id === cre.id).length
                     return (
-                      <button key={cre.id} type="button" onClick={() => selectCRE(cre.id)}
-                        style={{
-                          width: '100%', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          background: selectedCRE === cre.id ? '#FFFBEB' : 'transparent',
-                          borderBottom: i < cres.length - 1 ? '1px solid #F0EBE0' : 'none',
-                          color: selectedCRE === cre.id ? '#B8860B' : '#1C1712', fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
-                        }}>
-                        <span style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cre.name}</span>
-                        <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 20, marginLeft: 8, background: cnt > 0 ? '#FEF3C7' : '#F5F0E8', color: cnt > 0 ? '#B8860B' : '#9A8F82' }}>{cnt}</span>
-                      </button>
+                      <div key={cre.id} style={{
+                        display: 'flex', alignItems: 'center',
+                        borderBottom: i < cres.length - 1 ? '1px solid #F0EBE0' : 'none',
+                        background: selectedCRE === cre.id ? '#FFFBEB' : 'transparent',
+                      }}>
+                        <button type="button" onClick={() => selectCRE(cre.id)}
+                          style={{
+                            flex: 1, padding: '10px 8px 10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            background: 'transparent', border: 'none',
+                            color: selectedCRE === cre.id ? '#B8860B' : '#1C1712', fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                          }}>
+                          <span style={{ maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cre.name}</span>
+                          <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 20, marginLeft: 8, background: cnt > 0 ? '#FEF3C7' : '#F5F0E8', color: cnt > 0 ? '#B8860B' : '#9A8F82' }}>{cnt}</span>
+                        </button>
+                        <button type="button"
+                          title="View full history"
+                          onClick={() => { setOpen(false); router.push(`/dashboard/industries/interior-design/cre?cre_id=${cre.id}`) }}
+                          style={{
+                            flexShrink: 0, width: 26, height: 26, marginRight: 8, borderRadius: 8,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: 'transparent', border: 'none', color: '#B0A798', cursor: 'pointer', fontSize: 13,
+                          }}>›</button>
+                      </div>
                     )
                   })}
                 </div>
@@ -491,7 +514,7 @@ export function TodayCallsSection({
         <div className="space-y-3">
           <PerfHeader
             name={selectedName} perf={perf} perfLoading={perfLoading}
-            onClose={handleClose} onRefresh={handleRefresh}
+            onClose={handleClose} onRefresh={handleRefresh} onViewHistory={handleViewHistory}
           />
 
           {perfLoading ? (

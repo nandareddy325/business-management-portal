@@ -1,13 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts'
-import { RefreshCw, ArrowLeft } from 'lucide-react'
+import { RefreshCw, ArrowLeft, X } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
 const COLORS = ['#B8860B', '#1C1712', '#D4A843', '#6B4F2A', '#E8C97A', '#4A3520', '#C9A227', '#8B6914']
 
@@ -40,6 +41,7 @@ type LeadActivity = {
   id: string
   type?: string | null
   user_id?: string | null
+  created_at?: string | null
   leads?: {
     city?: string | null
     source?: string | null
@@ -61,16 +63,27 @@ export default function CREDashboardPage() {
     []
   )
 
+  const searchParams = useSearchParams()
+  const creIdParam = searchParams.get('cre_id') // when set, page shows ONE CRE's full history
+  const fetchIdRef = useRef(0)
+
   const [leads, setLeads]   = useState<Lead[]>([])
   const [activities, setActivities]   = useState<LeadActivity[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const today = new Date().toISOString().split('T')[0]
-  const [dateFrom, setDateFrom] = useState(today)
+  // ⚠️ FIXED: previously dateFrom started at `today` for everyone, then a separate
+  // useEffect reset it to '2020-01-01' when cre_id was present. That created two
+  // competing fetches on mount (today-only, then all-time) — whichever response
+  // landed last would "win", causing inconsistent/wrong results depending on network
+  // timing. Now the correct starting range is set ONCE, on the very first render,
+  // so only one fetch ever fires on mount.
+  const [dateFrom, setDateFrom] = useState(() => creIdParam ? '2020-01-01' : today)
   const [dateTo, setDateTo]     = useState(today)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
+    const requestId = ++fetchIdRef.current // tags this request so a late-arriving older one can be ignored
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       setLoading(false)
@@ -94,10 +107,14 @@ export default function CREDashboardPage() {
         .select('*, leads!inner(company_id, industry, city, source)')
         .eq('leads.company_id', profile.company_id)
         .eq('leads.industry', 'interior-design')
-        .gte('created_at', `${dateFrom}T00:00:00`)
-        .lte('created_at', `${dateTo}T23:59:59`)
+        // ⚠️ IST offset explicit here — without it Postgres treats this as UTC,
+        // shifting the "today" window ~5.5hrs off from the Dashboard's IST-based count.
+        .gte('created_at', `${dateFrom}T00:00:00+05:30`)
+        .lte('created_at', `${dateTo}T23:59:59+05:30`)
         .order('created_at', { ascending: false }),
     ])
+
+    if (requestId !== fetchIdRef.current) return // a newer request already started — drop this stale one
 
     setLeads((leadsRes.data ?? []) as Lead[])
     setProfiles((profilesRes.data ?? []) as Profile[])
@@ -109,11 +126,23 @@ export default function CREDashboardPage() {
     void Promise.resolve().then(fetchAll)
   }, [fetchAll])
 
-  // ── Calculations ──
+  // ── Filter down to a single CRE's activities when cre_id is present ──
+  const scopedActivities = useMemo(
+    () => creIdParam ? activities.filter(a => a.user_id === creIdParam) : activities,
+    [activities, creIdParam]
+  )
+
+  const creName = useMemo(() => {
+    if (!creIdParam) return null
+    const p = profiles.find(pr => pr.id === creIdParam)
+    return p?.full_name || p?.email || 'Unknown CRE'
+  }, [creIdParam, profiles])
+
+  // ── Calculations (all driven off scopedActivities) ──
 
   // 1. Activity type breakdown
   const activityCounts: Record<string, number> = {}
-  activities.forEach(activity => {
+  scopedActivities.forEach(activity => {
     const type = activity.type || 'unknown'
     activityCounts[type] = (activityCounts[type] || 0) + 1
   })
@@ -121,12 +150,12 @@ export default function CREDashboardPage() {
     name: ACTIVITY_LABELS[key] || key, value, key,
   }))
 
-  // 2. User-wise breakdown
+  // 2. User-wise breakdown (single row when scoped to one CRE)
   const profileMap: Record<string, string> = {}
   profiles.forEach(p => { profileMap[p.id] = p.full_name || p.email || p.id })
 
   const userActivityMap: Record<string, Record<string, number>> = {}
-  activities.forEach(activity => {
+  scopedActivities.forEach(activity => {
     const uid = activity.user_id || 'unknown'
     if (!userActivityMap[uid]) userActivityMap[uid] = {}
     const type = activity.type || 'unknown'
@@ -144,14 +173,14 @@ export default function CREDashboardPage() {
     sitevisit: counts['sitevisit'] || 0,
   })).sort((a, b) => b.total - a.total)
 
-  // 3. Source distribution
+  // 3. Source distribution — leads aren't tied to a CRE directly, so only show company-wide (hidden when scoped)
   const sourceCounts: Record<string, number> = {}
   leads.forEach(l => { const s = l.source || 'Unknown'; sourceCounts[s] = (sourceCounts[s] || 0) + 1 })
   const sourceData = Object.entries(sourceCounts).map(([name, value]) => ({ name, value }))
 
   // 4. City-wise activities
   const cityActivityCounts: Record<string, number> = {}
-  activities.forEach(activity => {
+  scopedActivities.forEach(activity => {
     const city = activity.leads?.city || 'Unknown'
     cityActivityCounts[city] = (cityActivityCounts[city] || 0) + 1
   })
@@ -160,7 +189,8 @@ export default function CREDashboardPage() {
     .sort((a, b) => b.count - a.count).slice(0, 10)
 
   // Summary
-  const totalActivities  = activities.length
+  const totalActivities  = scopedActivities.length
+  const totalCalls       = activityCounts.call || 0 // same definition as Dashboard's "Total CRE" count
   const totalFollowups   = activityCounts.followup || 0
   const totalQuotations  = activityCounts.quotation || 0
   const totalStageMoves  = activityCounts.stage_change || 0
@@ -169,7 +199,7 @@ export default function CREDashboardPage() {
     <div className="min-h-screen p-4 md:p-6" style={{ background: '#F5F0E8' }}>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div className="flex items-center gap-4">
           <Link href="/dashboard/industries/interior-design/dashboard"
             className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium"
@@ -178,10 +208,26 @@ export default function CREDashboardPage() {
           </Link>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[3px]" style={{ color: '#B8860B' }}>Interior Design</p>
-            <h1 className="text-2xl font-bold" style={{ color: '#1C1712' }}>CRE Dashboard</h1>
-            <p className="text-sm" style={{ color: '#6B4F2A' }}>Lead activity tracking and performance analytics</p>
+            {creIdParam ? (
+              <>
+                <h1 className="text-2xl font-bold" style={{ color: '#1C1712' }}>{creName || 'Loading...'} — Full History</h1>
+                <p className="text-sm" style={{ color: '#6B4F2A' }}>Individual CRE activity history & performance</p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-bold" style={{ color: '#1C1712' }}>CRE Dashboard</h1>
+                <p className="text-sm" style={{ color: '#6B4F2A' }}>Lead activity tracking and performance analytics</p>
+              </>
+            )}
           </div>
         </div>
+        {creIdParam && (
+          <Link href="/dashboard/industries/interior-design/cre"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold"
+            style={{ background: '#FFFBEB', color: '#B8860B', border: '1px solid #FDE68A' }}>
+            <X className="w-3.5 h-3.5" /> Clear filter · View all CREs
+          </Link>
+        )}
       </div>
 
       {/* Date Filter */}
@@ -199,6 +245,11 @@ export default function CREDashboardPage() {
           style={{ background: 'linear-gradient(135deg, #B8860B, #D97706)', boxShadow: '0 4px 12px rgba(184,134,11,0.35)' }}>
           <RefreshCw size={14} /> Apply
         </button>
+        {creIdParam && (
+          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#F5F3FF', color: '#7C3AED' }}>
+            Filtered to: {creName || '...'}
+          </span>
+        )}
       </div>
 
       {loading ? (
@@ -208,9 +259,10 @@ export default function CREDashboardPage() {
       ) : (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
             {[
               { label: 'Total Activities', value: totalActivities, color: '#B8860B', icon: '📋' },
+              { label: 'Calls',            value: totalCalls,      color: '#7C3AED', icon: '📞' },
               { label: 'Follow Ups',       value: totalFollowups,  color: '#D97706', icon: '🔔' },
               { label: 'Quotations',       value: totalQuotations, color: '#DB2777', icon: '💰' },
               { label: 'Stage Changes',    value: totalStageMoves, color: '#0891B2', icon: '🔀' },
@@ -262,9 +314,11 @@ export default function CREDashboardPage() {
             </div>
           </div>
 
-          {/* User Performance Table */}
+          {/* User Performance Table — single row when scoped to one CRE */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E8E2D8] mb-5">
-            <h2 className="text-sm font-black mb-4" style={{ color: '#1C1712' }}>👤 CRE User-wise Performance</h2>
+            <h2 className="text-sm font-black mb-4" style={{ color: '#1C1712' }}>
+              👤 {creIdParam ? 'CRE Performance Detail' : 'CRE User-wise Performance'}
+            </h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -277,7 +331,14 @@ export default function CREDashboardPage() {
                 <tbody>
                   {userTableData.map((row, i) => (
                     <tr key={i} className="border-t border-[#F0EBE0] hover:bg-[#FDFAF8]">
-                      <td className="py-2.5 px-3 font-bold text-[#1C1712]">{row.name}</td>
+                      <td className="py-2.5 px-3 font-bold text-[#1C1712]">
+                        {creIdParam ? row.name : (
+                          <Link href={`/dashboard/industries/interior-design/cre?cre_id=${Object.keys(userActivityMap)[i]}`}
+                            className="hover:underline" style={{ color: '#1C1712' }}>
+                            {row.name}
+                          </Link>
+                        )}
+                      </td>
                       <td className="py-2.5 px-3 font-black" style={{ color: '#B8860B' }}>{row.total}</td>
                       <td className="py-2.5 px-3 font-bold text-cyan-600">{row.stage_change}</td>
                       <td className="py-2.5 px-3 font-bold text-amber-600">{row.followup}</td>
@@ -295,23 +356,25 @@ export default function CREDashboardPage() {
             </div>
           </div>
 
-          {/* Source Distribution */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E8E2D8]">
-            <h2 className="text-sm font-black mb-4" style={{ color: '#1C1712' }}>📍 Lead Sources Distribution</h2>
-            {sourceData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={sourceData} cx="40%" cy="50%" innerRadius={55} outerRadius={90} dataKey="value">
-                    {sourceData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip />
-                  <Legend layout="vertical" align="right" verticalAlign="middle" iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-40 flex items-center justify-center text-[#9A8F82]">No data</div>
-            )}
-          </div>
+          {/* Source Distribution — company-wide only, hidden when scoped to one CRE (leads aren't tied to a single CRE) */}
+          {!creIdParam && (
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E8E2D8]">
+              <h2 className="text-sm font-black mb-4" style={{ color: '#1C1712' }}>📍 Lead Sources Distribution</h2>
+              {sourceData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={sourceData} cx="40%" cy="50%" innerRadius={55} outerRadius={90} dataKey="value">
+                      {sourceData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip />
+                    <Legend layout="vertical" align="right" verticalAlign="middle" iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-40 flex items-center justify-center text-[#9A8F82]">No data</div>
+              )}
+            </div>
+          )}
 
           <div className="text-center py-4 mt-4">
             <p className="text-[10px] text-[#C4BAB0]">GK CRM · CRE Dashboard · Interior Design</p>

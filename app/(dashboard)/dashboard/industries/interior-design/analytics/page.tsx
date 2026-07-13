@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin } from 'lucide-react'
 import { AnalyticsCharts } from '@/components/interior/analytics-charts'
+import { fetchAllLeads, fetchAllRows } from '@/lib/fetch-all-leads'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,32 +48,37 @@ export default async function AnalyticsPage({
     .from('profiles').select('company_id').eq('id', user.id).single()
   if (!profile?.company_id) redirect('/login')
 
-  // Build query with date filter
-  let query = supabase.from('leads').select('*')
-    .eq('company_id', profile.company_id)
-    .eq('industry', 'interior-design')
-
+  // ── Resolve date range filter, if any ──
+  let createdAfter: string | undefined
   if (dateRange === '7') {
-    const d = new Date(); d.setDate(d.getDate() - 7)
-    query = query.gte('created_at', d.toISOString())
+    const d = new Date(); d.setDate(d.getDate() - 7); createdAfter = d.toISOString()
   } else if (dateRange === '30') {
-    const d = new Date(); d.setDate(d.getDate() - 30)
-    query = query.gte('created_at', d.toISOString())
+    const d = new Date(); d.setDate(d.getDate() - 30); createdAfter = d.toISOString()
   } else if (dateRange === '90') {
-    const d = new Date(); d.setDate(d.getDate() - 90)
-    query = query.gte('created_at', d.toISOString())
+    const d = new Date(); d.setDate(d.getDate() - 90); createdAfter = d.toISOString()
   }
 
-  const { data: leadsData } = await query
-  const allLeads: Lead[] = leadsData ?? []
+  // ── Leads — shared helper, bypasses Supabase 1000-row cap (same source of truth as Dashboard) ──
+  const allLeads = await fetchAllLeads<Lead>(
+    supabase,
+    profile.company_id,
+    'interior-design',
+    '*',
+    { createdAfter }
+  )
 
-  // Activities
+  // ── Activities — chunk lead ids (URL length safety) + paginate each chunk ──
   const leadIds = allLeads.map((l: Lead) => l.id)
   let allActivities: LeadActivity[] = []
   if (leadIds.length > 0) {
-    const { data: acts } = await supabase
-      .from('lead_activities').select('*').in('lead_id', leadIds)
-    allActivities = acts ?? []
+    const CHUNK = 500
+    for (let i = 0; i < leadIds.length; i += CHUNK) {
+      const idChunk = leadIds.slice(i, i + CHUNK)
+      const chunkRows = await fetchAllRows<LeadActivity>(async (from, to) => {
+        return supabase.from('lead_activities').select('*').in('lead_id', idChunk).range(from, to)
+      })
+      allActivities.push(...chunkRows)
+    }
   }
 
   // ── Computed Stats ──
@@ -147,32 +153,40 @@ export default async function AnalyticsPage({
     .slice(0, 8)
 
   const kpis = [
-    { label: 'Total Leads',  value: totalLeads,           color: '#7C3AED', icon: '👥', sub: 'All time',     isStr: false },
-    { label: 'Active',       value: activeLeads,           color: '#2563EB', icon: '⚡', sub: 'In pipeline',  isStr: false },
-    { label: 'Won',          value: wonLeads,              color: '#059669', icon: '🏆', sub: `${convRate}% rate`, isStr: false },
-    { label: 'Lost',         value: lostLeads,             color: '#DC2626', icon: '❌', sub: 'Dropped',      isStr: false },
-    { label: 'Total Calls',  value: totalCalls,            color: '#D97706', icon: '📞', sub: 'Activities',   isStr: false },
-    { label: 'Pipeline',     value: fmtBudget(totalBudget), color: '#B8860B', icon: '💰', sub: 'Combined',   isStr: true  },
+    { label: 'Total Leads',  value: totalLeads,           color: '#7C3AED', bg: 'linear-gradient(135deg,#F4EEFF,#FBF8FF)', icon: '👥', sub: 'All time',     isStr: false },
+    { label: 'Active',       value: activeLeads,           color: '#2563EB', bg: 'linear-gradient(135deg,#EAF1FF,#F6FAFF)', icon: '⚡', sub: 'In pipeline',  isStr: false },
+    { label: 'Won',          value: wonLeads,              color: '#059669', bg: 'linear-gradient(135deg,#E9FBF3,#F5FFFA)', icon: '🏆', sub: `${convRate}% rate`, isStr: false },
+    { label: 'Lost',         value: lostLeads,             color: '#DC2626', bg: 'linear-gradient(135deg,#FDECEC,#FFF7F7)', icon: '❌', sub: 'Dropped',      isStr: false },
+    { label: 'Total Calls',  value: totalCalls,            color: '#D97706', bg: 'linear-gradient(135deg,#FFF3E2,#FFFAF3)', icon: '📞', sub: 'Activities',   isStr: false },
+    { label: 'Pipeline',     value: fmtBudget(totalBudget), color: '#B8860B', bg: 'linear-gradient(135deg,#FBF3DF,#FFFCF5)', icon: '💰', sub: 'Combined',   isStr: true  },
   ]
 
   return (
     <div style={{ background: '#F5F0E8', minHeight: '100vh' }}>
-      {/* Dark Header */}
-      <div style={{ background: 'linear-gradient(135deg, #1C1712, #2d2218)', padding: '20px 24px' }}>
+      {/* Dark Header — premium gradient + glow */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1C1712 0%, #2d2218 55%, #241a10 100%)',
+        padding: '22px 24px',
+        borderBottom: '1px solid rgba(184,134,11,0.25)',
+        boxShadow: '0 8px 30px rgba(0,0,0,0.25)'
+      }}>
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/industries/interior-design/dashboard"
-              className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-xl transition-all"
+              className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-xl transition-all hover:bg-white/10"
               style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}>
               <ArrowLeft className="w-3.5 h-3.5" /> Back
             </Link>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[3px] mb-0.5" style={{ color: '#B8860B' }}>Interior Design</p>
-              <h1 className="text-xl font-black text-white">Analytics Dashboard</h1>
+              <p className="text-[10px] font-bold uppercase tracking-[3px] mb-0.5 flex items-center gap-1.5" style={{ color: '#D9A94A' }}>
+                <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#22C55E' }} />
+                Interior Design · Live
+              </p>
+              <h1 className="text-xl font-black text-white tracking-tight">Analytics Dashboard</h1>
             </div>
           </div>
           {/* Date Range Filter — links instead of state */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 p-1 rounded-2xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
             {[
               { label: 'All Time', value: 'all' },
               { label: '7 Days',   value: '7' },
@@ -183,9 +197,9 @@ export default async function AnalyticsPage({
                 href={`/dashboard/industries/interior-design/analytics?range=${d.value}`}
                 className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
                 style={{
-                  background: dateRange === d.value ? '#B8860B' : 'rgba(255,255,255,0.08)',
-                  color: dateRange === d.value ? '#fff' : 'rgba(255,255,255,0.5)',
-                  border: `1px solid ${dateRange === d.value ? '#B8860B' : 'rgba(255,255,255,0.1)'}`,
+                  background: dateRange === d.value ? 'linear-gradient(135deg,#D9A94A,#B8860B)' : 'transparent',
+                  color: dateRange === d.value ? '#1C1712' : 'rgba(255,255,255,0.5)',
+                  boxShadow: dateRange === d.value ? '0 4px 14px rgba(184,134,11,0.35)' : 'none',
                 }}>
                 {d.label}
               </Link>
@@ -196,18 +210,21 @@ export default async function AnalyticsPage({
 
       <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-5">
 
-        {/* KPI Cards */}
+        {/* KPI Cards — premium: gradient bg, top accent bar, hover lift */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {kpis.map((s, i) => (
-            <div key={i} className="bg-white border border-[#E8E2D8] rounded-2xl p-4 shadow-sm">
+            <div key={i}
+              className="relative overflow-hidden rounded-2xl p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+              style={{ background: s.bg, border: '1px solid rgba(0,0,0,0.05)' }}>
+              <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: s.color }} />
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[9px] font-bold text-[#9A8F82] uppercase tracking-wider">{s.label}</p>
-                <span className="text-base">{s.icon}</span>
+                <span className="text-base drop-shadow-sm">{s.icon}</span>
               </div>
-              <p className="text-2xl font-black" style={{ color: s.color }}>
+              <p className="text-2xl font-black tracking-tight" style={{ color: s.color }}>
                 {s.isStr ? s.value : (s.value as number).toLocaleString()}
               </p>
-              <p className="text-[10px] text-[#B8B0A0] mt-0.5">{s.sub}</p>
+              <p className="text-[10px] font-semibold mt-0.5" style={{ color: '#B0A798' }}>{s.sub}</p>
             </div>
           ))}
         </div>
@@ -221,10 +238,15 @@ export default async function AnalyticsPage({
           interestData={interestData}
         />
 
-        {/* City Table — server rendered */}
+        {/* City Table — premium header, refined rows */}
         <div className="bg-white border border-[#E8E2D8] rounded-2xl overflow-hidden shadow-sm">
-          <div className="px-4 py-3 border-b border-[#F0EBE0]" style={{ background: '#FAFAF8' }}>
-            <p className="text-sm font-black text-[#1C1712]">📊 City-wise Detailed Table</p>
+          <div className="px-4 py-3.5 border-b border-[#F0EBE0] flex items-center justify-between"
+            style={{ background: 'linear-gradient(90deg,#FAFAF8,#F5F0E8)' }}>
+            <p className="text-sm font-black text-[#1C1712] flex items-center gap-2">
+              <span className="w-1 h-4 rounded-full" style={{ background: '#B8860B' }} />
+              City-wise Detailed Table
+            </p>
+            <span className="text-[10px] font-bold text-[#B0A798] uppercase tracking-wider">{cityData.length} cities</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -251,7 +273,7 @@ export default async function AnalyticsPage({
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-1.5 rounded-full bg-[#F0EBE0] max-w-[80px]">
-                          <div className="h-1.5 rounded-full" style={{
+                          <div className="h-1.5 rounded-full transition-all" style={{
                             width: `${Math.min(parseFloat(c.convRate), 100)}%`,
                             background: parseFloat(c.convRate) > 10 ? '#059669' : parseFloat(c.convRate) > 5 ? '#D97706' : '#DC2626'
                           }} />

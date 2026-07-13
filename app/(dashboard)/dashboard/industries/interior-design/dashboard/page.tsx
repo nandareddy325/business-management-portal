@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { UserPlus, Phone, Calendar, MapPin, FileText, Trophy, XCircle } from 'lucide-react'
 import { TodayCallsSection } from '@/components/interior/today-calls-section'
+import { fetchAllLeads } from '@/lib/fetch-all-leads'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,24 +58,13 @@ export default async function InteriorDesignDashboard() {
   const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
   if (!profile?.company_id) redirect('/login')
 
-  // ── Leads data — FIXED: Pagination to bypass Supabase 1000 row limit ──
-  let allLeads: Lead[] = []
-  let page = 0
-  const PAGE_SIZE = 1000
-
-  while (true) {
-    const { data: batch, error } = await supabase
-      .from('leads')
-      .select('id, pipeline_stage, budget, created_at, lead_name, phone, notes')
-      .eq('company_id', profile.company_id)
-      .eq('industry', 'interior-design')
-      .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
-
-    if (error || !batch || batch.length === 0) break
-    allLeads = [...allLeads, ...(batch as Lead[])]
-    if (batch.length < PAGE_SIZE) break
-    page++
-  }
+  // ── Leads data — shared helper, bypasses Supabase 1000-row cap ──
+  const allLeads = await fetchAllLeads<Lead>(
+    supabase,
+    profile.company_id,
+    'interior-design',
+    'id, pipeline_stage, budget, created_at, lead_name, phone, notes'
+  )
 
   const stageCounts: Record<string, number> = {}
   STAGES.forEach(s => { stageCounts[s.key] = 0 })
@@ -110,7 +100,12 @@ export default async function InteriorDesignDashboard() {
       const SURL = process.env.NEXT_PUBLIC_SUPABASE_URL!
       const SKEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-      const url = `${SURL}/rest/v1/lead_activities?select=id,lead_id,title,description,created_at,user_id&type=eq.call&created_at=gte.${encodeURIComponent(todayStart.toISOString())}&created_at=lte.${encodeURIComponent(todayEnd.toISOString())}&order=created_at.desc&limit=500`
+      // ⚠️ FIXED: company_id + industry filter now applied in the DB query itself via an
+      // embedded join on `leads`. Previously this query had NO company filter — it pulled the
+      // most-recent 500 'call' activities across ALL tenants, then filtered by leadIdSet in JS.
+      // On a busy day, other companies' calls could push this company's earlier calls out of
+      // that global top-500 window, silently undercounting today's calls.
+      const url = `${SURL}/rest/v1/lead_activities?select=id,lead_id,title,description,created_at,user_id,leads!inner(company_id,industry)&type=eq.call&leads.company_id=eq.${profile.company_id}&leads.industry=eq.interior-design&created_at=gte.${encodeURIComponent(todayStart.toISOString())}&created_at=lte.${encodeURIComponent(todayEnd.toISOString())}&order=created_at.desc&limit=1000`
 
       const res = await fetch(url, {
         headers: { 'apikey': SKEY, 'Authorization': `Bearer ${SKEY}` },
@@ -118,9 +113,7 @@ export default async function InteriorDesignDashboard() {
       })
 
       if (res.ok) {
-        const allActs: Activity[] = await res.json()
-        const leadIdSet = new Set(leadIds)
-        const todayActs = (allActs ?? []).filter((a: Activity) => leadIdSet.has(a.lead_id))
+        const todayActs: Activity[] = await res.json()
 
         if (todayActs.length > 0) {
           const uids = [...new Set(todayActs.map((a: Activity) => a.user_id).filter(Boolean))] as string[]
