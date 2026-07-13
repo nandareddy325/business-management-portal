@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronDown, RefreshCw, Users, X, Phone, ArrowRight } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
@@ -263,16 +263,18 @@ function OutcomePills({ outcomes, bg, border, color }: {
 }
 
 function PerfHeader({
-  name, perf, perfLoading, onClose, onRefresh, onViewHistory,
+  name, perf, perfLoading, onClose, onRefresh, onViewHistory, showClose,
 }: {
   name: string; perf: PerfData | null; perfLoading: boolean
-  onClose: () => void; onRefresh: () => void; onViewHistory: () => void
+  onClose: () => void; onRefresh: () => void; onViewHistory: () => void; showClose: boolean
 }) {
   return (
     <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #E2E8F0', background: '#fff' }}>
       <div className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: '1px solid #F1F5F9' }}>
-        <button onClick={onClose} className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-xs"
-          style={{ border: '1px solid #E2E8F0', color: '#94A3B8', background: 'transparent', cursor: 'pointer' }}>✕</button>
+        {showClose && (
+          <button onClick={onClose} className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-xs"
+            style={{ border: '1px solid #E2E8F0', color: '#94A3B8', background: 'transparent', cursor: 'pointer' }}>✕</button>
+        )}
         <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-white"
           style={{ background: '#1C1712' }}>{ini(name)}</div>
         <div className="flex-1 min-w-0">
@@ -321,17 +323,18 @@ function PerfHeader({
 }
 
 export function TodayCallsSection({
-  todayCalls, cres, istDateStr, companyId,
+  todayCalls, cres, istDateStr, companyId, isAdminOrOwner, currentUserId,
 }: {
   todayCalls: Call[]; cres: CRE[]
   istDateStr: string; companyId: string
+  isAdminOrOwner: boolean; currentUserId: string
 }) {
   const router = useRouter()
-  const [selectedCRE, setSelectedCRE] = useState('all')
+  const [selectedCRE, setSelectedCRE] = useState(isAdminOrOwner ? 'all' : currentUserId)
   const [open, setOpen]               = useState(false)
   const [perf, setPerf]               = useState<PerfData | null>(null)
   const [perfLoading, setPerfLoading] = useState(false)
-  const [expandedCRE, setExpandedCRE] = useState<string | null>(null)
+  const [expandedCRE, setExpandedCRE] = useState<string | null>(isAdminOrOwner ? null : currentUserId)
 
   // Modal state
   const [modalOpen, setModalOpen]     = useState(false)
@@ -345,9 +348,19 @@ export function TodayCallsSection({
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const selectedName = selectedCRE === 'all' ? 'Total CRE'
-    : cres.find(c => c.id === selectedCRE)?.name || 'Total CRE'
+  const selectedName = isAdminOrOwner
+    ? (selectedCRE === 'all' ? 'Total CRE' : cres.find(c => c.id === selectedCRE)?.name || 'Total CRE')
+    : (cres.find(c => c.id === currentUserId)?.name || 'Me')
   const totalCount = todayCalls.length
+
+  // Non-admins have no dropdown to click (they only ever see themselves) — load their own
+  // performance automatically on mount instead of requiring an interaction.
+  useEffect(() => {
+    if (!isAdminOrOwner) {
+      loadPerf(currentUserId, selectedName)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdminOrOwner, currentUserId])
 
   const loadPerf = async (creId: string, creName: string) => {
     setPerfLoading(true)
@@ -419,7 +432,10 @@ export function TodayCallsSection({
     loadPerf(id, name)
   }
 
-  const handleClose   = () => { setExpandedCRE(null); setSelectedCRE('all'); setPerf(null) }
+  const handleClose   = () => {
+    if (isAdminOrOwner) { setExpandedCRE(null); setSelectedCRE('all'); setPerf(null) }
+    // non-admins always stay on their own view — nothing to close back to
+  }
   const handleRefresh = () => { if (perf && expandedCRE) loadPerf(expandedCRE, perf.name) }
   const handleViewHistory = () => {
     if (!expandedCRE) return
@@ -440,10 +456,14 @@ export function TodayCallsSection({
         />
       )}
 
-      {/* ── 1. TEAM SELECTOR ── */}
+      {/* ── 1. TEAM SELECTOR — admins/owners only. Non-admins have nothing to select, since
+             they can only ever see their own performance. ── */}
       <div className="rounded-2xl" style={{ background: '#fff', border: '1px solid #E8E2D8' }}>
         <div className="px-4 py-3 flex items-center justify-between">
-          <p className="text-xs font-semibold" style={{ color: '#1C1712' }}>Team performance</p>
+          <p className="text-xs font-semibold" style={{ color: '#1C1712' }}>
+            {isAdminOrOwner ? 'Team performance' : 'My performance'}
+          </p>
+          {isAdminOrOwner ? (
           <div style={{ position: 'relative' }}>
             <button type="button" onClick={() => setOpen(v => !v)}
               style={{
@@ -506,6 +526,11 @@ export function TodayCallsSection({
               </>
             )}
           </div>
+          ) : (
+            <span className="px-3 py-1.5 rounded-xl text-xs font-bold" style={{ background: '#F5F0E8', color: '#6B5E4E' }}>
+              {selectedName}
+            </span>
+          )}
         </div>
       </div>
 
@@ -515,6 +540,7 @@ export function TodayCallsSection({
           <PerfHeader
             name={selectedName} perf={perf} perfLoading={perfLoading}
             onClose={handleClose} onRefresh={handleRefresh} onViewHistory={handleViewHistory}
+            showClose={isAdminOrOwner}
           />
 
           {perfLoading ? (

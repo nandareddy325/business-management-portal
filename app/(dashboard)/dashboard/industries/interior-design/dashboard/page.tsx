@@ -55,8 +55,11 @@ export default async function InteriorDesignDashboard() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
+  const { data: profile } = await supabase.from('profiles').select('company_id, role, full_name, email').eq('id', user.id).single()
   if (!profile?.company_id) redirect('/login')
+
+  // Only admins/owners can see the whole team's performance; regular CRE staff see only their own.
+  const isAdminOrOwner = profile.role === 'admin' || profile.role === 'owner'
 
   // ── Leads data — shared helper, bypasses Supabase 1000-row cap ──
   const allLeads = await fetchAllLeads<Lead>(
@@ -141,12 +144,22 @@ export default async function InteriorDesignDashboard() {
     }
   }
 
-  const creIds = [...new Set(todayCalls.map((a: Activity) => a.user_id).filter(Boolean))] as string[]
+  // ⚠️ ACCESS CONTROL: non-admin CRE staff must only ever see their own calls/performance,
+  // never teammates'. Filter here (not just hide in the UI) so the data never even reaches
+  // the client for a restricted user.
+  const visibleTodayCalls = isAdminOrOwner ? todayCalls : todayCalls.filter(a => a.user_id === user.id)
+
   let cres: Cre[] = []
-  if (creIds.length > 0) {
-    const { data: creProfiles } = await supabase.from('profiles').select('id, full_name, email').in('id', creIds)
-    cres = ((creProfiles ?? []) as ProfileRow[]).map((p: ProfileRow) => ({ id: p.id, name: p.full_name || p.email || 'Unknown' }))
-      .sort((a: Cre, b: Cre) => a.name.localeCompare(b.name))
+  if (isAdminOrOwner) {
+    const creIds = [...new Set(todayCalls.map((a: Activity) => a.user_id).filter(Boolean))] as string[]
+    if (creIds.length > 0) {
+      const { data: creProfiles } = await supabase.from('profiles').select('id, full_name, email').in('id', creIds)
+      cres = ((creProfiles ?? []) as ProfileRow[]).map((p: ProfileRow) => ({ id: p.id, name: p.full_name || p.email || 'Unknown' }))
+        .sort((a: Cre, b: Cre) => a.name.localeCompare(b.name))
+    }
+  } else {
+    // Regular CRE staff: the only "team member" they can ever see is themselves.
+    cres = [{ id: user.id, name: profile.full_name || profile.email || 'Me' }]
   }
 
   return (
@@ -164,6 +177,8 @@ export default async function InteriorDesignDashboard() {
         <div className="fade-up">
           <div className="flex items-center justify-between mb-1">
             <p className="text-[10px] font-bold uppercase tracking-[4px]" style={{ color:'#B8860B' }}>Interior Design CRM</p>
+            {/* Analytics + CRE dashboard both show company-wide data — admin/owner only */}
+            {isAdminOrOwner && (
             <div className="flex items-center gap-2">
               <Link href="/dashboard/industries/interior-design/analytics"
                 className="px-3 py-1.5 rounded-xl text-[11px] font-black text-white"
@@ -176,6 +191,7 @@ export default async function InteriorDesignDashboard() {
                 📋 CRE
               </Link>
             </div>
+            )}
           </div>
           <h1 className="text-2xl font-black" style={{ color:'#1C1712' }}>Pipeline Dashboard</h1>
           <p className="text-sm mt-0.5" style={{ color:'#9A8F82' }}>
@@ -248,10 +264,12 @@ export default async function InteriorDesignDashboard() {
         {/* TEAM PERFORMANCE */}
         <div className="fade-up">
           <TodayCallsSection
-            todayCalls={todayCalls}
+            todayCalls={visibleTodayCalls}
             cres={cres}
             istDateStr={istDateStr}
             companyId={profile.company_id}
+            isAdminOrOwner={isAdminOrOwner}
+            currentUserId={user.id}
           />
         </div>
 

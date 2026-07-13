@@ -71,6 +71,8 @@ export default function CREDashboardPage() {
   const [activities, setActivities]   = useState<LeadActivity[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
+  const [isAdminOrOwner, setIsAdminOrOwner] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const today = new Date().toISOString().split('T')[0]
   // ⚠️ FIXED: previously dateFrom started at `today` for everyone, then a separate
   // useEffect reset it to '2020-01-01' when cre_id was present. That created two
@@ -89,11 +91,15 @@ export default function CREDashboardPage() {
       setLoading(false)
       return
     }
-    const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
+    const { data: profile } = await supabase.from('profiles').select('company_id, role').eq('id', user.id).single()
     if (!profile?.company_id) {
       setLoading(false)
       return
     }
+
+    const viewerIsAdminOrOwner = profile.role === 'admin' || profile.role === 'owner'
+    setIsAdminOrOwner(viewerIsAdminOrOwner)
+    setCurrentUserId(user.id)
 
     const [leadsRes, profilesRes, activitiesRes] = await Promise.all([
       supabase.from('leads').select('*')
@@ -126,17 +132,21 @@ export default function CREDashboardPage() {
     void Promise.resolve().then(fetchAll)
   }, [fetchAll])
 
-  // ── Filter down to a single CRE's activities when cre_id is present ──
+  // ⚠️ ACCESS CONTROL: whatever is in the URL, a non-admin can only ever see their own data.
+  // This is the actual enforcement point — the URL param alone must never grant visibility.
+  const effectiveCreId = isAdminOrOwner ? creIdParam : currentUserId
+
+  // ── Filter down to a single CRE's activities when effectiveCreId is present ──
   const scopedActivities = useMemo(
-    () => creIdParam ? activities.filter(a => a.user_id === creIdParam) : activities,
-    [activities, creIdParam]
+    () => effectiveCreId ? activities.filter(a => a.user_id === effectiveCreId) : activities,
+    [activities, effectiveCreId]
   )
 
   const creName = useMemo(() => {
-    if (!creIdParam) return null
-    const p = profiles.find(pr => pr.id === creIdParam)
+    if (!effectiveCreId) return null
+    const p = profiles.find(pr => pr.id === effectiveCreId)
     return p?.full_name || p?.email || 'Unknown CRE'
-  }, [creIdParam, profiles])
+  }, [effectiveCreId, profiles])
 
   // ── Calculations (all driven off scopedActivities) ──
 
@@ -208,9 +218,11 @@ export default function CREDashboardPage() {
           </Link>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[3px]" style={{ color: '#B8860B' }}>Interior Design</p>
-            {creIdParam ? (
+            {effectiveCreId ? (
               <>
-                <h1 className="text-2xl font-bold" style={{ color: '#1C1712' }}>{creName || 'Loading...'} — Full History</h1>
+                <h1 className="text-2xl font-bold" style={{ color: '#1C1712' }}>
+                  {isAdminOrOwner ? (creName || 'Loading...') : 'My'} — Full History
+                </h1>
                 <p className="text-sm" style={{ color: '#6B4F2A' }}>Individual CRE activity history & performance</p>
               </>
             ) : (
@@ -221,7 +233,9 @@ export default function CREDashboardPage() {
             )}
           </div>
         </div>
-        {creIdParam && (
+        {/* Only admins/owners can clear the filter to see the whole team — a non-admin has
+            nothing to "clear" to, since they can only ever see their own data. */}
+        {isAdminOrOwner && creIdParam && (
           <Link href="/dashboard/industries/interior-design/cre"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold"
             style={{ background: '#FFFBEB', color: '#B8860B', border: '1px solid #FDE68A' }}>
@@ -245,7 +259,7 @@ export default function CREDashboardPage() {
           style={{ background: 'linear-gradient(135deg, #B8860B, #D97706)', boxShadow: '0 4px 12px rgba(184,134,11,0.35)' }}>
           <RefreshCw size={14} /> Apply
         </button>
-        {creIdParam && (
+        {effectiveCreId && isAdminOrOwner && (
           <span className="text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ background: '#F5F3FF', color: '#7C3AED' }}>
             Filtered to: {creName || '...'}
           </span>
@@ -317,7 +331,7 @@ export default function CREDashboardPage() {
           {/* User Performance Table — single row when scoped to one CRE */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E8E2D8] mb-5">
             <h2 className="text-sm font-black mb-4" style={{ color: '#1C1712' }}>
-              👤 {creIdParam ? 'CRE Performance Detail' : 'CRE User-wise Performance'}
+              👤 {effectiveCreId ? 'CRE Performance Detail' : 'CRE User-wise Performance'}
             </h2>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -332,12 +346,12 @@ export default function CREDashboardPage() {
                   {userTableData.map((row, i) => (
                     <tr key={i} className="border-t border-[#F0EBE0] hover:bg-[#FDFAF8]">
                       <td className="py-2.5 px-3 font-bold text-[#1C1712]">
-                        {creIdParam ? row.name : (
+                        {isAdminOrOwner && !effectiveCreId ? (
                           <Link href={`/dashboard/industries/interior-design/cre?cre_id=${Object.keys(userActivityMap)[i]}`}
                             className="hover:underline" style={{ color: '#1C1712' }}>
                             {row.name}
                           </Link>
-                        )}
+                        ) : row.name}
                       </td>
                       <td className="py-2.5 px-3 font-black" style={{ color: '#B8860B' }}>{row.total}</td>
                       <td className="py-2.5 px-3 font-bold text-cyan-600">{row.stage_change}</td>
@@ -357,7 +371,7 @@ export default function CREDashboardPage() {
           </div>
 
           {/* Source Distribution — company-wide only, hidden when scoped to one CRE (leads aren't tied to a single CRE) */}
-          {!creIdParam && (
+          {!effectiveCreId && (
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E8E2D8]">
               <h2 className="text-sm font-black mb-4" style={{ color: '#1C1712' }}>📍 Lead Sources Distribution</h2>
               {sourceData.length > 0 ? (
