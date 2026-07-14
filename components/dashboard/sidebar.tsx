@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { X, ChevronDown, LogOut } from 'lucide-react'
@@ -181,6 +181,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     'HR & ADMIN': false, 'FINANCE': false, 'SYSTEM': false, 'ACCOUNT': true,
   })
 
+  // Cached company_id so the realtime listener doesn't re-fetch auth/profile on every single event
+  const companyIdRef = useRef<string | null>(null)
+  const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
     if (isOpen && typeof window !== 'undefined' && window.innerWidth < 1024) {
       document.body.style.overflow = 'hidden'
@@ -191,18 +195,24 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   }, [isOpen])
 
   const refreshStageCounts = async (companyId: string) => {
-    const leads = await fetchAllLeads(supabase, companyId, 'interior-design', 'pipeline_stage, notes')
-    if (!leads) return
-    setStageCounts(getStageCounts(leads))
-    setTotalLeads(leads.length)
+    try {
+      const leads = await fetchAllLeads(supabase, companyId, 'interior-design', 'pipeline_stage, notes')
+      if (!leads) return
+      setStageCounts(getStageCounts(leads))
+      setTotalLeads(leads.length)
 
-    const { count } = await supabase
-      .from('leads')
-      .select('id', { count: 'exact', head: true })
-      .eq('company_id', companyId)
-      .eq('industry', 'interior-design')
-      .not('handover_date', 'is', null)
-    setHandoverCount(count ?? 0)
+      const { count } = await supabase
+        .from('leads')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('industry', 'interior-design')
+        .not('handover_date', 'is', null)
+      setHandoverCount(count ?? 0)
+    } catch (err) {
+      // Transient network/Supabase blips shouldn't crash the sidebar — just skip this refresh,
+      // the next realtime event or page load will pick up the correct counts.
+      console.warn('Sidebar stage-count refresh skipped:', err)
+    }
   }
 
   useEffect(() => {
@@ -221,6 +231,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             setUserInitials(parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : parts[0].slice(0, 2).toUpperCase())
           }
           if (profile.company_id) {
+            companyIdRef.current = profile.company_id
             const { data: company } = await supabase.from('companies').select('name').eq('id', profile.company_id).single()
             if (company?.name) setUserCompany(company.name)
             const { data: ci } = await supabase.from('company_industries').select('industries(slug)').eq('company_id', profile.company_id).eq('is_active', true)
@@ -243,16 +254,40 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     init()
   }, [pathname])
 
+  // Realtime listener — debounced + error-safe.
+  // Bulk DB changes (CSV imports, SQL cleanups, multi-row deletes) fire this callback once
+  // PER ROW CHANGE. Without debouncing, that means N parallel auth/profile/count fetches at once,
+  // which is what was causing "Failed to fetch" crashes during bulk operations.
   useEffect(() => {
     const channel = supabase.channel(`sidebar-${Date.now()}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-        const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
-        if (!profile?.company_id) return
-        await refreshStageCounts(profile.company_id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
+        if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current)
+        refreshDebounceRef.current = setTimeout(async () => {
+          try {
+            // Reuse cached company_id if we already have it — avoids an auth.getUser()
+            // round-trip (the exact call that was failing) on every burst of events.
+            let companyId = companyIdRef.current
+            if (!companyId) {
+              const { data: { user } } = await supabase.auth.getUser()
+              if (!user) return
+              const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single()
+              if (!profile?.company_id) return
+              companyId = profile.company_id
+              companyIdRef.current = companyId
+            }
+            await refreshStageCounts(companyId)
+          } catch (err) {
+            // Network/auth fetch failures (e.g. transient Supabase outages, or a burst of
+            // bulk DB edits) should never crash the sidebar — just skip this refresh cycle.
+            console.warn('Sidebar realtime refresh skipped:', err)
+          }
+        }, 800) // wait for a burst of changes to settle before refreshing once
       }).subscribe()
-    return () => { supabase.removeChannel(channel) }
+
+    return () => {
+      if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current)
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   useEffect(() => {

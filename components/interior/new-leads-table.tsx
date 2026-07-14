@@ -137,7 +137,7 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
             <table className="w-full">
               <thead>
                 <tr style={{ background: '#FAFAF8', borderBottom: '1px solid #F0EBE0' }}>
-                  {['#', 'Lead', 'Email', 'Source', 'Budget', 'City', 'Date', 'Call'].map(h => (
+                  {['#', 'Lead', 'Phone', 'Email', 'Source', 'Budget', 'City', 'Date', 'Call'].map(h => (
                     <th key={h} className="text-left text-[9px] font-black text-[#9A8F82] uppercase tracking-[2px] px-4 py-3 whitespace-nowrap first:pl-5 last:pr-5">{h}</th>
                   ))}
                 </tr>
@@ -162,6 +162,13 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
                             {l.interest && <p className="text-[10px] text-[#B8B0A0] truncate max-w-[140px]">{l.interest}</p>}
                           </div>
                         </div>
+                      </td>
+                      <td className="px-4 py-3.5" onClick={e => e.stopPropagation()}>
+                        {l.phone ? (
+                          <a href={`tel:${l.phone}`} className="text-xs font-bold font-mono whitespace-nowrap hover:underline" style={{ color: '#1C1712' }}>
+                            {l.phone}
+                          </a>
+                        ) : <span className="text-[#C4BAB0]">—</span>}
                       </td>
                       <td className="px-4 py-3.5"><p className="text-xs text-[#7A6E60] max-w-[160px] truncate">{l.email ?? '—'}</p></td>
                       <td className="px-4 py-3.5">
