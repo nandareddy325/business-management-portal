@@ -66,9 +66,30 @@ export function LeadTable({
 }: Props) {
   const router = useRouter()
 
+  // Parses budget text robustly instead of naively concatenating digits.
+  // Handles: plain rupee numbers ("800000"), lakh/crore shorthand ("7.5 lacks", "5-8L"),
+  // and ranges ("10 to 15 lacks") — without mangling "10 to 15" into "1015".
   const budget = (l: TableLead) => {
-    const b = parseFloat(String(l.budget || '').replace(/[^0-9.]/g, ''))
-    return l.budget ? (isNaN(b) ? l.budget : '₹' + b.toLocaleString('en-IN')) : null
+    if (!l.budget) return null
+    let str = String(l.budget).trim()
+    if (!str) return null
+
+    // Indian-style thousands separators (e.g. "15,00,000") — strip so they don't
+    // get mistaken for a range/list of separate numbers.
+    str = str.replace(/(\d),(?=\d)/g, '$1')
+
+    const hasCrore = /crore|\bcr\b/i.test(str)
+    const hasLakh  = !hasCrore && /lakh|lac|\d\s*l\b/i.test(str)
+    const multiplier = hasCrore ? 10000000 : hasLakh ? 100000 : 1
+
+    const nums = (str.match(/\d+(\.\d+)?/g) || []).map(Number)
+    if (nums.length === 0) return str // no digits at all — show the raw text as typed
+
+    const fmt = (n: number) => '₹' + Math.round(n * multiplier).toLocaleString('en-IN')
+
+    if (nums.length === 1) return fmt(nums[0])
+    if (nums.length === 2) return `${fmt(nums[0])} – ${fmt(nums[1])}`
+    return str // 3+ numbers is ambiguous — show raw text rather than guess wrong
   }
 
   const goToLead = (id: string) => {
