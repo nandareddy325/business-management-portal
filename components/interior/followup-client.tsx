@@ -1,7 +1,7 @@
 ﻿'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, X, Calendar, Clock, AlertTriangle } from 'lucide-react'
+import { Search, X, Calendar } from 'lucide-react'
 import { LeadTable } from '@/components/interior/lead-table'
 
 interface Lead { 
@@ -163,8 +163,48 @@ export function FollowUpClient({ leads, count }: { leads: Lead[]; count: number 
       {/* Filter Bar */}
       <div className="bg-white border border-[#E8E2D8] rounded-2xl p-4 shadow-sm space-y-4">
         
-        {/* Row 1: Search + Date Inputs */}
-        <div className="flex items-center gap-3 flex-wrap justify-between">
+        {/* Row 1: Quick Buttons + Search + Date Inputs — all on one line */}
+        <div className="flex items-center gap-3 flex-wrap">
+
+          {/* Quick Date Buttons */}
+          <span className="text-[10px] font-bold text-[#9A8F82] uppercase flex-shrink-0">Quick:</span>
+
+          <button 
+            onClick={() => applyQuickDate('today')}
+            className="text-[10px] font-bold px-3 py-1.5 rounded-full transition-all flex-shrink-0"
+            style={{ 
+              background: dateActive && fromDate === todayIST() && effectiveToDate === todayIST() ? '#16A34A' : '#F0FDF4',
+              color: dateActive && fromDate === todayIST() && effectiveToDate === todayIST() ? '#fff' : '#16A34A',
+              border: '1px solid #86EFAC'
+            }}
+          >
+            📅 Today
+          </button>
+
+          <button 
+            onClick={() => applyQuickDate('tomorrow')}
+            className="text-[10px] font-bold px-3 py-1.5 rounded-full transition-all flex-shrink-0"
+            style={{ 
+              background: dateActive && fromDate === getDateIST(1) && effectiveToDate === getDateIST(1) ? '#D97706' : '#FFFBEB',
+              color: dateActive && fromDate === getDateIST(1) && effectiveToDate === getDateIST(1) ? '#fff' : '#D97706',
+              border: '1px solid #FDE68A'
+            }}
+          >
+            🔜 Tomorrow
+          </button>
+
+          <button 
+            onClick={() => applyQuickDate('week')}
+            className="text-[10px] font-bold px-3 py-1.5 rounded-full transition-all flex-shrink-0"
+            style={{ 
+              background: dateActive && fromDate === todayIST() && effectiveToDate === getWeekEndDate() ? '#7C3AED' : '#F5F3FF',
+              color: dateActive && fromDate === todayIST() && effectiveToDate === getWeekEndDate() ? '#fff' : '#7C3AED',
+              border: '1px solid #DDD6FE'
+            }}
+          >
+            📆 This Week
+          </button>
+
           {/* Search Bar */}
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E2D9C8] bg-[#FAFAF8] focus-within:border-[#B8860B] transition-colors min-w-[200px]">
             <Search size={14} className="text-[#9A8F82] flex-shrink-0" />
@@ -185,8 +225,8 @@ export function FollowUpClient({ leads, count }: { leads: Lead[]; count: number 
             )}
           </div>
 
-          {/* Date Range Inputs */}
-          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+          {/* Date Range Inputs — pushed right on wide screens */}
+          <div className="flex items-center gap-2 flex-wrap flex-shrink-0 ml-auto">
             <Calendar size={13} className="text-[#9A8F82] flex-shrink-0" />
             <input 
               type="date" 
@@ -212,47 +252,6 @@ export function FollowUpClient({ leads, count }: { leads: Lead[]; count: number 
               </button>
             )}
           </div>
-        </div>
-
-        {/* Row 2: Quick Date Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] font-bold text-[#9A8F82] uppercase">Quick:</span>
-          
-          <button 
-            onClick={() => applyQuickDate('today')}
-            className="text-[10px] font-bold px-3 py-1.5 rounded-full transition-all"
-            style={{ 
-              background: dateActive && fromDate === todayIST() && effectiveToDate === todayIST() ? '#16A34A' : '#F0FDF4',
-              color: dateActive && fromDate === todayIST() && effectiveToDate === todayIST() ? '#fff' : '#16A34A',
-              border: '1px solid #86EFAC'
-            }}
-          >
-            📅 Today
-          </button>
-
-          <button 
-            onClick={() => applyQuickDate('tomorrow')}
-            className="text-[10px] font-bold px-3 py-1.5 rounded-full transition-all"
-            style={{ 
-              background: dateActive && fromDate === getDateIST(1) && effectiveToDate === getDateIST(1) ? '#D97706' : '#FFFBEB',
-              color: dateActive && fromDate === getDateIST(1) && effectiveToDate === getDateIST(1) ? '#fff' : '#D97706',
-              border: '1px solid #FDE68A'
-            }}
-          >
-            🔜 Tomorrow
-          </button>
-
-          <button 
-            onClick={() => applyQuickDate('week')}
-            className="text-[10px] font-bold px-3 py-1.5 rounded-full transition-all"
-            style={{ 
-              background: dateActive && fromDate === todayIST() && effectiveToDate === getWeekEndDate() ? '#7C3AED' : '#F5F3FF',
-              color: dateActive && fromDate === todayIST() && effectiveToDate === getWeekEndDate() ? '#fff' : '#7C3AED',
-              border: '1px solid #DDD6FE'
-            }}
-          >
-            📆 This Week
-          </button>
         </div>
 
         {/* Row 3: Filter Summary */}
@@ -287,25 +286,6 @@ export function FollowUpClient({ leads, count }: { leads: Lead[]; count: number 
           </div>
         ))}
       </div>
-
-      {/* Alerts */}
-      {overdueLeads.length > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
-          <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
-          <p className="text-sm font-bold text-red-700">
-            {overdueLeads.length} lead{overdueLeads.length > 1 ? 's' : ''} overdue — veelatho contact cheyyali!
-          </p>
-        </div>
-      )}
-
-      {todayLeads.length > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
-          <Clock className="w-4 h-4 text-green-600 flex-shrink-0" />
-          <p className="text-sm font-bold text-green-700">
-            {todayLeads.length} lead{todayLeads.length > 1 ? 's' : ''} today call cheyali!
-          </p>
-        </div>
-      )}
 
       {/* Results Section */}
       {filteredLeads.length === 0 ? (

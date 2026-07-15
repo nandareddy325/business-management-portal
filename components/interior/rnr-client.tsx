@@ -81,10 +81,35 @@ export function RnrClient({
 
   return (
     <div className="space-y-4">
-      {/* Search + Date */}
-      <div className="bg-white rounded-2xl px-4 py-3 border border-[#E8E2D8] space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
+      {/* Quick filters + Search + Date — all on one line */}
+      <div className="bg-white rounded-2xl px-4 py-3 border border-[#E8E2D8]">
+        <div className="flex items-center gap-3 flex-wrap">
+
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#9A8F82] flex-shrink-0">Quick:</span>
+          {([
+            { key: 'all',      label: '📋 All',      count: count },
+            { key: 'overdue',  label: '⏰ Overdue',  count: overdueLeads.length },
+            { key: 'today',    label: '📅 Today',    count: todayLeads.length },
+            { key: 'tomorrow', label: '🔜 Tomorrow', count: tomorrowLeads.length },
+          ] as { key: QuickFilter; label: string; count: number }[]).map(f => (
+            <button key={f.key} onClick={() => setQuickFilter(f.key)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all flex-shrink-0"
+              style={{
+                background: quickFilter === f.key ? (f.key === 'overdue' ? '#FEF2F2' : f.key === 'today' ? '#FFFBEB' : '#F5F3FF') : '#F5F0E8',
+                color: quickFilter === f.key ? (f.key === 'overdue' ? '#DC2626' : f.key === 'today' ? '#D97706' : '#7C3AED') : '#6B5E4E',
+                border: `1px solid ${quickFilter === f.key ? (f.key === 'overdue' ? '#FECACA' : f.key === 'today' ? '#FDE68A' : '#DDD6FE') : 'rgba(184,134,11,0.15)'}`,
+              }}>
+              {f.label}
+              {f.count > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black"
+                  style={{ background: quickFilter === f.key ? 'rgba(255,255,255,0.28)' : '#E8E2D8', color: quickFilter === f.key ? '#fff' : '#6B5E4E' }}>
+                  {f.count}
+                </span>
+              )}
+            </button>
+          ))}
+
+          <div className="relative flex-1 min-w-[200px]">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9A8F82]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
             </svg>
@@ -95,40 +120,17 @@ export function RnrClient({
               style={{ background: '#F5F0E8', borderColor: 'rgba(184,134,11,0.2)', color: '#1C1712' }}
             />
           </div>
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-            className="px-3 py-2.5 rounded-xl text-sm outline-none border"
-            style={{ background: '#F5F0E8', borderColor: 'rgba(184,134,11,0.2)', color: '#1C1712' }}/>
-          <span className="text-xs text-[#9A8F82]">to</span>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-            className="px-3 py-2.5 rounded-xl text-sm outline-none border"
-            style={{ background: '#F5F0E8', borderColor: 'rgba(184,134,11,0.2)', color: '#1C1712' }}/>
-        </div>
 
-        {/* Quick filters */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#9A8F82]">Quick:</span>
-          {([
-            { key: 'all',      label: '📋 All',      count: count },
-            { key: 'overdue',  label: '⏰ Overdue',  count: overdueLeads.length },
-            { key: 'today',    label: '📅 Today',    count: todayLeads.length },
-            { key: 'tomorrow', label: '🔜 Tomorrow', count: tomorrowLeads.length },
-          ] as { key: QuickFilter; label: string; count: number }[]).map(f => (
-            <button key={f.key} onClick={() => setQuickFilter(f.key)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all"
-              style={{
-                background: quickFilter === f.key ? (f.key === 'overdue' ? '#FEF2F2' : f.key === 'today' ? '#FFFBEB' : '#F5F3FF') : '#F5F0E8',
-                color: quickFilter === f.key ? (f.key === 'overdue' ? '#DC2626' : f.key === 'today' ? '#D97706' : '#7C3AED') : '#6B5E4E',
-                border: `1px solid ${quickFilter === f.key ? (f.key === 'overdue' ? '#FECACA' : f.key === 'today' ? '#FDE68A' : '#DDD6FE') : 'rgba(184,134,11,0.15)'}`,
-              }}>
-              {f.label}
-              {f.count > 0 && (
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black"
-                  style={{ background: quickFilter === f.key ? 'currentColor' : '#E8E2D8', color: quickFilter === f.key ? 'white' : '#6B5E4E', opacity: quickFilter === f.key ? 1 : 0.7 }}>
-                  {f.count}
-                </span>
-              )}
-            </button>
-          ))}
+          <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+              className="px-3 py-2.5 rounded-xl text-sm outline-none border"
+              style={{ background: '#F5F0E8', borderColor: 'rgba(184,134,11,0.2)', color: '#1C1712' }}/>
+            <span className="text-xs text-[#9A8F82]">to</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+              className="px-3 py-2.5 rounded-xl text-sm outline-none border"
+              style={{ background: '#F5F0E8', borderColor: 'rgba(184,134,11,0.2)', color: '#1C1712' }}/>
+          </div>
+
         </div>
       </div>
 

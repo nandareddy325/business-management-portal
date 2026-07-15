@@ -112,17 +112,6 @@ export default async function RNRPage() {
         ))}
       </div>
 
-      {/* Overdue alert */}
-      {overdueLeads.length > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
-          style={{ background: 'linear-gradient(90deg,#FEF2F2,#FFF8F8)', border: '1px solid #FECACA' }}>
-          <Phone className="w-4 h-4 text-red-600 flex-shrink-0" />
-          <p className="text-sm font-bold text-red-700">
-            {overdueLeads.length} callback{overdueLeads.length > 1 ? 's' : ''} overdue — retry calling them!
-          </p>
-        </div>
-      )}
-
       <RnrClient
         leads={leads}
         count={count}

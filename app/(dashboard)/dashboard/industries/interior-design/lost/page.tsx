@@ -78,7 +78,7 @@ export default async function LostPage() {
           </p>
           <h1 className="text-2xl font-bold tracking-tight text-[#1C1712]">Lost / Not Interested</h1>
           <p className="text-sm text-[#9A8F82] mt-0.5">
-            <span className="font-bold text-[#1C1712]">{count ?? 0}</span> leads — convert avvaledu
+            <span className="font-bold text-[#1C1712]">{count ?? 0}</span> leads — haven&apos;t converted yet
           </p>
         </div>
         <div
@@ -119,16 +119,31 @@ export default async function LostPage() {
 
       {/* Source breakdown */}
       {Object.keys(sourceCounts).length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-center justify-between flex-wrap gap-2.5">
           {Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]).map(([src, cnt]) => {
             const cfg = SOURCE_CONFIG[src] ?? SOURCE_CONFIG['Other']
             return (
-              <div key={src} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
-                style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}30` }}>
-                <span>{cfg.icon}</span>
-                <span>{src}</span>
-                <span className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] text-white"
-                  style={{ background: cfg.color }}>{cnt}</span>
+              <div key={src}
+                className="flex items-center gap-2 pl-3.5 pr-2 py-2 rounded-full text-xs font-bold transition-all duration-200 hover:-translate-y-0.5"
+                style={{
+                  background: cfg.bg,
+                  color: cfg.color,
+                  border: `1px solid ${cfg.color}30`,
+                  boxShadow: `0 1px 2px rgba(0,0,0,0.03), 0 4px 12px ${cfg.color}14`,
+                }}>
+                <span className="text-sm leading-none">{cfg.icon}</span>
+                <span className="tracking-wide">{src}</span>
+                <span
+                  className="flex items-center justify-center rounded-full text-[10px] font-black text-white leading-none"
+                  style={{
+                    background: `linear-gradient(135deg, ${cfg.color}, ${cfg.color}CC)`,
+                    minWidth: 22,
+                    height: 22,
+                    padding: '0 6px',
+                    boxShadow: `0 2px 6px ${cfg.color}50`,
+                  }}>
+                  {cnt}
+                </span>
               </div>
             )
           })}
@@ -140,7 +155,7 @@ export default async function LostPage() {
         style={{ background: 'linear-gradient(90deg,#FEF2F2,#FFF8F8)', border: '1px solid #FECACA' }}>
         <XCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
         <p className="text-sm text-red-700 font-medium">
-          Ee leads future lo re-engage cheyyadaniki try cheyyi — lost permanent kaadu!
+          Try to re-engage these leads in the future — being lost isn&apos;t permanent!
         </p>
       </div>
 
@@ -152,7 +167,7 @@ export default async function LostPage() {
             <XCircle className="w-8 h-8 text-[#B8860B]" />
           </div>
           <p className="text-[#1C1712] font-bold text-base">No lost leads 🎉</p>
-          <p className="text-[#9A8F82] text-sm mt-1">Anni leads convert avutunnay!</p>
+          <p className="text-[#9A8F82] text-sm mt-1">All leads have converted!</p>
         </div>
       ) : (
         <div className="bg-white border border-[#EDE7DB] rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 12px 28px rgba(28,23,18,0.06)' }}>
