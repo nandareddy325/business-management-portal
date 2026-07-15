@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import { ArrowLeft, Phone, Plus, Upload, FileText, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowLeft, Phone, Plus, Upload, FileText, X, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
 
 const GRADIENTS = [
   ['#7C3AED', '#4F46E5'], ['#0891B2', '#0E7490'], ['#059669', '#047857'],
@@ -30,12 +30,24 @@ const ACTIVITY_ICONS: Record<string, { icon: string; color: string; bg: string }
   followup:     { icon: '🔔', color: '#D97706', bg: '#FEF3C7' },
   won:          { icon: '🏆', color: '#059669', bg: '#D1FAE5' },
   rnr:          { icon: '📵', color: '#DC2626', bg: '#FEF2F2' },
+  budget:       { icon: '💰', color: '#B8860B', bg: '#FFFBEB' },
 }
 
 const ini = (n: string) => n?.split(' ').map((x: string) => x[0]).join('').slice(0, 2).toUpperCase() || '?'
 const fmtDate = (ds: string) => { if (!ds) return '—'; return new Date(ds).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) }
 const fmtDateTime = (ds: string) => { if (!ds) return '—'; return new Date(ds).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) }
-const timeAgo = (ds: string) => { const diff = Date.now() - new Date(ds).getTime(); const mins = Math.floor(diff/60000); const hrs = Math.floor(mins/60); const days = Math.floor(hrs/24); if (days>0) return `${days}d ago`; if (hrs>0) return `${hrs}h ago`; if (mins>0) return `${mins}m ago`; return 'just now' }
+const timeAgo = (ds: string) => {
+  // Normalize: if no timezone info, assume UTC (add Z)
+  const normalized = ds && !ds.includes('+') && !ds.endsWith('Z') ? ds + 'Z' : ds
+  const diff = Date.now() - new Date(normalized).getTime()
+  const mins = Math.floor(diff/60000)
+  const hrs = Math.floor(mins/60)
+  const days = Math.floor(hrs/24)
+  if (days>0) return `${days}d ago`
+  if (hrs>0) return `${hrs}h ago`
+  if (mins>0) return `${mins}m ago`
+  return 'just now'
+}
 const getTomorrow = () => { const d = new Date(); d.setDate(d.getDate()+1); return d.toISOString().split('T')[0] }
 const getNextHour = () => { const d = new Date(); d.setHours(d.getHours()+1,0,0,0); return `${String(d.getHours()).padStart(2,'0')}:00` }
 
@@ -121,6 +133,14 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
   const [handoverDate, setHandoverDate] = useState('')
   const [handoverNote, setHandoverNote] = useState('')
   const [savingHandover, setSavingHandover] = useState(false)
+
+  // ── Budget Edit State (NEW) ──
+  // Editing budget here updates `lead.budget` in local state, which is the SAME value
+  // rendered by both the top badge pill and the "Budget" info card below — so a single
+  // edit here keeps both displays in sync automatically, no separate sync logic needed.
+  const [showBudgetPopup, setShowBudgetPopup] = useState(false)
+  const [budgetInput, setBudgetInput] = useState('')
+  const [savingBudget, setSavingBudget] = useState(false)
 
   // ── RNR Popup State (NEW) ──
   const [showRnrPopup, setShowRnrPopup] = useState(false)
@@ -264,6 +284,31 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       setHandoverNote('')
     } catch (e) { console.error(e) }
     setSavingHandover(false)
+  }
+
+  // ── Budget Edit Save (NEW) ──
+  const handleSaveBudget = async () => {
+    setSavingBudget(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    const prevBudget = lead.budget
+    const cleaned = budgetInput.trim() || null
+    try {
+      await supabase.from('leads').update({
+        budget: cleaned,
+        assigned_to: myEmployeeId,
+      }).eq('id', leadId)
+      // Updates local state — the top badge pill AND the "Budget" info card both
+      // read lead.budget, so this single update reflects everywhere at once.
+      setLead((l: LeadDetail) => ({ ...l, budget: cleaned || undefined }))
+      await supabase.from('lead_activities').insert({
+        lead_id: leadId, type: 'budget', title: '💰 Budget Updated',
+        description: `${prevBudget || '—'} → ${cleaned || '—'}`,
+        user_id: user?.id, created_at: new Date().toISOString(),
+      })
+      await refreshActivities()
+      setShowBudgetPopup(false)
+    } catch (e) { console.error(e) }
+    setSavingBudget(false)
   }
 
   // ── RNR Save (NEW) ──
@@ -568,6 +613,8 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
         .pdf-drop:hover { border-color:#F9A8D4!important; background:#FFF5F9!important }
         .rev-row:hover { background: rgba(219,39,119,0.03) }
         .rev-row { transition: background 0.15s }
+        .budget-edit-btn { transition: all 0.15s ease; opacity: 0.55 }
+        .budget-edit-btn:hover { opacity: 1; transform: scale(1.12) }
       `}</style>
 
       {/* ─── TOP BAR ─── */}
@@ -625,12 +672,20 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
                     📌 {lead.source}
                   </span>
                 )}
-                {lead.budget && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold flex-shrink-0"
-                    style={{ background:'#FFFBEB', color:'#B8860B', border:'1px solid #FDE68A' }}>
-                    💰 {lead.budget}
-                  </span>
-                )}
+                {/* Budget badge — now with an inline edit affordance. Editing here (or from the
+                    info card below) updates the same lead.budget state, so this pill and the
+                    "Budget" info card always stay in sync automatically. */}
+                <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold flex-shrink-0"
+                  style={{ background:'#FFFBEB', color:'#B8860B', border:'1px solid #FDE68A' }}>
+                  💰 {lead.budget || 'No budget'}
+                  <button
+                    onClick={() => { setBudgetInput(lead.budget || ''); setShowBudgetPopup(true) }}
+                    className="budget-edit-btn ml-0.5 w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(184,134,11,0.15)' }}
+                    aria-label="Edit budget">
+                    <Pencil size={9} />
+                  </button>
+                </span>
                 {lead.handover_date && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[10px] font-bold flex-shrink-0"
                     style={{ background:'#ECFEFF', color:'#0891B2', border:'1px solid #A5F3FC' }}>
@@ -664,19 +719,28 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
           <div className="flex items-center justify-between gap-2 mt-4 pt-4"
             style={{ borderTop:'1px solid rgba(0,0,0,0.05)' }}>
             {[
-              { icon:'📍', label:'City',        val:lead.city },
-              { icon:'🏗️', label:'Property',    val:lead.property_type },
-              { icon:'📅', label:'Added',       val:fmtDate(lead.created_at) },
-              { icon:'💰', label:'Budget',      val:lead.budget },
-              { icon:'💡', label:'Requirement', val:lead.interest },
-            ].map((x,i) => x.val ? (
-              <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-2xl flex-1"
+              { icon:'📍', label:'City',        val:lead.city, editable:false },
+              { icon:'🏗️', label:'Property',    val:lead.property_type, editable:false },
+              { icon:'📅', label:'Added',       val:fmtDate(lead.created_at), editable:false },
+              { icon:'💰', label:'Budget',      val:lead.budget, editable:true },
+              { icon:'💡', label:'Requirement', val:lead.interest, editable:false },
+            ].map((x,i) => (x.val || x.editable) ? (
+              <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-2xl flex-1 relative group"
                 style={{ background:'#F7F4EF' }}>
                 <span className="text-sm flex-shrink-0">{x.icon}</span>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-[8px] font-bold uppercase tracking-wider whitespace-nowrap" style={{ color:'#B8B0A0' }}>{x.label}</p>
-                  <p className="text-xs font-black truncate" style={{ color:'#1A1612' }}>{x.val}</p>
+                  <p className="text-xs font-black truncate" style={{ color: x.val ? '#1A1612' : '#C4BAB0' }}>{x.val || '—'}</p>
                 </div>
+                {x.editable && (
+                  <button
+                    onClick={() => { setBudgetInput(lead.budget || ''); setShowBudgetPopup(true) }}
+                    className="budget-edit-btn w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'rgba(184,134,11,0.15)', color: '#B8860B' }}
+                    aria-label="Edit budget">
+                    <Pencil size={10} />
+                  </button>
+                )}
               </div>
             ) : null)}
           </div>
@@ -779,7 +843,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
                 <p className="text-[9px] font-black uppercase tracking-[3px]" style={{ color:'#065F46' }}>Deal Won 🎉</p>
                 {lead.won_amount && <p className="text-2xl font-black" style={{ color:'#059669' }}>₹ {Number(lead.won_amount).toLocaleString('en-IN')}</p>}
               </div>
-              <button onClick={()=>{setWonAmount(String(lead.won_amount||''));setWonNote(String(lead.won_note||''));setShowWonPopup(true)}} className="ml-auto text-[10px] font-bold px-3 py-1.5 rounded-full hvr" style={{ background:'#A7F3D0', color:'#065F46' }}>✏️ Edit</button>
+              <button onClick={()=>{setWonAmount(String(lead.won_amount||''));setWonNote(lead.won_note||'');setShowWonPopup(true)}} className="ml-auto text-[10px] font-bold px-3 py-1.5 rounded-full hvr" style={{ background:'#A7F3D0', color:'#065F46' }}>✏️ Edit</button>
             </div>
             {lead.won_note && <p className="text-sm" style={{ color:'#047857' }}>{lead.won_note}</p>}
             {lead.won_date && <p className="text-[10px] mt-1" style={{ color:'#6EE7B7' }}>Closed {fmtDate(lead.won_date)}</p>}
@@ -906,6 +970,60 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
 
         <p className="text-center text-[10px] pb-4" style={{ color:'#D4CEC8' }}>GK CRM · Interior Design</p>
       </div>
+
+      {/* ═══ BUDGET EDIT POPUP (NEW) ═══ */}
+      {showBudgetPopup && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4" style={{ animation:'fadeIn 0.2s ease' }}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowBudgetPopup(false)}/>
+          <div className="relative w-full max-w-sm scale-in"
+            style={{ background:'#FFFDF8', border:'1.5px solid #FDE68A', borderRadius:28, boxShadow:'0 32px 80px rgba(184,134,11,0.2)' }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom:'1px solid #FDE68A' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl"
+                  style={{ background:'#FEF3C7', border:'1.5px solid #FDE68A' }}>💰</div>
+                <div>
+                  <p className="text-sm font-black" style={{ color:'#1C1712' }}>Edit Budget</p>
+                  <p className="text-[10px] font-medium" style={{ color:'#B8860B' }}>{lead.lead_name}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowBudgetPopup(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center hvr"
+                style={{ background:'#FEF3C7', color:'#B8860B' }}>✕</button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="text-[9px] font-black uppercase tracking-[3px] block mb-1.5"
+                  style={{ color:'#B8860B' }}>💰 Budget</label>
+                <input type="text"
+                  value={budgetInput}
+                  onChange={e => setBudgetInput(e.target.value)}
+                  placeholder="e.g. 750000 or ₹7.5L"
+                  autoFocus
+                  className="w-full px-4 py-3 rounded-2xl text-sm font-bold outline-none"
+                  style={{ background:'#FEF3C7', border:'1.5px solid #FDE68A', color:'#1C1712' }}/>
+                <p className="text-[10px] mt-1.5" style={{ color:'#B8860B' }}>
+                  Tip: use a plain number (₹7,50,000) for the cleanest display — text like &quot;lacks&quot; or ranges still work but are shown as typed.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setShowBudgetPopup(false)}
+                  className="flex-1 py-3 rounded-2xl text-sm font-bold"
+                  style={{ background:'#FEF3C7', color:'#B8860B', border:'1px solid #FDE68A' }}>
+                  Cancel
+                </button>
+                <button onClick={handleSaveBudget}
+                  disabled={savingBudget}
+                  className="flex-1 py-3 rounded-2xl text-sm font-black text-white disabled:opacity-40"
+                  style={{ background:'linear-gradient(135deg,#B8860B,#D97706)', boxShadow:'0 6px 18px rgba(184,134,11,0.3)' }}>
+                  {savingBudget ? '⏳ Saving...' : '💰 Save Budget'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ HANDOVER DATE POPUP ═══ */}
       {showHandoverPopup && (

@@ -33,6 +33,7 @@ interface ProfileRow {
   id: string
   full_name?: string | null
   email?: string | null
+  role?: string | null
 }
 
 interface Cre {
@@ -59,7 +60,7 @@ export default async function InteriorDesignDashboard() {
   if (!profile?.company_id) redirect('/login')
 
   // Only admins/owners can see the whole team's performance; regular CRE staff see only their own.
-  const isAdminOrOwner = profile.role === 'admin' || profile.role === 'owner'
+  const isAdminOrOwner = profile.role === 'admin' || profile.role === 'owner' || profile.role === 'tenant_admin' || profile.role === 'manager'
 
   // ── Leads data — shared helper, bypasses Supabase 1000-row cap ──
   const allLeads = await fetchAllLeads<Lead>(
@@ -149,14 +150,22 @@ export default async function InteriorDesignDashboard() {
   // the client for a restricted user.
   const visibleTodayCalls = isAdminOrOwner ? todayCalls : todayCalls.filter(a => a.user_id === user.id)
 
+  // ⚠️ FIXED (again): the CRE list must only include staff whose employee record has
+  // designation = 'CRE' (e.g. "Hari Krishna CRE", "Thamalapakula Anusha") — not every profile
+  // in the company. The earlier fix pulled ALL company profiles, which wrongly included the
+  // MD, Web Developer, Digital Marketing, and Tele-calling roles alongside the actual CREs.
   let cres: Cre[] = []
   if (isAdminOrOwner) {
-    const creIds = [...new Set(todayCalls.map((a: Activity) => a.user_id).filter(Boolean))] as string[]
-    if (creIds.length > 0) {
-      const { data: creProfiles } = await supabase.from('profiles').select('id, full_name, email').in('id', creIds)
-      cres = ((creProfiles ?? []) as ProfileRow[]).map((p: ProfileRow) => ({ id: p.id, name: p.full_name || p.email || 'Unknown' }))
-        .sort((a: Cre, b: Cre) => a.name.localeCompare(b.name))
-    }
+    const { data: creEmployees } = await supabase
+      .from('employees')
+      .select('user_id, full_name, designation')
+      .eq('company_id', profile.company_id)
+      .ilike('designation', 'CRE')
+
+    cres = (creEmployees ?? [])
+      .filter((e: { user_id?: string | null }) => !!e.user_id)
+      .map((e: { user_id?: string | null; full_name?: string | null }) => ({ id: e.user_id as string, name: e.full_name || 'Unknown' }))
+      .sort((a: Cre, b: Cre) => a.name.localeCompare(b.name))
   } else {
     // Regular CRE staff: the only "team member" they can ever see is themselves.
     cres = [{ id: user.id, name: profile.full_name || profile.email || 'Me' }]
