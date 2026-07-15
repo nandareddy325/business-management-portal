@@ -18,10 +18,24 @@ interface Room {
   items: RoomItem[]
 }
 
+// Standalone items that sit outside any room but still get a
+// continuing S.no in the main table — e.g. "Main Door Elevation",
+// "Shoe Rack", "False Ceiling Pending Payment".
+interface ExtraItem {
+  description: string
+  length: number
+  height: number
+  sft_cost: number
+  // Some extra items (like a pending-payment adjustment) only have a
+  // fixed value and no L x H x rate breakdown.
+  fixedValue?: number
+}
+
 interface FalseCeiling {
   description: string
   sft: number
   sft_cost: number
+  note: string // materials line shown under the row, e.g. "Ultra Channels, gypsum Board, Finolex Wire..."
 }
 
 interface Client {
@@ -45,6 +59,20 @@ function clientOptionLabel(c: Client): string {
   if (c.phone) parts.push(`— ${c.phone}`)
   if (c.city) parts.push(`(${c.city})`)
   return parts.join(' ')
+}
+
+// Roman numerals for the False Ceiling section (I, II, III, ...)
+function toRoman(num: number): string {
+  const romans: [number, string][] = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
+  ]
+  let n = num, out = ''
+  for (const [val, sym] of romans) {
+    while (n >= val) { out += sym; n -= val }
+  }
+  return out
 }
 
 // Standard terms & conditions block — same wording as the printed
@@ -97,8 +125,18 @@ export default function NewQuotationPage() {
     { name: 'Kitchen', items: [{ description: '', length: 0, height: 0, sft_cost: 1600 }] },
   ])
 
+  // Standalone items (Main Door Elevation, Shoe Rack, False Ceiling
+  // Pending Payment, etc.) — these continue the S.no sequence after
+  // the rooms but are not nested under any room.
+  const [extraItems, setExtraItems] = useState<ExtraItem[]>([])
+
   const [falseCeilings, setFalseCeilings] = useState<FalseCeiling[]>([
-    { description: 'False Ceiling End to End (Profile Lights Extra)', sft: 0, sft_cost: 1500 },
+    {
+      description: 'False Ceiling End to End (Profile Lights Extra)',
+      sft: 0,
+      sft_cost: 1500,
+      note: 'Ultra Channels, gypsum Board, Finolex Wire, Wipro Lights & Putti & Paint',
+    },
   ])
 
   const [openRooms, setOpenRooms] = useState<Record<number, boolean>>({ 0: true, 1: true })
@@ -118,12 +156,28 @@ export default function NewQuotationPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
   }, [])
 
-  // Calculations
+  // ── Calculations ──
   const getRoomTotal = (room: Room) =>
     room.items.reduce((s, i) => s + (i.length * i.height * i.sft_cost), 0)
-  const getWoodTotal = () => rooms.reduce((s, r) => s + getRoomTotal(r), 0)
+  const getRoomSft = (room: Room) =>
+    room.items.reduce((s, i) => s + (i.length * i.height), 0)
+
+  const getExtraItemSft = (i: ExtraItem) => i.length * i.height
+  const getExtraItemTotal = (i: ExtraItem) =>
+    i.fixedValue !== undefined ? i.fixedValue : i.length * i.height * i.sft_cost
+
+  // "A" — Wood Work Cost: rooms + standalone extra items
+  const getWoodSftTotal = () =>
+    rooms.reduce((s, r) => s + getRoomSft(r), 0) + extraItems.reduce((s, i) => s + getExtraItemSft(i), 0)
+  const getWoodTotal = () =>
+    rooms.reduce((s, r) => s + getRoomTotal(r), 0) + extraItems.reduce((s, i) => s + getExtraItemTotal(i), 0)
+
   const getFCTotal = () => falseCeilings.reduce((s, f) => s + (f.sft * f.sft_cost), 0)
+
+  // "B" — Total Cost (Wood Work + False Ceiling)
   const getGrandTotal = () => getWoodTotal() + getFCTotal()
+
+  // "C" — Final Quote Value
   const getFinalQuote = () => getGrandTotal() - Number(form.discount || 0)
   const getPending = () => getFinalQuote() - Number(form.receivedAmount || 0)
 
@@ -137,8 +191,27 @@ export default function NewQuotationPage() {
   const updateItem = (ri: number, ii: number, field: keyof RoomItem, value: string | number) =>
     setRooms(prev => prev.map((r, i) => i === ri ? { ...r, items: r.items.map((item, j) => j === ii ? { ...item, [field]: value } : item) } : r))
 
+  // Extra (standalone) item operations
+  const addExtraItem = () => setExtraItems(prev => [...prev, { description: '', length: 0, height: 0, sft_cost: 1500 }])
+  const removeExtraItem = (i: number) => setExtraItems(prev => prev.filter((_, j) => j !== i))
+  const updateExtraItem = (i: number, field: keyof ExtraItem, value: string | number) =>
+    setExtraItems(prev => prev.map((item, j) => j === i ? { ...item, [field]: value } : item))
+  // Toggle between "L x H x Rate" mode and a plain fixed-value mode
+  // (used for things like "False Ceiling Pending Payment" that only
+  // carry a Total Value column in the reference format).
+  const toggleExtraItemFixed = (i: number) =>
+    setExtraItems(prev => prev.map((item, j) => {
+      if (j !== i) return item
+      if (item.fixedValue !== undefined) {
+        const { fixedValue, ...rest } = item
+        void fixedValue
+        return rest
+      }
+      return { ...item, fixedValue: 0 }
+    }))
+
   // False ceiling operations
-  const addFC = () => setFalseCeilings(prev => [...prev, { description: '', sft: 0, sft_cost: 200 }])
+  const addFC = () => setFalseCeilings(prev => [...prev, { description: '', sft: 0, sft_cost: 200, note: '' }])
   const removeFC = (i: number) => setFalseCeilings(prev => prev.filter((_, j) => j !== i))
   const updateFC = (i: number, field: keyof FalseCeiling, value: string | number) =>
     setFalseCeilings(prev => prev.map((f, j) => j === i ? { ...f, [field]: value } : f))
@@ -162,7 +235,10 @@ export default function NewQuotationPage() {
     }
   }
 
-  // ── Excel export ──
+  // ── Excel export ── (matches the reference: rooms -> extra items ->
+  // "A Wood Work Cost" -> roman-numeral false ceiling rows (+ note
+  // line) -> "B Total Cost" -> Discount -> Complementary -> "C Final
+  // Quote Value" -> Payment Terms)
   const handleDownloadExcel = async () => {
     if (!form.client_name && !form.client_id) { alert('Client select cheyyi!'); return }
     setExcelLoading(true)
@@ -176,13 +252,16 @@ export default function NewQuotationPage() {
       rows.push(['Client', clientName, '', 'Address', clientAddress])
       rows.push([])
 
-      rows.push(['S.No', 'Room', 'Description', 'Length (ft)', 'Height (ft)', 'SFT', 'Rate/SFT (₹)', 'Total (₹)'])
-      rooms.forEach((room, ri) => {
+      rows.push(['S.No', 'Work', 'Scope of Work', 'Length (ft)', 'Height (ft)', 'Total SFT', 'Sft Cost (₹)', 'Total Value (₹)'])
+
+      let sno = 0
+      rooms.forEach((room) => {
+        sno++
         room.items.forEach((item, ii) => {
           const sft = item.length * item.height
           const total = sft * item.sft_cost
           rows.push([
-            ii === 0 ? ri + 1 : '',
+            ii === 0 ? sno : '',
             ii === 0 ? room.name : '',
             item.description,
             item.length,
@@ -192,28 +271,49 @@ export default function NewQuotationPage() {
             total,
           ])
         })
-        rows.push(['', `${room.name} Total`, '', '', '', '', '', getRoomTotal(room)])
+      })
+
+      extraItems.forEach((item) => {
+        sno++
+        const sft = getExtraItemSft(item)
+        const total = getExtraItemTotal(item)
+        rows.push([
+          sno,
+          '',
+          item.description,
+          item.fixedValue !== undefined ? '' : item.length,
+          item.fixedValue !== undefined ? '' : item.height,
+          item.fixedValue !== undefined ? '' : sft,
+          item.fixedValue !== undefined ? '' : item.sft_cost,
+          total,
+        ])
       })
 
       rows.push([])
-      rows.push(['False Ceiling', '', 'Description', '', '', 'SFT', 'Rate/SFT (₹)', 'Total (₹)'])
-      falseCeilings.forEach(fc => {
-        rows.push(['', '', fc.description, '', '', fc.sft, fc.sft_cost, fc.sft * fc.sft_cost])
+      rows.push(['A', 'Wood Work Cost', '', '', '', getWoodSftTotal(), '', getWoodTotal()])
+      rows.push([])
+
+      falseCeilings.forEach((fc, i) => {
+        rows.push([toRoman(i + 1), fc.description, '', '', '', fc.sft, fc.sft_cost, fc.sft * fc.sft_cost])
+        if (fc.note) rows.push(['', fc.note])
       })
-      rows.push(['', '', 'False Ceiling Total', '', '', '', '', getFCTotal()])
 
       rows.push([])
-      rows.push(['', '', '', '', '', '', 'Wood Work Total', getWoodTotal()])
-      rows.push(['', '', '', '', '', '', 'False Ceiling Total', getFCTotal()])
-      rows.push(['', '', '', '', '', '', 'Grand Total', getGrandTotal()])
-      rows.push(['', '', '', '', '', '', 'Discount', Number(form.discount || 0)])
+      rows.push(['B', 'Total Cost (Wood Work + False Ceiling)', '', '', '', '', '', getGrandTotal()])
+      rows.push(['', 'Discount', '', '', '', '', '', Number(form.discount || 0)])
       if (form.complementary) {
-        rows.push(['', '', '', '', '', '', 'Complementary', form.complementary])
+        rows.push(['', 'Complementary', form.complementary])
       }
-      rows.push(['', '', '', '', '', '', 'FINAL QUOTE', getFinalQuote()])
+      rows.push(['C', 'Final Quote Value', '', '', '', '', '', getFinalQuote()])
       rows.push([])
-      rows.push(['', '', '', '', '', '', 'Received', Number(form.receivedAmount || 0)])
-      rows.push(['', '', '', '', '', '', 'Pending', getPending()])
+
+      rows.push(['Payment Terms'])
+      rows.push(['First payment', '50%', Math.round(getFinalQuote() * 0.5)])
+      rows.push(['Second payment', '30%', Math.round(getFinalQuote() * 0.3)])
+      rows.push(['Third Payment', '15%', Math.round(getFinalQuote() * 0.15)])
+      rows.push(['Fourth Payment', '5%', Math.round(getFinalQuote() * 0.05)])
+      rows.push(['Total payment', '', getFinalQuote()])
+      rows.push(['Received Amount', '', Number(form.receivedAmount || 0), 'Pending', getPending()])
 
       const worksheet = XLSX.utils.aoa_to_sheet(rows)
       worksheet['!cols'] = [
@@ -269,12 +369,16 @@ export default function NewQuotationPage() {
       const brandLogos = ['1-hettich.png', '2-ebco.png', '3-virgo.png', '4-centuryply.png', '5-austin-plywood.png', '6-saint-gobain.png', '7-godrej-locks.png', '8-sb-logo.jpg']
       const projectPhotos = Array.from({ length: 18 }, (_, i) => `photo-${String(i + 1).padStart(2, '0')}.jpg`)
 
-      const roomRowsHtml = rooms.map((room, ri) => {
-        const itemRows = room.items.map((item, ii) => {
+      // Rooms — rowspan the S.no / Work columns across each room's items
+      let sno = 0
+      const roomRowsHtml = rooms.map((room) => {
+        sno++
+        const roomSno = sno
+        return room.items.map((item, ii) => {
           const sft = item.length * item.height
           const total = sft * item.sft_cost
           return `<tr>
-            ${ii === 0 ? `<td rowspan="${room.items.length}" style="text-align:center;">${ri + 1}</td><td rowspan="${room.items.length}">${room.name}</td>` : ''}
+            ${ii === 0 ? `<td rowspan="${room.items.length}" style="text-align:center;">${roomSno}</td><td rowspan="${room.items.length}">${room.name}</td>` : ''}
             <td>${item.description || '—'}</td>
             <td style="text-align:center;">${item.length}</td>
             <td style="text-align:center;">${item.height}</td>
@@ -283,17 +387,46 @@ export default function NewQuotationPage() {
             <td style="text-align:right;">${fmt(total)}</td>
           </tr>`
         }).join('')
-        return itemRows
       }).join('')
 
-      const fcRowsHtml = falseCeilings.map(fc => `
-        <tr style="background:#FCE9E9;">
-          <td colspan="2" style="text-align:center; font-weight:bold;">False Ceiling</td>
-          <td>${fc.description}</td>
-          <td style="text-align:center;">${fc.sft}</td>
-          <td style="text-align:center;">${fc.sft_cost}</td>
-          <td colspan="2" style="text-align:right; font-weight:bold;">${fmt(fc.sft * fc.sft_cost)}</td>
+      // Standalone extra items — continue the same S.no sequence,
+      // single row each, no room grouping.
+      const extraItemsHtml = extraItems.map((item) => {
+        sno++
+        const sft = getExtraItemSft(item)
+        const total = getExtraItemTotal(item)
+        const hasDims = item.fixedValue === undefined
+        return `<tr>
+          <td style="text-align:center;">${sno}</td>
+          <td></td>
+          <td>${item.description || '—'}</td>
+          <td style="text-align:center;">${hasDims ? item.length : ''}</td>
+          <td style="text-align:center;">${hasDims ? item.height : ''}</td>
+          <td style="text-align:center;">${hasDims ? sft : ''}</td>
+          <td style="text-align:center;">${hasDims ? item.sft_cost : ''}</td>
+          <td style="text-align:right;">${fmt(total)}</td>
+        </tr>`
+      }).join('')
+
+      // Wood Work Cost — row "A"
+      const woodCostRowHtml = `
+        <tr style="background:#DCE6F5; font-weight:bold;">
+          <td colspan="5" style="text-align:center;">A</td>
+          <td style="text-align:center;">${getWoodSftTotal()}</td>
+          <td></td>
+          <td style="text-align:right;">${fmt(getWoodTotal())}</td>
         </tr>
+      `
+
+      // False Ceiling — roman numerals + a full-width materials note row
+      const fcRowsHtml = falseCeilings.map((fc, i) => `
+        <tr style="background:#FCE9E9;">
+          <td colspan="2" style="text-align:center; font-weight:bold;">${toRoman(i + 1)}</td>
+          <td colspan="4" style="font-weight:bold;">${fc.description}</td>
+          <td style="text-align:center;">${fc.sft_cost}</td>
+          <td style="text-align:right; font-weight:bold;">${fmt(fc.sft * fc.sft_cost)}</td>
+        </tr>
+        ${fc.note ? `<tr><td colspan="8" style="font-size:10px; color:#555;">${fc.note}</td></tr>` : ''}
       `).join('')
 
       const html = `
@@ -390,7 +523,7 @@ export default function NewQuotationPage() {
           <p style="font-weight:bold; font-size:11px;">Office Address: ${OFFICE_ADDRESS}</p>
         </div>
 
-        <!-- PAGE 5: Quotation table (dynamic) -->
+        <!-- PAGE 5: Quotation table (dynamic, reference-format) -->
         <div style="padding: 30px 40px; page-break-after: always;">
           <img src="${A}/gk-logo.jpg" style="width:70px; margin-bottom:14px;" />
           <table style="width:100%; border-collapse:collapse; font-size:11px;">
@@ -408,15 +541,15 @@ export default function NewQuotationPage() {
             </thead>
             <tbody>
               ${roomRowsHtml}
+              ${extraItemsHtml}
+              ${woodCostRowHtml}
               ${fcRowsHtml}
             </tbody>
             <tfoot>
-              <tr style="background:#EAE6DD; font-weight:bold;"><td colspan="7" style="padding:6px; border:1px solid #999;">Wood Work Cost</td><td style="padding:6px; border:1px solid #999; text-align:right;">${fmt(getWoodTotal())}</td></tr>
-              <tr style="background:#EAE6DD; font-weight:bold;"><td colspan="7" style="padding:6px; border:1px solid #999;">False Ceiling Total</td><td style="padding:6px; border:1px solid #999; text-align:right;">${fmt(getFCTotal())}</td></tr>
-              <tr style="background:#D8D2E0; font-weight:bold;"><td colspan="7" style="padding:6px; border:1px solid #999;">Total Cost (Wood Work + False Ceiling)</td><td style="padding:6px; border:1px solid #999; text-align:right;">${fmt(getGrandTotal())}</td></tr>
+              <tr style="background:#D8D2E0; font-weight:bold;"><td colspan="7" style="padding:6px; border:1px solid #999;">B — Total Cost (Wood Work + False Ceiling)</td><td style="padding:6px; border:1px solid #999; text-align:right;">${fmt(getGrandTotal())}</td></tr>
               <tr><td colspan="7" style="padding:6px; border:1px solid #999;">Discount</td><td style="padding:6px; border:1px solid #999; text-align:right;">${fmt(Number(form.discount || 0))}</td></tr>
               ${form.complementary ? `<tr><td colspan="7" style="padding:6px; border:1px solid #999;">Complementary</td><td style="padding:6px; border:1px solid #999;">${form.complementary}</td></tr>` : ''}
-              <tr style="background:#F7D9B0; font-weight:bold; font-size:13px;"><td colspan="7" style="padding:8px; border:1px solid #999;">Final Quote Value</td><td style="padding:8px; border:1px solid #999; text-align:right;">${fmt(getFinalQuote())}</td></tr>
+              <tr style="background:#F7D9B0; font-weight:bold; font-size:13px;"><td colspan="7" style="padding:8px; border:1px solid #999;">C — Final Quote Value</td><td style="padding:8px; border:1px solid #999; text-align:right;">${fmt(getFinalQuote())}</td></tr>
             </tfoot>
           </table>
 
@@ -473,6 +606,9 @@ export default function NewQuotationPage() {
   }
 
   const ROOM_PRESETS = ['Hall', 'Kitchen', 'Master Bedroom', 'Bedroom 2', 'Bedroom 3', 'Dining', 'Pooja Room', 'Bathroom', 'Main Door', 'Shoe Rack']
+
+  // Running S.no shown in the on-screen room headers (rooms first, then extra items continue)
+  let onScreenSno = 0
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
@@ -580,13 +716,15 @@ export default function NewQuotationPage() {
         {rooms.map((room, ri) => {
           const roomTotal = getRoomTotal(room)
           const isOpen = openRooms[ri] !== false
+          onScreenSno++
+          const roomSno = onScreenSno
           return (
             <div key={ri} className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
               {/* Room Header */}
               <div className="flex items-center gap-3 px-5 py-3 border-b border-[#F0EBE0] cursor-pointer"
                 style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}
                 onClick={() => setOpenRooms(prev => ({ ...prev, [ri]: !isOpen }))}>
-                <span className="w-6 h-6 rounded-lg bg-[#1C1712] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{ri + 1}</span>
+                <span className="w-6 h-6 rounded-lg bg-[#1C1712] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{roomSno}</span>
                 <input
                   list={`room-presets-${ri}`}
                   value={room.name}
@@ -659,7 +797,83 @@ export default function NewQuotationPage() {
         })}
       </div>
 
-      {/* False Ceiling */}
+      {/* Extra / Standalone Items — Main Door Elevation, Shoe Rack, etc.
+          These are not nested inside a room; they continue the same
+          S.no sequence as the rooms above, matching the reference format. */}
+      <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
+          <h2 className="font-serif text-base text-[#1C1712]">Extra Items <span className="text-[#9A8F82] font-normal text-xs">(Main Door, Shoe Rack, etc.)</span></h2>
+          <button onClick={addExtraItem} className="flex items-center gap-1 text-xs text-[#B8860B] hover:underline font-semibold">
+            <Plus size={11} /> Add Item
+          </button>
+        </div>
+        <div className="p-4 space-y-2">
+          {extraItems.length === 0 && (
+            <p className="text-xs text-[#B8B0A0] italic px-1">No extra items — add Main Door Elevation, Shoe Rack, or a fixed-value adjustment.</p>
+          )}
+          {extraItems.length > 0 && (
+            <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-[#9A8F82] uppercase tracking-wider px-1">
+              <div className="col-span-1 text-center">S.No</div>
+              <div className="col-span-3">Description</div>
+              <div className="col-span-2 text-center">Length</div>
+              <div className="col-span-2 text-center">Height</div>
+              <div className="col-span-2 text-center">Rate / Fixed</div>
+              <div className="col-span-1 text-right">Total</div>
+              <div className="col-span-1"></div>
+            </div>
+          )}
+          {extraItems.map((item, i) => {
+            onScreenSno++
+            const rowSno = onScreenSno
+            const total = getExtraItemTotal(item)
+            const isFixed = item.fixedValue !== undefined
+            return (
+              <div key={i} className="grid grid-cols-12 gap-2 items-center">
+                <div className="col-span-1 text-center text-xs font-bold text-[#9A8F82]">{rowSno}</div>
+                <input placeholder="e.g. Main Door Elevation"
+                  className="col-span-3 bg-[#F7F5F1] border border-[#E8E2D8] rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#B8860B]"
+                  value={item.description} onChange={e => updateExtraItem(i, 'description', e.target.value)} />
+                {isFixed ? (
+                  <div className="col-span-4 text-center text-[10px] text-[#B8B0A0]">fixed value —</div>
+                ) : (
+                  <>
+                    <input type="number" min="0" placeholder="L"
+                      className="col-span-2 bg-[#F7F5F1] border border-[#E8E2D8] rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-[#B8860B]"
+                      value={item.length || ''} onChange={e => updateExtraItem(i, 'length', Number(e.target.value))} />
+                    <input type="number" min="0" placeholder="H"
+                      className="col-span-2 bg-[#F7F5F1] border border-[#E8E2D8] rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-[#B8860B]"
+                      value={item.height || ''} onChange={e => updateExtraItem(i, 'height', Number(e.target.value))} />
+                  </>
+                )}
+                <input type="number" min="0" placeholder={isFixed ? 'Total ₹' : 'Rate'}
+                  className="col-span-2 bg-[#F7F5F1] border border-[#E8E2D8] rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-[#B8860B]"
+                  value={isFixed ? (item.fixedValue || '') : (item.sft_cost || '')}
+                  onChange={e => updateExtraItem(i, isFixed ? 'fixedValue' : 'sft_cost', Number(e.target.value))} />
+                <div className="col-span-1 text-right text-xs font-semibold text-[#1C1712]">
+                  {total > 0 ? `₹${(total/1000).toFixed(0)}K` : '—'}
+                </div>
+                <div className="col-span-1 flex items-center justify-end gap-1.5">
+                  <button onClick={() => toggleExtraItemFixed(i)} title="Toggle fixed value / L×H×rate"
+                    className="text-[9px] font-bold text-[#B8860B] hover:underline">
+                    {isFixed ? 'L×H' : '₹'}
+                  </button>
+                  <button onClick={() => removeExtraItem(i)} className="text-red-400 hover:text-red-600">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Wood Work Cost summary — row "A" */}
+      <div className="flex items-center justify-between bg-[#DCE6F5] rounded-2xl px-5 py-3 border border-[#C7D6EE]">
+        <span className="text-sm font-bold text-[#1C1712]">A — Wood Work Cost <span className="font-normal text-[#5A6B8C]">({getWoodSftTotal()} SFT)</span></span>
+        <span className="text-base font-black text-[#1C1712]">₹{getWoodTotal().toLocaleString('en-IN')}</span>
+      </div>
+
+      {/* False Ceiling — roman numerals + materials note */}
       <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3 border-b border-[#F0EBE0]" style={{ background: 'linear-gradient(135deg, #FFFBEF, #FEFCF8)' }}>
           <h2 className="font-serif text-base text-[#1C1712]">False Ceiling</h2>
@@ -667,42 +881,41 @@ export default function NewQuotationPage() {
             <Plus size={11} /> Add
           </button>
         </div>
-        <div className="p-4 space-y-2">
-          <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-[#9A8F82] uppercase tracking-wider px-1">
-            <div className="col-span-5">Description</div>
-            <div className="col-span-2 text-center">SFT</div>
-            <div className="col-span-2 text-center">Rate/SFT</div>
-            <div className="col-span-2 text-right">Total</div>
-            <div className="col-span-1"></div>
-          </div>
+        <div className="p-4 space-y-3">
           {falseCeilings.map((fc, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2 items-center">
-              <input placeholder="False Ceiling description"
-                className="col-span-5 bg-[#F7F5F1] border border-[#E8E2D8] rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#B8860B]"
-                value={fc.description} onChange={e => updateFC(i, 'description', e.target.value)} />
-              <input type="number" min="0" placeholder="SFT"
-                className="col-span-2 bg-[#F7F5F1] border border-[#E8E2D8] rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-[#B8860B]"
-                value={fc.sft || ''} onChange={e => updateFC(i, 'sft', Number(e.target.value))} />
-              <input type="number" min="0"
-                className="col-span-2 bg-[#F7F5F1] border border-[#E8E2D8] rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-[#B8860B]"
-                value={fc.sft_cost || ''} onChange={e => updateFC(i, 'sft_cost', Number(e.target.value))} />
-              <div className="col-span-2 text-right text-xs font-semibold text-[#1C1712]">
-                ₹{(fc.sft * fc.sft_cost).toLocaleString('en-IN')}
+            <div key={i} className="border border-[#F0EBE0] rounded-xl p-3 space-y-2">
+              <div className="grid grid-cols-12 gap-2 items-center">
+                <div className="col-span-1 text-center text-xs font-bold text-[#DB2777]">{toRoman(i + 1)}</div>
+                <input placeholder="False Ceiling description"
+                  className="col-span-4 bg-[#F7F5F1] border border-[#E8E2D8] rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-[#B8860B]"
+                  value={fc.description} onChange={e => updateFC(i, 'description', e.target.value)} />
+                <input type="number" min="0" placeholder="SFT"
+                  className="col-span-2 bg-[#F7F5F1] border border-[#E8E2D8] rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-[#B8860B]"
+                  value={fc.sft || ''} onChange={e => updateFC(i, 'sft', Number(e.target.value))} />
+                <input type="number" min="0" placeholder="Rate/SFT"
+                  className="col-span-2 bg-[#F7F5F1] border border-[#E8E2D8] rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-[#B8860B]"
+                  value={fc.sft_cost || ''} onChange={e => updateFC(i, 'sft_cost', Number(e.target.value))} />
+                <div className="col-span-2 text-right text-xs font-semibold text-[#1C1712]">
+                  ₹{(fc.sft * fc.sft_cost).toLocaleString('en-IN')}
+                </div>
+                <button onClick={() => removeFC(i)} className="col-span-1 flex justify-center text-red-400 hover:text-red-600">
+                  <Trash2 size={12} />
+                </button>
               </div>
-              <button onClick={() => removeFC(i)} className="col-span-1 flex justify-center text-red-400 hover:text-red-600">
-                <Trash2 size={12} />
-              </button>
+              <input placeholder="Materials note (e.g. Ultra Channels, gypsum Board, Finolex Wire, Wipro Lights & Putti & Paint)"
+                className="w-full bg-[#FAFAF8] border border-[#F0EBE0] rounded-lg px-2 py-1.5 text-[11px] text-[#7A6E60] focus:outline-none focus:border-[#B8860B]"
+                value={fc.note} onChange={e => updateFC(i, 'note', e.target.value)} />
             </div>
           ))}
         </div>
       </div>
 
-      {/* Summary */}
+      {/* Summary — B (Total Cost), Discount, Complementary, C (Final Quote) */}
       <div className="bg-white rounded-2xl border border-[#E8E2D8] shadow-sm p-6">
         <h2 className="font-serif text-base text-[#1C1712] mb-4">Summary</h2>
         <div className="space-y-3 max-w-sm ml-auto">
           <div className="flex justify-between text-sm">
-            <span className="text-[#9A8F82]">Wood Work Total</span>
+            <span className="text-[#9A8F82]">A — Wood Work Cost</span>
             <span className="font-semibold text-[#1C1712]">₹{getWoodTotal().toLocaleString('en-IN')}</span>
           </div>
           <div className="flex justify-between text-sm">
@@ -710,7 +923,7 @@ export default function NewQuotationPage() {
             <span className="font-semibold text-[#1C1712]">₹{getFCTotal().toLocaleString('en-IN')}</span>
           </div>
           <div className="flex justify-between text-sm border-t border-[#F0EBE0] pt-2">
-            <span className="text-[#9A8F82]">Grand Total</span>
+            <span className="text-[#9A8F82]">B — Total Cost (Wood Work + False Ceiling)</span>
             <span className="font-semibold text-[#1C1712]">₹{getGrandTotal().toLocaleString('en-IN')}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
@@ -723,11 +936,11 @@ export default function NewQuotationPage() {
             <span className="text-[#9A8F82]">Complementary</span>
             <input value={form.complementary}
               onChange={e => setForm(f => ({ ...f, complementary: e.target.value }))}
-              placeholder="e.g. Utility Boxes 2 Qty"
+              placeholder="e.g. Shoe Rack & Utility Boxes (2/2) 2 Qty"
               className="w-48 bg-[#F7F5F1] border border-[#E8E2D8] rounded-lg px-3 py-1 text-xs focus:outline-none focus:border-[#B8860B]" />
           </div>
           <div className="flex justify-between text-base font-bold border-t border-[#E8E2D8] pt-3">
-            <span className="text-[#1C1712]">Final Quote</span>
+            <span className="text-[#1C1712]">C — Final Quote Value</span>
             <span className="text-[#B8860B] text-lg">₹{getFinalQuote().toLocaleString('en-IN')}</span>
           </div>
           <div className="flex items-center justify-between text-sm border-t border-[#F0EBE0] pt-3">
