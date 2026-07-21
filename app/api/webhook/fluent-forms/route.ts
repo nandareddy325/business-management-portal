@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     console.log('Webhook body received:', JSON.stringify(body))
 
-    // WP Webhooks sends data inside form_data
+    //WP Webhooks sends data inside form_data 
     const formData = body.form_data || body
 
     const leadName = formData?.names?.first_name || 
