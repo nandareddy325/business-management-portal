@@ -1,103 +1,109 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
+export type PlanId = 'starter' | 'professional' | 'business' | 'lifetime'
+export type PlanFeature = 'hrms' | 'billing' | 'realtime' | 'api' | 'branding'
+
+const FEATURE_MATRIX: Record<PlanId, PlanFeature[]> = {
+  starter: [],
+  professional: ['hrms', 'billing', 'realtime'],
+  business: ['hrms', 'billing', 'realtime', 'api', 'branding'],
+  lifetime: ['hrms', 'billing', 'realtime', 'api', 'branding'],
+}
+
+const LEAD_LIMITS: Record<PlanId, number> = {
+  starter: 500,
+  professional: -1,
+  business: -1,
+  lifetime: -1,
+}
+
+const PLAN_RANK: Record<PlanId, number> = {
+  starter: 1, professional: 2, business: 3, lifetime: 4,
+}
+
 // ── Repository ─────────────────────────────────────────────
 export const subscriptionRepository = {
-  async getPlanByCompany(companyId: string) {
+  async getSubscription(companyId: string) {
     const supabase = await createServerSupabaseClient()
     const { data, error } = await supabase
-      .from('companies')
-      .select('plan_status, trial_ends_at, subscription_id, plan:plans(*)')
-      .eq('id', companyId)
+      .from('company_subscriptions')
+      .select('*')
+      .eq('company_id', companyId)
       .single()
     if (error) return null
     return data
-  },
-
-  async getAllPlans() {
-    const supabase = await createServerSupabaseClient()
-    const { data, error } = await supabase
-      .from('plans')
-      .select('*')
-      .order('price_monthly')
-    if (error) throw new Error(error.message)
-    return data ?? []
-  },
-
-  async updateCompanyPlan(companyId: string, planId: string, subscriptionId: string) {
-    const supabase = await createServerSupabaseClient()
-    await supabase
-      .from('companies')
-      .update({ plan_id: planId, subscription_id: subscriptionId, plan_status: 'active' })
-      .eq('id', companyId)
-  },
-
-  async setTrialExpired(companyId: string) {
-    const supabase = await createServerSupabaseClient()
-    await supabase
-      .from('companies')
-      .update({ plan_status: 'expired' })
-      .eq('id', companyId)
   },
 }
 
 // ── Service ────────────────────────────────────────────────
 export const subscriptionService = {
   async getStatus(companyId: string) {
-    const data = await subscriptionRepository.getPlanByCompany(companyId)
-    if (!data) return { status: 'none', plan: null, isActive: false, isTrialing: false }
+    const sub = await subscriptionRepository.getSubscription(companyId)
+    if (!sub) return { status: 'none', planConfig: null, isActive: false, isTrialing: false }
 
-    const isTrialing = data.plan_status === 'trial'
-    const trialExpired = isTrialing && data.trial_ends_at
-      ? new Date(data.trial_ends_at) < new Date()
+    const isTrialing = sub.status === 'trial'
+    const trialExpired = isTrialing && sub.trial_ends_at
+      ? new Date(sub.trial_ends_at) < new Date()
       : false
 
     return {
-      status: trialExpired ? 'trial_expired' : data.plan_status,
-      plan: data.plan,
-      isActive: data.plan_status === 'active',
+      status: trialExpired ? 'trial_expired' : sub.status,
+      planConfig: sub.plan_config as Record<string, PlanId>,
+      isActive: sub.status === 'active',
       isTrialing: isTrialing && !trialExpired,
-      trialEndsAt: data.trial_ends_at,
-      subscriptionId: data.subscription_id,
+      trialEndsAt: sub.trial_ends_at,
+      maxUsers: sub.max_users,
+      billingCycle: sub.billing_cycle,
     }
   },
 
+  // ఒక్క నిర్దిష్ట industry కి ఏ plan ఉందో చెక్ చేయడానికి
+  async getPlanForIndustry(companyId: string, industry: string): Promise<PlanId | null> {
+    const sub = await subscriptionRepository.getSubscription(companyId)
+    if (!sub?.plan_config) return null
+    const config = sub.plan_config as Record<string, PlanId>
+    return config[industry] ?? null
+  },
+
+  // Company subscribe చేసిన అన్ని industries లో అత్యధిక plan —
+  // company-wide features (HRMS లాంటివి) కోసం వాడాలి
+  async getHighestPlan(companyId: string): Promise<PlanId | null> {
+    const sub = await subscriptionRepository.getSubscription(companyId)
+    if (!sub?.plan_config) return null
+    const config = sub.plan_config as Record<string, PlanId>
+    const plans = Object.values(config)
+    if (!plans.length) return null
+    return plans.reduce((best, p) => (PLAN_RANK[p] > PLAN_RANK[best] ? p : best))
+  },
+
   async canAddUser(companyId: string): Promise<boolean> {
+    const sub = await subscriptionRepository.getSubscription(companyId)
+    if (!sub) return false
+    if (sub.max_users === -1) return true
+
     const supabase = await createServerSupabaseClient()
-    const { data } = await supabase
-      .from('companies')
-      .select('plan:plans(max_users)')
-      .eq('id', companyId)
-      .single()
-
-    const maxUsers = (data?.plan as { max_users?: number } | null)?.max_users ?? 5
-    if (maxUsers === -1) return true // unlimited
-
     const { count } = await supabase
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .eq('company_id', companyId)
       .eq('is_active', true)
 
-    return (count ?? 0) < maxUsers
+    return (count ?? 0) < (sub.max_users ?? 5)
   },
 
-  async canAddLead(companyId: string): Promise<boolean> {
+  async canAddLead(companyId: string, industry: string): Promise<boolean> {
+    const plan = await this.getPlanForIndustry(companyId, industry)
+    if (!plan) return false
+    const maxLeads = LEAD_LIMITS[plan]
+    if (maxLeads === -1) return true
+
     const supabase = await createServerSupabaseClient()
-    const { data } = await supabase
-      .from('companies')
-      .select('plan:plans(max_leads)')
-      .eq('id', companyId)
-      .single()
-
-    const maxLeads = (data?.plan as { max_leads?: number } | null)?.max_leads ?? 500
-    if (maxLeads === -1) return true // unlimited
-
     const startOfMonth = new Date()
     startOfMonth.setDate(1)
     startOfMonth.setHours(0, 0, 0, 0)
 
     const { count } = await supabase
-      .from('crm_leads')
+      .from('leads')                    // fixed: crm_leads -> leads
       .select('*', { count: 'exact', head: true })
       .eq('company_id', companyId)
       .gte('created_at', startOfMonth.toISOString())
@@ -105,47 +111,14 @@ export const subscriptionService = {
     return (count ?? 0) < maxLeads
   },
 
-  async hasFeature(companyId: string, feature: 'hrms' | 'billing' | 'realtime' | 'api' | 'branding'): Promise<boolean> {
-    const supabase = await createServerSupabaseClient()
-    const { data } = await supabase
-      .from('companies')
-      .select('plan:plans(name)')
-      .eq('id', companyId)
-      .single()
+  // industry pass చేయకపోతే, company యొక్క highest plan వాడుతుంది
+  // (HRMS లాంటి company-wide features కి idi సరిపోతుంది)
+  async hasFeature(companyId: string, feature: PlanFeature, industry?: string): Promise<boolean> {
+    const plan = industry
+      ? await this.getPlanForIndustry(companyId, industry)
+      : await this.getHighestPlan(companyId)
 
-    const plan = (data?.plan as { name?: string } | null)?.name
-    const featureMatrix: Record<string, string[]> = {
-      starter: [],
-      professional: ['hrms', 'billing', 'realtime'],
-      business: ['hrms', 'billing', 'realtime', 'api', 'branding'],
-      enterprise: ['hrms', 'billing', 'realtime', 'api', 'branding'],
-    }
-    return featureMatrix[plan]?.includes(feature) ?? false
-  },
-
-  async getAllPlans() {
-    return subscriptionRepository.getAllPlans()
-  },
-
-  async createRazorpayOrder(planId: string, companyId: string, isYearly: boolean) {
-    const supabase = await createServerSupabaseClient()
-    const { data: plan } = await supabase
-      .from('plans')
-      .select('*')
-      .eq('id', planId)
-      .single()
-
-    if (!plan) throw new Error('Plan not found')
-
-    const amount = isYearly ? plan.price_yearly : plan.price_monthly
-    const amountInPaise = Math.round(Number(amount) * 100)
-
-    // Call your API route which uses Razorpay server SDK
-    const res = await fetch('/api/razorpay/create-order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: amountInPaise, planId, companyId }),
-    })
-    return res.json()
+    if (!plan) return false
+    return FEATURE_MATRIX[plan]?.includes(feature) ?? false
   },
 }

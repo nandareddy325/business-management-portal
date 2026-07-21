@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Bell, Menu } from 'lucide-react'
+import { Bell, Menu, Mail } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 
 interface Notification {
@@ -140,6 +140,12 @@ export function Header({
           'bg-amber-400 animate-pulse'
         }`}
       />
+
+      {/* Email Support */}
+      <a href="mailto:supportcrm@gkdigitalsolutions.in" title="Email support"
+        className="w-10 h-10 rounded-xl border border-[#E8E2D8] bg-[#F7F5F1] flex items-center justify-center text-[#7A6E60] hover:bg-[#F0EBE0] hover:border-[#B8860B] transition-all flex-shrink-0">
+        <Mail size={15} />
+      </a>
 
       {/* Notifications */}
       <div className="relative" ref={notifRef}>

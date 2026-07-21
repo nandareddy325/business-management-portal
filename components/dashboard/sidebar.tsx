@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { X, ChevronDown, LogOut } from 'lucide-react'
+import { X, ChevronDown, LogOut, Lock } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
 import { getStageCounts, type CanonicalStage } from '@/lib/stage-utils'
 import { fetchAllLeads } from '@/lib/fetch-all-leads'
@@ -27,6 +27,33 @@ const SECTION_PERMISSION: Record<string, string> = {
   'SYSTEM':      'pipeline',
   'WORK':        'pipeline',
   'ACCOUNT':     'pipeline',
+}
+
+// ── Plan-feature gating ──────────────────────────────────────────────────
+// Which subscription feature flag a sidebar section requires.
+// Sections not listed here are available on every plan (Pipeline, Projects, Settings).
+// Section-level lock — used for sections that are entirely gated (e.g. Finance).
+const SECTION_PLAN_FEATURE: Record<string, 'hrms' | 'billing' | 'projects'> = {
+  'PROJECTS': 'projects',
+  'FINANCE':  'billing',
+}
+
+// Item-level lock — used within a section where some items are free on every plan
+// (e.g. adding team members) and others need a higher plan (attendance, payslips).
+// Keyed by the item's label since hrefs are industry-prefixed and vary.
+const ITEM_PLAN_FEATURE: Record<string, 'hrms' | 'billing'> = {
+  'Attendance':   'hrms',
+  'Work Reports': 'hrms',
+  'Pay Slips':    'hrms',
+}
+
+const PLAN_RANK: Record<string, number> = { starter: 1, professional: 2, business: 3, lifetime: 4 }
+
+const FEATURE_MATRIX: Record<string, string[]> = {
+  starter: [],
+  professional: ['hrms', 'billing', 'realtime', 'projects'],
+  business: ['hrms', 'billing', 'realtime', 'projects', 'api', 'branding'],
+  lifetime: ['hrms', 'billing', 'realtime', 'projects', 'api', 'branding'],
 }
 
 function buildNavGroups(industrySlug: string) {
@@ -61,7 +88,7 @@ function buildNavGroups(industrySlug: string) {
     {
       section: 'HR & ADMIN', icon: '👔',
       items: [
-        { label: 'HRMS',         icon: '👔', href: '/hr/employees'    },
+        { label: 'Team Members', icon: '👥', href: '/hr/employees'    },
         { label: 'Attendance',   icon: '📅', href: '/hr/attendance'   },
         { label: 'Work Reports', icon: '📝', href: '/hr/work-reports' },
         { label: 'Pay Slips',    icon: '💵', href: '/hr/payslips'     },
@@ -176,6 +203,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [handoverCount, setHandoverCount] = useState(0)
   const [industryDropdownOpen, setIndustryDropdownOpen] = useState(false)
   const [empPermissions, setEmpPermissions] = useState<string[]>(['pipeline'])
+  // Plan-based feature flags for this company (e.g. ['hrms','billing','realtime'])
+  const [planFeatures, setPlanFeatures] = useState<string[]>([])
+  const [planFeaturesLoaded, setPlanFeaturesLoaded] = useState(false)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     'PIPELINE': true, 'MY PIPELINE': true, 'PROJECTS': false,
     'HR & ADMIN': false, 'FINANCE': false, 'SYSTEM': false, 'ACCOUNT': true,
@@ -215,6 +245,34 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     }
   }
 
+  // Fetch this company's subscription plan and resolve which features are unlocked.
+  // Uses the highest plan across all subscribed industries (company-wide modules
+  // like HRMS/Billing shouldn't be locked just because one industry is on Starter).
+  const refreshPlanFeatures = async (companyId: string) => {
+    try {
+      const { data: sub } = await supabase
+        .from('company_subscriptions')
+        .select('plan_config')
+        .eq('company_id', companyId)
+        .maybeSingle()
+
+      const config = sub?.plan_config as Record<string, string> | null
+      if (!config || Object.keys(config).length === 0) {
+        setPlanFeatures([])
+        setPlanFeaturesLoaded(true)
+        return
+      }
+
+      const plans = Object.values(config)
+      const highest = plans.reduce((best, p) => ((PLAN_RANK[p] ?? 0) > (PLAN_RANK[best] ?? 0) ? p : best), plans[0])
+      setPlanFeatures(FEATURE_MATRIX[highest] ?? [])
+      setPlanFeaturesLoaded(true)
+    } catch (err) {
+      console.warn('Sidebar plan-feature refresh skipped:', err)
+      setPlanFeaturesLoaded(true)
+    }
+  }
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -238,6 +296,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             if (ci) setActiveIndustries(ci.map((c: any) => c.industries?.slug).filter(Boolean))
 
             await refreshStageCounts(profile.company_id)
+            await refreshPlanFeatures(profile.company_id)
           }
           if (!isAdmin) {
             const { data: empData } = await supabase.from('employees').select('permissions').eq('user_id', user.id).maybeSingle()
@@ -309,6 +368,24 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       return empPermissions.includes(requiredPerm)
     })
   }, [role, adminNavGroups, employeeNavGroups, empPermissions])
+
+  // Whether an entire section is locked by the company's current plan (e.g. Finance).
+  // Returns false while plan data is still loading, to avoid a locked-then-unlocked flash.
+  const isSectionLocked = (section: string) => {
+    if (!planFeaturesLoaded) return false
+    const requiredFeature = SECTION_PLAN_FEATURE[section]
+    if (!requiredFeature) return false
+    return !planFeatures.includes(requiredFeature)
+  }
+
+  // Whether a single item within an otherwise-unlocked section is locked
+  // (e.g. Attendance/Pay Slips inside HR & ADMIN, while Team Members stays free).
+  const isItemLocked = (label: string) => {
+    if (!planFeaturesLoaded) return false
+    const requiredFeature = ITEM_PLAN_FEATURE[label]
+    if (!requiredFeature) return false
+    return !planFeatures.includes(requiredFeature)
+  }
 
   const getBadge = (href: string) => {
     const IND_BASE = `/dashboard/industries/${currentIndustrySlug}`
@@ -466,42 +543,76 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           {navGroups.map((group) => {
             const isOpen_ = openSections[group.section] ?? true
             const hasActive = group.items.some(item => isActive(item.href))
+            const locked = role === 'admin' && isSectionLocked(group.section)
             return (
               <div key={group.section} style={{ marginBottom: 2 }}>
                 <button onClick={() => toggleSection(group.section)}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 10px', borderRadius: 12, border: 'none', background: hasActive ? '#F5F5F3' : 'transparent', cursor: 'pointer' }}>
-                  <span style={{ fontSize: 13 }}>{group.icon}</span>
+                  <span style={{ fontSize: 13, opacity: locked ? 0.5 : 1 }}>{group.icon}</span>
                   <span style={{ flex: 1, textAlign: 'left', fontSize: 9, fontWeight: 800, color: '#BBB', textTransform: 'uppercase', letterSpacing: 2 }}>{group.section}</span>
+                  {locked && (
+                    <span style={{ fontSize: 8, fontWeight: 800, padding: '2px 7px', borderRadius: 20, background: '#FEF3C7', color: '#B45309', display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                      <Lock size={8} /> Upgrade
+                    </span>
+                  )}
                   <ChevronDown size={11} style={{ color: '#CCC', transform: isOpen_ ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.2s', flexShrink: 0 }} />
                 </button>
 
                 <div style={{ overflow: 'hidden', maxHeight: isOpen_ ? 600 : 0, opacity: isOpen_ ? 1 : 0, transition: 'max-height 0.22s ease, opacity 0.18s ease' }}>
                   <div style={{ paddingTop: 2, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {group.items.map((item) => {
-                      const active = isActive(item.href)
-                      const badge = getBadge(item.href)
-                      return (
-                        <Link key={item.label} href={item.href} onClick={onClose}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 9, padding: '11px 10px', borderRadius: 12,
-                            background: active ? '#1C1C1E' : 'transparent',
-                            color: active ? '#fff' : '#555',
-                            fontWeight: active ? 700 : 500,
-                            fontSize: 12, textDecoration: 'none',
-                            boxShadow: active ? '0 2px 10px rgba(0,0,0,0.12)' : 'none',
-                          }}
-                          onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#F5F5F3' }}
-                          onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
-                          <span style={{ fontSize: 13, lineHeight: 1, flexShrink: 0 }}>{item.icon}</span>
-                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
-                          {badge && (
-                            <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 20, flexShrink: 0, ...getBadgeStyle(item.href, active) }}>
-                              {badge}
-                            </span>
-                          )}
-                        </Link>
-                      )
-                    })}
+                    {locked ? (
+                      // Whole section gated (e.g. Finance on Starter) — single upgrade prompt
+                      // instead of dead-end nav items.
+                      <Link href="/dashboard/settings/company" onClick={onClose}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 9, padding: '11px 10px', borderRadius: 12,
+                          background: '#FFFBEB', border: '1px dashed #FCD34D',
+                          color: '#B45309', fontWeight: 600, fontSize: 11, textDecoration: 'none',
+                        }}>
+                        <Lock size={12} />
+                        <span>Available on Professional plan — Upgrade to unlock</span>
+                      </Link>
+                    ) : (
+                      group.items.map((item) => {
+                        const itemLocked = role === 'admin' && isItemLocked(item.label)
+                        if (itemLocked) {
+                          return (
+                            <Link key={item.label} href="/dashboard/settings/company" onClick={onClose}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 9, padding: '11px 10px', borderRadius: 12,
+                                background: 'transparent', color: '#BBB', fontWeight: 500, fontSize: 12, textDecoration: 'none',
+                              }}>
+                              <span style={{ fontSize: 13, lineHeight: 1, flexShrink: 0, opacity: 0.5 }}>{item.icon}</span>
+                              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                              <Lock size={10} style={{ flexShrink: 0 }} />
+                            </Link>
+                          )
+                        }
+                        const active = isActive(item.href)
+                        const badge = getBadge(item.href)
+                        return (
+                          <Link key={item.label} href={item.href} onClick={onClose}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 9, padding: '11px 10px', borderRadius: 12,
+                              background: active ? '#1C1C1E' : 'transparent',
+                              color: active ? '#fff' : '#555',
+                              fontWeight: active ? 700 : 500,
+                              fontSize: 12, textDecoration: 'none',
+                              boxShadow: active ? '0 2px 10px rgba(0,0,0,0.12)' : 'none',
+                            }}
+                            onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#F5F5F3' }}
+                            onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                            <span style={{ fontSize: 13, lineHeight: 1, flexShrink: 0 }}>{item.icon}</span>
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                            {badge && (
+                              <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 20, flexShrink: 0, ...getBadgeStyle(item.href, active) }}>
+                                {badge}
+                              </span>
+                            )}
+                          </Link>
+                        )
+                      })
+                    )}
                   </div>
                 </div>
               </div>

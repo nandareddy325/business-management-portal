@@ -18,7 +18,7 @@ export const crmService = {
     assigned_to?: string
   }) {
     // Check monthly lead limit
-    const canAdd = await subscriptionService.canAddLead(companyId)
+    const canAdd = await subscriptionService.canAddLead(companyId, industryId)   // fixed: pass industryId
     if (!canAdd) throw new Error('LEAD_LIMIT_REACHED')
 
     return crmRepository.createLead({

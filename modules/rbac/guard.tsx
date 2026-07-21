@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { authService } from '@/modules/auth/service'
+import { subscriptionService } from '@/modules/subscription/service'
 import { hasPermission, hasAnyPermission, type Permission, type UserRole } from './permissions'
 
 // ── Server-side Route Guard ────────────────────────────────
@@ -42,7 +43,17 @@ export async function requireIndustryAccess(industrySlug: string) {
   return user
 }
 
-// ── Permission Check Helpers (no redirect) ─────────────────
+// ── Plan Feature Guard ──────────────────────────────────────
+export async function requireFeature(feature: 'hrms' | 'billing' | 'realtime' | 'api' | 'branding') {
+  const user = await requireAuth()
+  const allowed = await subscriptionService.hasFeature(user.companyId, feature)
+  if (!allowed) {
+    redirect('/dashboard/upgrade?feature=' + feature)
+  }
+  return user
+}
+
+// ── Permission / Feature Check Helpers (no redirect) ────────
 export async function checkPermission(permission: Permission): Promise<boolean> {
   const user = await authService.getCurrentUser()
   if (!user) return false
@@ -53,6 +64,12 @@ export async function checkAnyPermission(permissions: Permission[]): Promise<boo
   const user = await authService.getCurrentUser()
   if (!user) return false
   return hasAnyPermission(user.role as UserRole, permissions)
+}
+
+export async function checkFeature(feature: 'hrms' | 'billing' | 'realtime' | 'api' | 'branding'): Promise<boolean> {
+  const user = await authService.getCurrentUser()
+  if (!user) return false
+  return subscriptionService.hasFeature(user.companyId, feature)
 }
 
 // ── React component guard (client) ────────────────────────

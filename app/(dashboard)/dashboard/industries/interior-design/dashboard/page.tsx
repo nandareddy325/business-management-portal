@@ -1,9 +1,10 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { UserPlus, Phone, Calendar, MapPin, FileText, Trophy, XCircle } from 'lucide-react'
+import { UserPlus, Phone, Calendar, MapPin, FileText, Trophy, XCircle, Lock } from 'lucide-react'
 import { TodayCallsSection } from '@/components/interior/today-calls-section'
 import { fetchAllLeads } from '@/lib/fetch-all-leads'
+import { subscriptionService } from '@/modules/subscription/service'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,6 +63,13 @@ export default async function InteriorDesignDashboard() {
   // Only admins/owners can see the whole team's performance; regular CRE staff see only their own.
   const isAdminOrOwner = profile.role === 'admin' || profile.role === 'owner' || profile.role === 'tenant_admin' || profile.role === 'manager'
 
+  // ── Plan-based dashboard tier ─────────────────────────────────────
+  // Starter: basic stat cards + stage-wise pipeline only.
+  // Professional/Business: same, plus an embedded analytics snapshot
+  // and a working "Analytics" deep-link (uses the 'realtime' feature flag,
+  // same one that unlocks the real-time dashboard on the pricing page).
+  const hasAdvancedAnalytics = await subscriptionService.hasFeature(profile.company_id, 'realtime')
+
   // ── Leads data — shared helper, bypasses Supabase 1000-row cap ──
   const allLeads = await fetchAllLeads<Lead>(
     supabase,
@@ -84,9 +92,24 @@ export default async function InteriorDesignDashboard() {
 
   const totalLeads  = allLeads?.length ?? 0
   const wonLeads    = stageCounts['won'] ?? 0
-  const activeLeads = totalLeads - wonLeads - (stageCounts['lost'] ?? 0)
+  const lostLeads   = stageCounts['lost'] ?? 0
+  const activeLeads = totalLeads - wonLeads - lostLeads
   const todayStr    = new Date().toDateString()
   const todayLeads  = allLeads?.filter(l => new Date(l.created_at).toDateString() === todayStr).length ?? 0
+  const winRate     = (wonLeads + lostLeads) > 0 ? Math.round((wonLeads / (wonLeads + lostLeads)) * 100) : 0
+
+  // ── Simple 30-day trend (for the Professional+ snapshot chart) ──
+  const trendDays: { label: string; count: number }[] = []
+  if (hasAdvancedAnalytics && allLeads) {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      const dayStr = d.toDateString()
+      const count = allLeads.filter(l => new Date(l.created_at).toDateString() === dayStr).length
+      trendDays.push({ label: d.toLocaleDateString('en-IN', { weekday: 'short' }), count })
+    }
+  }
+  const trendMax = Math.max(1, ...trendDays.map(d => d.count))
 
   const leadIds = allLeads?.map((l: Lead) => l.id) ?? []
 
@@ -189,11 +212,19 @@ export default async function InteriorDesignDashboard() {
             {/* Analytics + CRE dashboard both show company-wide data — admin/owner only */}
             {isAdminOrOwner && (
             <div className="flex items-center gap-2">
-              <Link href="/dashboard/industries/interior-design/analytics"
-                className="px-3 py-1.5 rounded-xl text-[11px] font-black text-white transition-all hover:-translate-y-0.5"
-                style={{ background:'linear-gradient(135deg,#B8860B,#D97706)',boxShadow:'0 4px 14px rgba(184,134,11,0.32)' }}>
-                📊 Analytics
-              </Link>
+              {hasAdvancedAnalytics ? (
+                <Link href="/dashboard/industries/interior-design/analytics"
+                  className="px-3 py-1.5 rounded-xl text-[11px] font-black text-white transition-all hover:-translate-y-0.5"
+                  style={{ background:'linear-gradient(135deg,#B8860B,#D97706)',boxShadow:'0 4px 14px rgba(184,134,11,0.32)' }}>
+                  📊 Analytics
+                </Link>
+              ) : (
+                <Link href="/dashboard/settings/company"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all hover:-translate-y-0.5"
+                  style={{ background:'#F0EBE0', color:'#9A8F82', border:'1px dashed #D5CFC3' }}>
+                  <Lock size={11} /> Analytics
+                </Link>
+              )}
               <Link href="/dashboard/industries/interior-design/cre"
                 className="px-3 py-1.5 rounded-xl text-[11px] font-black text-white transition-all hover:-translate-y-0.5"
                 style={{ background:'linear-gradient(135deg,#1C1712,#2d2218)',border:'1px solid rgba(184,134,11,0.3)', boxShadow:'0 4px 14px rgba(28,23,18,0.25)' }}>
@@ -208,7 +239,7 @@ export default async function InteriorDesignDashboard() {
           </p>
         </div>
 
-        {/* TOP STATS */}
+        {/* TOP STATS — every plan */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 fade-up">
           {[
             { label:'Total Leads', value:totalLeads,  color:'#7C3AED', icon:'👥', bg:'#F5F3FF' },
@@ -227,7 +258,7 @@ export default async function InteriorDesignDashboard() {
           ))}
         </div>
 
-        {/* STAGE WISE CARDS */}
+        {/* STAGE WISE CARDS — every plan */}
         <div className="fade-up">
           <p className="text-[10px] font-bold uppercase tracking-[4px] mb-3" style={{ color:'#B8860B' }}>Stage Wise Count</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -270,6 +301,54 @@ export default async function InteriorDesignDashboard() {
             })}
           </div>
         </div>
+
+        {/* ADVANCED ANALYTICS SNAPSHOT — Professional & Business only */}
+        {hasAdvancedAnalytics ? (
+          <div className="fade-up">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-bold uppercase tracking-[4px]" style={{ color:'#B8860B' }}>Advanced Analytics</p>
+              <span className="text-[8px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full" style={{ background:'#FFFBEB', color:'#B8860B', border:'1px solid #FDE68A' }}>Professional</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Win rate card */}
+              <div className="card-hover rounded-2xl p-4" style={{ background:'#fff',border:'1px solid #EDE7DB',boxShadow:'0 1px 2px rgba(28,23,18,0.04), 0 8px 20px rgba(28,23,18,0.05)' }}>
+                <p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color:'#9A8F82' }}>Win Rate</p>
+                <p className="text-3xl font-black" style={{ color:'#059669' }}>{winRate}%</p>
+                <p className="text-[10px] mt-1" style={{ color:'#9A8F82' }}>{wonLeads} won · {lostLeads} lost</p>
+              </div>
+
+              {/* 7-day lead trend */}
+              <div className="md:col-span-2 card-hover rounded-2xl p-4" style={{ background:'#fff',border:'1px solid #EDE7DB',boxShadow:'0 1px 2px rgba(28,23,18,0.04), 0 8px 20px rgba(28,23,18,0.05)' }}>
+                <p className="text-[9px] font-bold uppercase tracking-wider mb-3" style={{ color:'#9A8F82' }}>New Leads — Last 7 Days</p>
+                <div className="flex items-end justify-between gap-2" style={{ height: 72 }}>
+                  {trendDays.map((d, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                      <div className="w-full rounded-t-md" style={{
+                        height: `${Math.max(6, (d.count / trendMax) * 56)}px`,
+                        background: 'linear-gradient(180deg,#D97706,#B8860B)',
+                      }} title={`${d.count} leads`} />
+                      <p className="text-[8px] font-bold" style={{ color:'#9A8F82' }}>{d.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="fade-up">
+            <Link href="/dashboard/settings/company"
+              className="flex items-center gap-3 rounded-2xl p-4 transition-all hover:-translate-y-0.5"
+              style={{ background:'#FFFBEB', border:'1px dashed #FCD34D' }}>
+              <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background:'#FFF3D6' }}>
+                <Lock size={16} style={{ color:'#B45309' }} />
+              </span>
+              <div>
+                <p className="text-sm font-bold" style={{ color:'#B45309' }}>Advanced analytics available on Professional</p>
+                <p className="text-[11px]" style={{ color:'#9A8F82' }}>Win rate, lead trends & real-time dashboard — upgrade to unlock.</p>
+              </div>
+            </Link>
+          </div>
+        )}
 
         {/* TEAM PERFORMANCE */}
         <div className="fade-up">

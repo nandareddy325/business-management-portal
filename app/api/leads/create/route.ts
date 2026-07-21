@@ -13,27 +13,30 @@ export async function POST(request: Request) {
 
     // Map WordPress form fields → CRM lead fields
     const {
-      names,        // Name field
-      phone_number, // Phone Number
-      location,     // Location dropdown
-      service_required, // Service Required
-      your_message  // Your Message
+      names,             // Name field
+      phone_number,      // Phone Number
+      location,          // Location dropdown
+      service_required,  // Service Required
+      your_message        // Your Message
     } = body
 
     // GK Home Interiors company ID Supabase lo chuddu
     const GKHI_COMPANY_ID = process.env.GKHI_COMPANY_ID
 
     // Lead create cheyyi
+    // NOTE: owner_id ni intentionally set cheyatam ledu -> fresh/unclaimed lead
+    // (RLS policy prakaram anni CRE-laki kanipistundi, evaraina claim chesukovachu)
     const { data, error } = await supabaseAdmin
       .from('leads')
       .insert({
         company_id: GKHI_COMPANY_ID,
-        name: names?.first_name || names || '',
+        lead_name: names?.first_name || names || '',   // fixed: name -> lead_name
         phone: phone_number || '',
-        location: location || '',
-        service_required: service_required || '',
-        message: your_message || '',
-        stage: 'New Leads',
+        city: location || '',                          // fixed: location -> city
+        interest: service_required || '',               // fixed: service_required -> interest
+        notes: your_message || '',                      // fixed: message -> notes
+        pipeline_stage: 'new',                           // fixed: stage -> pipeline_stage
+        status: 'new',
         source: 'Website Form',
         created_at: new Date().toISOString()
       })
@@ -45,8 +48,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       lead_id: data.id,
       message: 'Lead created successfully'
     })

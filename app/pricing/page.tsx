@@ -21,7 +21,12 @@ const PLANS = [
     users: "Up to 10 users",
     color: "#6B7280",
     bgLight: "#f3f4f6",
-    features: ["Lead pipeline (7-stage)", "Client management", "Quotations (PDF)", "Basic dashboard", "Email support"],
+    features: [
+      "Lead pipeline (7-stage)",
+      "Team member access (up to 10)",
+      "Basic dashboard",
+      "Email support",
+    ],
   },
   {
     id: "professional",
@@ -30,7 +35,17 @@ const PLANS = [
     users: "Up to 20 users",
     color: "#B8860B",
     bgLight: "#fffbeb",
-    features: ["Everything in Starter", "HRMS & attendance", "GST billing & invoices", "Priority support", "Real-time dashboard", "Advanced reports"],
+    features: [
+      "Everything in Starter",
+      "Client management",
+      "Quotations (PDF)",
+      "HRMS & Attendance (leave, clock-in/out, payslips)",
+      "Project Management (budgets, timelines, materials)",
+      "GST billing & invoices",
+      "Priority support",
+      "Real-time dashboard",
+      "Advanced reports",
+    ],
   },
   {
     id: "business",
@@ -39,7 +54,13 @@ const PLANS = [
     users: "Up to 50 users",
     color: "#7C3AED",
     bgLight: "#f5f3ff",
-    features: ["Everything in Professional", "Unlimited leads", "Advanced analytics", "Priority support (faster SLA)", "WhatsApp/AI tools — free when launched"],
+    features: [
+      "Everything in Professional",
+      "Unlimited leads",
+      "Advanced analytics",
+      "Priority support (faster SLA)",
+      "WhatsApp/AI tools — free when launched",
+    ],
   },
 ];
 
@@ -48,12 +69,12 @@ const BUNDLE_DISCOUNT = 0.1;
 const INCLUDED_FEATURES = [
   { icon: "🎯", title: "7-Stage Lead Pipeline", desc: "New → RNR → Follow-up → Site Visit → Quotation → Won → Lost", tier: null },
   { icon: "⚡", title: "Real-time Dashboard",   desc: "Live lead activity, pipeline stats and team performance", tier: null },
-  { icon: "👥", title: "Role-Based Access",     desc: "Admin sees all. CRE sees only their assigned leads", tier: null },
+  { icon: "👥", title: "Team Member Access",    desc: "Add employees for login — up to plan's user limit", tier: null },
+  { icon: "🔐", title: "Role-Based Access",     desc: "Admin sees all. CRE sees only their assigned leads", tier: null },
   { icon: "📅", title: "HRMS & Attendance",     desc: "Clock-in/out, leave requests, salary slips built-in", tier: "Professional" },
   { icon: "💳", title: "GST Billing & Invoices", desc: "Razorpay-powered payments, partial payments, overdue tracking", tier: "Professional" },
   { icon: "🏗️", title: "Project Management",   desc: "Budgets, timelines, site photos, material tracking", tier: "Professional" },
   { icon: "📊", title: "Analytics & Reports",   desc: "Win rates, revenue charts, team leaderboard", tier: "Professional" },
-  { icon: "🔐", title: "Data Isolation (RLS)",  desc: "Supabase Row Level Security — your data, only yours", tier: null },
 ];
 
 const AI_INTEGRATIONS = [
@@ -67,8 +88,8 @@ const AI_INTEGRATIONS = [
 const PRICING_FAQS = [
   { q: "What happens after the 14-day trial?",     a: "Your account stays active but locked. You can subscribe to any plan without losing your data. No auto-charges — you choose when to upgrade." },
   { q: "Is there a setup fee or hidden charges?",  a: "Zero setup fee. Price shown is all-inclusive. No per-seat fees beyond the plan limit." },
-  { q: "What's the difference between Starter and Professional?", a: "Starter covers lead management, clients and quotations — perfect to get moving. Professional adds HRMS, GST billing, and advanced reports for growing teams." },
-  { q: "Can I add more team members later?",       a: "Starter supports up to 10 users, Professional up to 20. Need more? Contact us for a custom plan — we accommodate growing teams." },
+  { q: "What's the difference between Starter and Professional?", a: "Starter covers lead management, clients, quotations, and team member access — perfect to get moving. Professional adds the full HRMS module (attendance, leave, payslips), project management (budgets, timelines, materials), GST billing, and advanced reports for growing teams." },
+  { q: "Can I add more team members later?",       a: "Starter supports up to 10 users, Professional up to 20, Business up to 50. Need more? Contact us for a custom plan — we accommodate growing teams." },
   { q: "What payment methods do you accept?",      a: "UPI, credit/debit cards, net banking via Razorpay. Monthly billing with auto-renewal. Cancel anytime from account settings." },
   { q: "Do AI integrations cost extra?",           a: "No. When N8N, Vapi.ai, and WhatsApp integrations launch, they will be included on the Professional plan at no extra cost." },
 ];
@@ -103,7 +124,7 @@ function WhatIncludedSection() {
             Everything you need. <em className="italic font-normal text-[#B8860B]">Growing with you.</em>
           </h2>
           <p className="text-[#7A6E60] text-sm md:text-base max-w-md mx-auto">
-            Starter covers the essentials. Professional unlocks HRMS, billing and advanced reports — tagged below.
+            Starter covers the essentials — including team access. Professional unlocks HRMS, billing and advanced reports — tagged below.
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
@@ -454,32 +475,28 @@ export default function GKCRMPricing() {
                         )}
                       </div>
 
-                      {/* Plan selection — expands when active */}
+                      {/* Plan selection — expands when active — 3 plans side by side */}
                       {s.active && !locked && (
-                        <div className="px-4 md:px-5 pb-4 md:pb-5 border-t border-[#F0EBE0] pt-4 flex flex-col gap-2.5">
+                        <div className="px-4 md:px-5 pb-4 md:pb-5 border-t border-[#F0EBE0] pt-4 grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-start">
                           {PLANS.map((p) => {
                             const sel = s.plan === p.id;
                             return (
                               <button key={p.id}
                                 onClick={() => selectPlan(ind.id, p.id)}
-                                className={`w-full rounded-xl border-2 p-3 md:p-4 text-left transition-all duration-200 ${
+                                className={`w-full h-full rounded-xl border-2 p-3 md:p-4 text-left transition-all duration-200 ${
                                   sel ? 'border-[#B8860B] bg-amber-50' : 'border-[#E2D9C8] bg-[#F5F0E8] hover:border-[#B8860B]/40'
                                 }`}
                               >
-                                <div className="flex items-center justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className={`text-xs font-bold uppercase tracking-wide ${sel ? 'text-[#B8860B]' : 'text-[#9A8F82]'}`}>
-                                      {p.label}
-                                    </span>
-                                    {sel && <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Selected ✓</span>}
-                                  </div>
-                                  <div className="text-right">
-                                    <p className={`text-lg font-bold ${sel ? 'text-[#1C1712]' : 'text-[#7A6E60]'}`}>{fmt(p.price)}</p>
-                                    <p className="text-[10px] text-[#9A8F82]">/month · {p.users}</p>
-                                  </div>
+                                <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                                  <span className={`text-xs font-bold uppercase tracking-wide ${sel ? 'text-[#B8860B]' : 'text-[#9A8F82]'}`}>
+                                    {p.label}
+                                  </span>
+                                  {sel && <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">Selected ✓</span>}
                                 </div>
+                                <p className={`text-lg font-bold ${sel ? 'text-[#1C1712]' : 'text-[#7A6E60]'}`}>{fmt(p.price)}</p>
+                                <p className="text-[10px] text-[#9A8F82] mb-2">/month · {p.users}</p>
                                 {sel && (
-                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3 pt-3 border-t border-amber-200/50">
+                                  <div className="flex flex-col gap-1 mt-3 pt-3 border-t border-amber-200/50">
                                     {p.features.map((f) => (
                                       <div key={f} className="flex items-center gap-1.5 text-[10px] text-[#B8860B] font-medium">
                                         <span className="font-bold text-xs">✓</span> {f}
@@ -581,7 +598,7 @@ export default function GKCRMPricing() {
                   className="flex items-center gap-2 bg-[#25D366] text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-[#1ea952] transition-all">
                   💬 WhatsApp Us
                 </a>
-                <a href="mailto:support@gkcrm.in"
+                <a href="mailto:supportcrm@gkdigitalsolutions.in"
                   className="flex items-center gap-2 border-2 border-white/20 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-white/10 transition-all">
                   📧 Email Support
                 </a>
