@@ -1,5 +1,4 @@
 // app/(super-admin)/admin/users/page.tsx
-'use server'
 
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
