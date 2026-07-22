@@ -27,13 +27,18 @@ export default async function AuditLogsPage() {
   if (!profile) redirect('/login')
 
   // Fetch real audit logs
-  const { data: logs } = await getAuditLogs(
+  const { data: logs, error: logsError } = await getAuditLogs(
     supabase,
     profile.company_id,
     {},
     100,
     0
   )
+
+  // 🔍 TEMPORARY DEBUG LOGGING — remove once root cause is confirmed
+  console.log('AUDIT LOGS DEBUG - company_id:', profile.company_id)
+  console.log('AUDIT LOGS DEBUG - logs count:', logs?.length)
+  console.log('AUDIT LOGS DEBUG - error:', JSON.stringify(logsError, null, 2))
 
   // Fetch stats
   const stats = await getAuditLogStats(supabase, profile.company_id)

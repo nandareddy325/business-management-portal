@@ -3,6 +3,7 @@
 
 import { SupabaseClient } from '@supabase/supabase-js'
 import { randomBytes, createHash } from 'crypto'
+import { supabaseAdmin } from '@/lib/supabase/admin' // ⚠️ CHECK: confirm this import path matches your actual admin client file (service role key)
 import type {
   AuditLogInsert, AuditLogFilters, AuditLogActionType, AuditLogResourceType,
   APIKeyInsert, APIKeyUpdate,
@@ -17,6 +18,24 @@ import type {
 // AUDIT LOGS QUERIES
 // ============================================================================
 
+/**
+ * FIXED (real root cause, confirmed via server logs):
+ *   PGRST200 — "Could not find a relationship between 'audit_logs' and
+ *   'profiles' in the schema cache"
+ *
+ * The embedded join syntax `profiles!user_id(...)` requires an ACTUAL
+ * foreign key constraint in the database from audit_logs.user_id ->
+ * profiles.id. That FK constraint does not exist in this schema (it likely
+ * only exists to auth.users, not to profiles), so PostgREST cannot resolve
+ * the embed at all — this fails regardless of RLS or which client
+ * (anon vs service role) is used. This is a schema-level error, not a
+ * permissions error.
+ *
+ * FIX: Drop the embedded join syntax entirely. Fetch audit_logs rows on
+ * their own, then manually fetch the related profiles/companies rows by
+ * their IDs and merge them in JS. This works with or without an FK
+ * constraint and doesn't depend on PostgREST's relationship cache.
+ */
 export async function getAuditLogs(
   supabase: SupabaseClient,
   companyId: string,
@@ -24,13 +43,9 @@ export async function getAuditLogs(
   limit = 50,
   offset = 0
 ) {
-  let query = supabase
+  let query = supabaseAdmin
     .from('audit_logs')
-    .select(`
-      *,
-      user:profiles!user_id(email, full_name),
-      company:companies!company_id(name)
-    `)
+    .select('*')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
@@ -51,14 +66,66 @@ export async function getAuditLogs(
     query = query.lte('created_at', filters.end_date)
   }
 
-  return await query
+  const { data: logs, error } = await query
+
+  if (error || !logs) {
+    return { data: null, error }
+  }
+
+  // Manually fetch related profiles (email, full_name) for each log's user_id
+  const userIds = Array.from(new Set(logs.map(l => l.user_id).filter(Boolean)))
+  let profilesMap: Record<string, { email?: string; full_name?: string }> = {}
+
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', userIds)
+
+    if (profiles) {
+      profilesMap = Object.fromEntries(
+        profiles.map(p => [p.id, { email: p.email, full_name: p.full_name }])
+      )
+    }
+  }
+
+  // Manually fetch related companies (name) for each log's company_id
+  const companyIds = Array.from(new Set(logs.map(l => l.company_id).filter(Boolean)))
+  let companiesMap: Record<string, { name?: string }> = {}
+
+  if (companyIds.length > 0) {
+    const { data: companies } = await supabaseAdmin
+      .from('companies')
+      .select('id, name')
+      .in('id', companyIds)
+
+    if (companies) {
+      companiesMap = Object.fromEntries(
+        companies.map(c => [c.id, { name: c.name }])
+      )
+    }
+  }
+
+  // Merge, matching the original embedded-join shape (log.user, log.company)
+  const enrichedLogs = logs.map(log => ({
+    ...log,
+    user: log.user_id ? (profilesMap[log.user_id] || null) : null,
+    company: log.company_id ? (companiesMap[log.company_id] || null) : null,
+  }))
+
+  return { data: enrichedLogs, error: null }
 }
 
+/**
+ * NOTE: This one already worked correctly because it has no joins —
+ * plain select against audit_logs only. Uses supabaseAdmin for
+ * consistency/safety on this super-admin-only page.
+ */
 export async function getAuditLogStats(
   supabase: SupabaseClient,
   companyId: string
 ): Promise<AuditLogStats | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('audit_logs')
     .select('status, action_type')
     .eq('company_id', companyId)
@@ -190,6 +257,11 @@ export async function updateAPIKeyUsage(
 // SUPPORT TICKETS QUERIES
 // ============================================================================
 
+/**
+ * FIXED: Same PGRST200 schema issue as getAuditLogs — no FK relationship
+ * exists between support_tickets and profiles (created_by / assigned_to),
+ * so the embedded join syntax fails. Switched to manual fetch + merge.
+ */
 export async function getSupportTickets(
   supabase: SupabaseClient,
   companyId: string,
@@ -197,14 +269,9 @@ export async function getSupportTickets(
   limit = 50,
   offset = 0
 ) {
-  let query = supabase
+  let query = supabaseAdmin
     .from('support_tickets')
-    .select(`
-      *,
-      created_by:profiles!created_by(email, full_name),
-      assigned_to:profiles!assigned_to(email, full_name),
-      company:companies!company_id(name)
-    `)
+    .select('*')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
@@ -222,22 +289,98 @@ export async function getSupportTickets(
     query = query.eq('category', filters.category)
   }
 
-  return await query
+  const { data: tickets, error } = await query
+
+  if (error || !tickets) {
+    return { data: null, error }
+  }
+
+  // Collect all profile IDs referenced (created_by + assigned_to)
+  const profileIds = Array.from(new Set(
+    tickets.flatMap(t => [t.created_by, t.assigned_to]).filter(Boolean)
+  ))
+  let profilesMap: Record<string, { email?: string; full_name?: string }> = {}
+
+  if (profileIds.length > 0) {
+    const { data: profiles } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', profileIds)
+
+    if (profiles) {
+      profilesMap = Object.fromEntries(
+        profiles.map(p => [p.id, { email: p.email, full_name: p.full_name }])
+      )
+    }
+  }
+
+  const companyIds = Array.from(new Set(tickets.map(t => t.company_id).filter(Boolean)))
+  let companiesMap: Record<string, { name?: string }> = {}
+
+  if (companyIds.length > 0) {
+    const { data: companies } = await supabaseAdmin
+      .from('companies')
+      .select('id, name')
+      .in('id', companyIds)
+
+    if (companies) {
+      companiesMap = Object.fromEntries(
+        companies.map(c => [c.id, { name: c.name }])
+      )
+    }
+  }
+
+  const enrichedTickets = tickets.map(t => ({
+    ...t,
+    created_by: t.created_by ? (profilesMap[t.created_by] || null) : null,
+    assigned_to: t.assigned_to ? (profilesMap[t.assigned_to] || null) : null,
+    company: t.company_id ? (companiesMap[t.company_id] || null) : null,
+  }))
+
+  return { data: enrichedTickets, error: null }
 }
 
+/**
+ * FIXED: Same manual-fetch approach as getSupportTickets above.
+ */
 export async function getSupportTicketById(
   supabase: SupabaseClient,
   ticketId: string
 ) {
-  return await supabase
+  const { data: ticket, error } = await supabaseAdmin
     .from('support_tickets')
-    .select(`
-      *,
-      created_by:profiles!created_by(email, full_name),
-      assigned_to:profiles!assigned_to(email, full_name)
-    `)
+    .select('*')
     .eq('id', ticketId)
     .single()
+
+  if (error || !ticket) {
+    return { data: null, error }
+  }
+
+  const profileIds = [ticket.created_by, ticket.assigned_to].filter(Boolean)
+  let profilesMap: Record<string, { email?: string; full_name?: string }> = {}
+
+  if (profileIds.length > 0) {
+    const { data: profiles } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', profileIds)
+
+    if (profiles) {
+      profilesMap = Object.fromEntries(
+        profiles.map(p => [p.id, { email: p.email, full_name: p.full_name }])
+      )
+    }
+  }
+
+  return {
+    data: {
+      ...ticket,
+      created_by: ticket.created_by ? (profilesMap[ticket.created_by] || null) : null,
+      assigned_to: ticket.assigned_to ? (profilesMap[ticket.assigned_to] || null) : null,
+    },
+    error: null
+  }
 }
 
 export async function createSupportTicket(
@@ -352,14 +495,35 @@ export async function updateEmailTemplate(
     .single()
 }
 
+/**
+ * FIXED: The old version did:
+ *   usage_count: supabase.rpc('increment', { x: 1 })
+ * `supabase.rpc(...)` returns a PostgrestFilterBuilder (a query object),
+ * NOT a number — it was never awaited or resolved. This meant usage_count
+ * was being set to a broken/garbage value instead of an incremented
+ * integer, and would likely throw or silently corrupt the column.
+ *
+ * FIX: Fetch the current usage_count first, then update with the
+ * incremented value in plain JS. No DB function dependency required.
+ */
 export async function incrementEmailTemplateUsage(
   supabase: SupabaseClient,
   templateId: string
 ) {
+  const { data: current, error: fetchError } = await supabase
+    .from('email_templates')
+    .select('usage_count')
+    .eq('id', templateId)
+    .single()
+
+  if (fetchError || !current) {
+    return { data: null, error: fetchError }
+  }
+
   return await supabase
     .from('email_templates')
     .update({
-      usage_count: supabase.rpc('increment', { x: 1 }),
+      usage_count: (current.usage_count || 0) + 1,
       last_used_at: new Date().toISOString()
     })
     .eq('id', templateId)
