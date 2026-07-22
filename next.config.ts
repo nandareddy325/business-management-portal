@@ -21,10 +21,8 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=()",
   },
-  {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
-  },
+  // HSTS temporarily removed — was likely breaking site load due to
+  // includeSubDomains + preload forcing strict SSL across all subdomains
 ];
 
 const nextConfig: NextConfig = {
