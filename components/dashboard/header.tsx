@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Bell, Menu, Mail } from 'lucide-react'
 import { createBrowserClient } from '@supabase/ssr'
+import { SupportTicketModal } from '@/components/support/SupportTicketModal'
 
 interface Notification {
   id: string
@@ -36,6 +37,7 @@ export function Header({
 
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [showSupportModal, setShowSupportModal] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [realtimeStatus, setRealtimeStatus] = useState<string>('connecting')
   const [today, setToday] = useState('')
@@ -141,11 +143,11 @@ export function Header({
         }`}
       />
 
-      {/* Email Support */}
-      <a href="mailto:supportcrm@gkdigitalsolutions.in" title="Email support"
+      {/* Email Support — now opens in-app ticket modal instead of mailto: */}
+      <button onClick={() => setShowSupportModal(true)} title="Contact support"
         className="w-10 h-10 rounded-xl border border-[#E8E2D8] bg-[#F7F5F1] flex items-center justify-center text-[#7A6E60] hover:bg-[#F0EBE0] hover:border-[#B8860B] transition-all flex-shrink-0">
         <Mail size={15} />
-      </a>
+      </button>
 
       {/* Notifications */}
       <div className="relative" ref={notifRef}>
@@ -282,6 +284,11 @@ export function Header({
           </div>
         )}
       </div>
+
+      {/* Support ticket modal — replaces the old mailto: link */}
+      {showSupportModal && (
+        <SupportTicketModal onClose={() => setShowSupportModal(false)} />
+      )}
     </header>
   )
 }
