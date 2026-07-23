@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Building2, TrendingUp, CreditCard,
   Settings, LogOut, ChevronLeft, ChevronRight,
   Shield, Menu, X, Activity, Users, BarChart3, Key,
-  Database, Headphones, Mail
+  Database, Headphones, Mail, Clock
 } from 'lucide-react'
 
 const NAV = [
@@ -16,6 +16,7 @@ const NAV = [
   { href: '/admin/users',            icon: Users,           label: 'Users' },
   { href: '/admin/audit-logs',       icon: Activity,        label: 'Audit Logs' },
   { href: '/admin/analytics',        icon: BarChart3,       label: 'Analytics' },
+  { href: '/admin/attendance',       icon: Clock,           label: 'Attendance' },
   { href: '/admin/revenue',          icon: TrendingUp,      label: 'Revenue' },
   { href: '/admin/subscriptions',    icon: CreditCard,      label: 'Subscriptions' },
   { href: '/admin/api-keys',         icon: Key,             label: 'API Keys' },
