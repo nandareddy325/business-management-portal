@@ -203,38 +203,38 @@ export default async function InteriorDesignDashboard() {
         .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(184,134,11,0.14); }
       `}</style>
 
-      <div className="px-2 md:px-4 pt-3 pb-10 space-y-4 max-w-7xl mx-auto">
+      <div className="px-3 md:px-4 pt-3 pb-10 space-y-4 max-w-7xl mx-auto">
 
-        {/* HEADER */}
+        {/* HEADER — buttons wrap below the eyebrow label on very narrow screens instead of overflowing */}
         <div className="fade-up">
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
             <p className="text-[10px] font-bold uppercase tracking-[4px]" style={{ color:'#B8860B' }}>Interior Design CRM</p>
             {/* Analytics + CRE dashboard both show company-wide data — admin/owner only */}
             {isAdminOrOwner && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {hasAdvancedAnalytics ? (
                 <Link href="/dashboard/industries/interior-design/analytics"
-                  className="px-3 py-1.5 rounded-xl text-[11px] font-black text-white transition-all hover:-translate-y-0.5"
+                  className="px-3 py-1.5 rounded-xl text-[11px] font-black text-white transition-all hover:-translate-y-0.5 whitespace-nowrap"
                   style={{ background:'linear-gradient(135deg,#B8860B,#D97706)',boxShadow:'0 4px 14px rgba(184,134,11,0.32)' }}>
                   📊 Analytics
                 </Link>
               ) : (
                 <Link href="/dashboard/settings/company"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all hover:-translate-y-0.5"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black transition-all hover:-translate-y-0.5 whitespace-nowrap"
                   style={{ background:'#F0EBE0', color:'#9A8F82', border:'1px dashed #D5CFC3' }}>
                   <Lock size={11} /> Analytics
                 </Link>
               )}
               <Link href="/dashboard/industries/interior-design/cre"
-                className="px-3 py-1.5 rounded-xl text-[11px] font-black text-white transition-all hover:-translate-y-0.5"
+                className="px-3 py-1.5 rounded-xl text-[11px] font-black text-white transition-all hover:-translate-y-0.5 whitespace-nowrap"
                 style={{ background:'linear-gradient(135deg,#1C1712,#2d2218)',border:'1px solid rgba(184,134,11,0.3)', boxShadow:'0 4px 14px rgba(28,23,18,0.25)' }}>
                 📋 CRE
               </Link>
             </div>
             )}
           </div>
-          <h1 className="text-2xl font-black tracking-tight" style={{ color:'#1C1712' }}>Pipeline Dashboard</h1>
-          <p className="text-sm mt-0.5" style={{ color:'#9A8F82' }}>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight" style={{ color:'#1C1712' }}>Pipeline Dashboard</h1>
+          <p className="text-xs sm:text-sm mt-0.5" style={{ color:'#9A8F82' }}>
             Live overview · {new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
           </p>
         </div>
