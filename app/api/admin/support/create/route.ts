@@ -7,6 +7,8 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+const ADMIN_ROLES = ['admin', 'owner', 'tenant_admin', 'manager']
+
 export async function POST(req: Request) {
   try {
     const supabase = await createServerSupabaseClient()
@@ -40,6 +42,39 @@ export async function POST(req: Request) {
       .single()
 
     if (error) throw error
+
+    // Notify company admins/managers — wrapped in try/catch so a notification
+    // failure never blocks ticket creation (same pattern as the lead webhook).
+    try {
+      const { data: admins, error: adminErr } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('company_id', company_id)
+        .in('role', ADMIN_ROLES)
+
+      if (adminErr) {
+        console.error('Failed to fetch admins for ticket notification:', adminErr)
+      } else if (admins && admins.length > 0) {
+        const priorityIcon: Record<string, string> = { urgent: '🚨', high: '⚠️', medium: '🎫', low: '🎫' }
+        const notificationRows = admins
+          .filter((a) => a.id !== user.id) // don't notify the person who raised it
+          .map((a) => ({
+            company_id,
+            user_id: a.id,
+            type: 'support_ticket',
+            title: `${priorityIcon[priority || 'medium']} New support ticket — ${ticketNumber}`,
+            message: `${subject} · Priority: ${(priority || 'medium').toUpperCase()}`,
+            link: '/dashboard/settings/company', // update if a dedicated tickets page exists
+          }))
+
+        if (notificationRows.length > 0) {
+          const { error: notifError } = await supabaseAdmin.from('notifications').insert(notificationRows)
+          if (notifError) console.error('Failed to create ticket notifications:', notifError)
+        }
+      }
+    } catch (notifyErr) {
+      console.error('Ticket notification step failed:', notifyErr)
+    }
 
     return NextResponse.json({ success: true, ticket })
   } catch (error) {
