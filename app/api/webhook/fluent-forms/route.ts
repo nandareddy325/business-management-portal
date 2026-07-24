@@ -54,12 +54,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Notify all active employees of this company — new unclaimed lead available.
+    // Wrapped in try/catch so a notification failure never blocks lead creation.
+    try {
+      const { data: activeEmployees, error: empError } = await supabaseAdmin
+        .from('employees')
+        .select('user_id')
+        .eq('company_id', GK_HOME_COMPANY_ID)
+        .eq('is_active', true)
+        .not('user_id', 'is', null)
+
+      if (empError) {
+        console.error('Failed to fetch employees for notification:', empError)
+      } else if (activeEmployees && activeEmployees.length > 0) {
+        const notificationRows = activeEmployees.map((emp) => ({
+          company_id: GK_HOME_COMPANY_ID,
+          user_id: emp.user_id,
+          type: 'lead_assigned',
+          title: 'New lead available',
+          message: `${leadName} · ${leadInterest || 'General inquiry'} — unclaimed, first come first served`,
+          link: '/dashboard/industries/interior-design/new-leads',
+        }))
+
+        const { error: notifError } = await supabaseAdmin
+          .from('notifications')
+          .insert(notificationRows)
+
+        if (notifError) {
+          console.error('Failed to create notifications:', notifError)
+        }
+      }
+    } catch (notifyErr) {
+      console.error('Notification step failed:', notifyErr)
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Lead created!',
       lead_id: lead.id
     })
-
   } catch (err: unknown) {
     console.error('Webhook error:', err)
     return NextResponse.json({ error: (err instanceof Error ? err.message : 'Unknown error') }, { status: 500 })

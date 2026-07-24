@@ -7,10 +7,12 @@ import { SupportTicketModal } from '@/components/support/SupportTicketModal'
 
 interface Notification {
   id: string
+  title: string
   message: string
+  link: string | null
   time: string
   read: boolean
-  type: 'lead' | 'payment' | 'system'
+  type: string
 }
 
 interface HeaderProps {
@@ -62,27 +64,71 @@ export function Header({
     }))
   }, [])
 
-  useEffect(() => {
-    const channel = supabase
-      .channel(`leads-notifications-${Date.now()}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'leads' },
-        (payload) => {
-          const newLead = payload.new as Record<string, string>
-          const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-          setNotifications(prev => [{
-            id: `lead-${Date.now()}`,
-            message: `New lead: ${newLead.lead_name || 'Unknown'} · ${newLead.source || 'Unknown source'}`,
-            time: now,
-            read: false,
-            type: 'lead',
-          }, ...prev.slice(0, 19)])
-        }
-      )
-      .subscribe((status) => setRealtimeStatus(status))
+  const formatTime = (dateStr: string) =>
+    new Date(dateStr).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
 
-    return () => { supabase.removeChannel(channel) }
+  // Real-persisted notifications: fetch on mount + realtime subscribe to `notifications` table
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Initial fetch from DB (survives refresh, works across devices)
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20)
+
+      if (!error && data) {
+        setNotifications(
+          data.map((n) => ({
+            id: n.id,
+            title: n.title,
+            message: n.message,
+            link: n.link,
+            read: n.is_read,
+            type: n.type,
+            time: formatTime(n.created_at),
+          }))
+        )
+      }
+
+      // Guard against React Strict Mode double-invoking this effect in dev,
+      // which would otherwise try to .on() an already-subscribed channel.
+      const existing = supabase.getChannels().find(
+        (c) => c.topic === `realtime:notifications-${user.id}`
+      )
+      if (existing) {
+        await supabase.removeChannel(existing)
+      }
+
+      channel = supabase
+        .channel(`notifications-${user.id}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
+          (payload) => {
+            const n = payload.new as Record<string, any>
+            setNotifications(prev => [{
+              id: n.id,
+              title: n.title,
+              message: n.message,
+              link: n.link,
+              read: n.is_read,
+              type: n.type,
+              time: formatTime(n.created_at),
+            }, ...prev.slice(0, 19)])
+          }
+        )
+        .subscribe((status) => setRealtimeStatus(status))
+    }
+
+    init()
+
+    return () => { if (channel) supabase.removeChannel(channel) }
   // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: fetch fn is stable-in-practice, only rerun on listed deps
   }, [])
 
@@ -96,7 +142,28 @@ export function Header({
   }, [])
 
   const unreadCount = notifications.filter(n => !n.read).length
-  const markAllRead = () => setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+
+  const markAllRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false)
+  }
+
+  const markOneRead = async (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+  }
+
+  const clearAll = () => {
+    // UI-only clear (keeps DB history). If you want a hard delete, swap this for a delete call.
+    setNotifications([])
+  }
+
   const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = '/login' }
 
   const getGradient = (initials: string) => {
@@ -108,8 +175,25 @@ export function Header({
     ? { bg: 'bg-[#B8860B]/15', text: 'text-[#F5C518]', label: '✦ Admin' }
     : { bg: 'bg-blue-500/15', text: 'text-blue-300', label: '👤 User' }
 
-  const notifTypeStyle: Record<string, string> = { lead: 'bg-blue-50', payment: 'bg-emerald-50', system: 'bg-[#F5F0E8]' }
-  const notifTypeIcon: Record<string, string> = { lead: '🎯', payment: '💰', system: '⚙️' }
+  // type -> visual style. Falls back to 'system' style for any unmapped type.
+  const notifTypeStyle: Record<string, string> = {
+    lead_assigned: 'bg-blue-50',
+    payment_received: 'bg-emerald-50',
+    quotation_approved: 'bg-emerald-50',
+    leave_request: 'bg-amber-50',
+    leave_approved: 'bg-amber-50',
+    system: 'bg-[#F5F0E8]',
+  }
+  const notifTypeIcon: Record<string, string> = {
+    lead_assigned: '🎯',
+    payment_received: '💰',
+    quotation_approved: '✅',
+    leave_request: '📝',
+    leave_approved: '✅',
+    system: '⚙️',
+  }
+  const styleFor = (type: string) => notifTypeStyle[type] || notifTypeStyle.system
+  const iconFor = (type: string) => notifTypeIcon[type] || notifTypeIcon.system
 
   const menuItems = userRole === 'admin'
     ? [
@@ -199,14 +283,18 @@ export function Header({
                 </div>
               ) : notifications.map(notif => (
                 <div key={notif.id}
-                  onClick={() => setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n))}
+                  onClick={() => {
+                    if (!notif.read) markOneRead(notif.id)
+                    if (notif.link) window.location.href = notif.link
+                  }}
                   className={`flex items-start gap-3 px-4 py-3 border-b border-[#F0EBE0] last:border-0 cursor-pointer hover:bg-[#FFFBEF] transition-colors ${!notif.read ? 'bg-[#FFFBEF]' : ''}`}>
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0 ${notifTypeStyle[notif.type]}`}
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm flex-shrink-0 ${styleFor(notif.type)}`}
                     style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                    {notifTypeIcon[notif.type]}
+                    {iconFor(notif.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-xs leading-snug ${!notif.read ? 'font-semibold text-[#1C1712]' : 'text-[#7A6E60]'}`}>{notif.message}</p>
+                    <p className={`text-xs leading-snug ${!notif.read ? 'font-semibold text-[#1C1712]' : 'text-[#7A6E60]'}`}>{notif.title}</p>
+                    <p className="text-[11px] text-[#9A8F82] leading-snug mt-0.5 line-clamp-2">{notif.message}</p>
                     <p className="text-[10px] text-[#B8B0A0] mt-0.5">{notif.time}</p>
                   </div>
                   {!notif.read && <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: '#B8860B' }} />}
@@ -220,7 +308,7 @@ export function Header({
                 <p className="text-[10px] font-medium text-[#9A8F82]">{realtimeStatus === 'SUBSCRIBED' ? 'Live — auto updates' : 'Connecting...'}</p>
               </div>
               {notifications.length > 0 && (
-                <button onClick={() => setNotifications([])} className="text-[10px] font-medium text-[#9A8F82] hover:text-red-500 transition-colors">Clear all</button>
+                <button onClick={clearAll} className="text-[10px] font-medium text-[#9A8F82] hover:text-red-500 transition-colors">Clear all</button>
               )}
             </div>
           </div>

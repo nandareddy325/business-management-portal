@@ -48,6 +48,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    // Notify all active employees of this company — new unclaimed lead available.
+    // Wrapped in try/catch so a notification failure never blocks lead creation.
+    try {
+      const { data: activeEmployees, error: empError } = await supabaseAdmin
+        .from('employees')
+        .select('user_id')
+        .eq('company_id', GKHI_COMPANY_ID)
+        .eq('is_active', true)
+        .not('user_id', 'is', null)
+
+      if (empError) {
+        console.error('Failed to fetch employees for notification:', empError)
+      } else if (activeEmployees && activeEmployees.length > 0) {
+        const notificationRows = activeEmployees.map((emp) => ({
+          company_id: GKHI_COMPANY_ID,
+          user_id: emp.user_id,
+          type: 'lead_assigned',
+          title: 'New lead available',
+          message: `${data.lead_name || 'A new lead'} · ${data.interest || 'General inquiry'} — unclaimed, first come first served`,
+          link: '/dashboard/industries/interior-design/new-leads',
+        }))
+
+        const { error: notifError } = await supabaseAdmin
+          .from('notifications')
+          .insert(notificationRows)
+
+        if (notifError) {
+          console.error('Failed to create notifications:', notifError)
+        }
+      }
+    } catch (notifyErr) {
+      console.error('Notification step failed:', notifyErr)
+    }
+
     return NextResponse.json({
       success: true,
       lead_id: data.id,
