@@ -66,48 +66,53 @@ export function TemplateFormModal({ mode, template, trigger, open: controlledOpe
       {!trigger && mode === 'create' && (
         <button
           onClick={() => setOpen(true)}
-          className="px-4 py-2 rounded-lg bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-all flex items-center gap-2 shadow-md"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-black text-white transition-all hover:-translate-y-0.5 flex-shrink-0"
+          style={{ background: 'linear-gradient(135deg,#B8860B,#D97706)', boxShadow: '0 6px 18px rgba(184,134,11,0.3)' }}
         >
-          <Plus size={14} /> New Template
+          <Plus size={15} /> New Template
         </button>
       )}
 
       {open && mounted && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={close} />
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 overflow-y-auto" style={{ animation: 'fadeIn 0.2s ease' }}>
+          <style>{`@keyframes fadeIn{from{opacity:0}to{opacity:1}} @keyframes scaleIn{from{opacity:0;transform:scale(0.93) translateY(14px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={close} />
 
-          <div className="relative bg-white rounded-2xl ring-1 ring-black/8 shadow-2xl w-full max-w-lg p-6 my-8">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-sm font-bold text-[#1C1712]">
-                {mode === 'create' ? 'New email template' : 'Edit template'}
-              </h2>
-              <button onClick={close} className="p-1.5 rounded-lg hover:bg-black/5 text-black/40 hover:text-black/70">
+          <div className="relative w-full max-w-lg my-8 rounded-3xl" style={{ background: '#FFFDF8', border: '1.5px solid rgba(184,134,11,0.2)', boxShadow: '0 32px 80px rgba(0,0,0,0.18)', animation: 'scaleIn 0.32s cubic-bezier(0.16,1,0.3,1) both' }}>
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(184,134,11,0.12)' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-2xl flex items-center justify-center text-base" style={{ background: '#FFF3D6', border: '1px solid #F5DFA0' }}>✉️</div>
+                <h2 className="text-sm font-black" style={{ color: '#1C1712' }}>
+                  {mode === 'create' ? 'New Email Template' : 'Edit Template'}
+                </h2>
+              </div>
+              <button onClick={close} className="w-8 h-8 rounded-full flex items-center justify-center transition-colors" style={{ background: '#F5F0E8', color: '#6B5E4E' }}>
                 <X size={16} />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="p-5 space-y-4">
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-black/50 block mb-1.5">
-                  Template name
-                </label>
+                <label className="text-[9px] font-black uppercase tracking-[3px] block mb-1.5" style={{ color: '#B8860B' }}>Template name</label>
                 <input
                   autoFocus
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="e.g. Welcome email"
-                  className="w-full bg-black/5 border border-black/10 rounded-xl px-3.5 py-2.5 text-sm text-black/80 outline-none focus:border-amber-500 transition-colors"
+                  className="w-full px-4 py-3 rounded-2xl text-sm font-semibold outline-none"
+                  style={{ background: '#F5F0E8', border: '1.5px solid rgba(184,134,11,0.2)', color: '#1C1712' }}
+                  onFocus={e => (e.target.style.borderColor = '#FDE68A')}
+                  onBlur={e => (e.target.style.borderColor = 'rgba(184,134,11,0.2)')}
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-black/50 block mb-1.5">
-                  Category
-                </label>
+                <label className="text-[9px] font-black uppercase tracking-[3px] block mb-1.5" style={{ color: '#B8860B' }}>Category</label>
                 <select
                   value={category}
                   onChange={e => setCategory(e.target.value as EmailTemplateCategory)}
-                  className="w-full bg-black/5 border border-black/10 rounded-xl px-3.5 py-2.5 text-sm text-black/80 outline-none focus:border-amber-500 transition-colors capitalize"
+                  className="w-full px-4 py-3 rounded-2xl text-sm font-semibold outline-none capitalize"
+                  style={{ background: '#F5F0E8', border: '1.5px solid rgba(184,134,11,0.2)', color: '#1C1712' }}
                 >
                   {CATEGORIES.map(c => (
                     <option key={c} value={c} className="capitalize">{c.replace('_', ' ')}</option>
@@ -116,46 +121,50 @@ export function TemplateFormModal({ mode, template, trigger, open: controlledOpe
               </div>
 
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-black/50 block mb-1.5">
-                  Subject line
-                </label>
+                <label className="text-[9px] font-black uppercase tracking-[3px] block mb-1.5" style={{ color: '#B8860B' }}>Subject line</label>
                 <input
                   value={subject}
                   onChange={e => setSubject(e.target.value)}
                   placeholder="e.g. Welcome to {{company.name}}, {{user.name}}!"
-                  className="w-full bg-black/5 border border-black/10 rounded-xl px-3.5 py-2.5 text-sm text-black/80 outline-none focus:border-amber-500 transition-colors"
+                  className="w-full px-4 py-3 rounded-2xl text-sm font-semibold outline-none"
+                  style={{ background: '#F5F0E8', border: '1.5px solid rgba(184,134,11,0.2)', color: '#1C1712' }}
+                  onFocus={e => (e.target.style.borderColor = '#FDE68A')}
+                  onBlur={e => (e.target.style.borderColor = 'rgba(184,134,11,0.2)')}
                 />
               </div>
 
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-black/50 block mb-1.5">
-                  Email body
-                </label>
+                <label className="text-[9px] font-black uppercase tracking-[3px] block mb-1.5" style={{ color: '#B8860B' }}>Email body</label>
                 <textarea
                   value={body}
                   onChange={e => setBody(e.target.value)}
                   rows={7}
                   placeholder={'Hi {{user.name}},\n\nWelcome to {{company.name}}...'}
-                  className="w-full bg-black/5 border border-black/10 rounded-xl px-3.5 py-2.5 text-sm text-black/80 outline-none focus:border-amber-500 transition-colors resize-none font-mono"
+                  className="w-full px-4 py-3 rounded-2xl text-sm outline-none resize-none font-mono"
+                  style={{ background: '#F5F0E8', border: '1.5px solid rgba(184,134,11,0.2)', color: '#1C1712' }}
+                  onFocus={e => (e.target.style.borderColor = '#FDE68A')}
+                  onBlur={e => (e.target.style.borderColor = 'rgba(184,134,11,0.2)')}
                 />
-                <p className="text-[10px] text-black/40 mt-1">
-                  Use variables like {'{{user.name}}'} — see the panel on the right for the full list.
+                <p className="text-[10px] mt-1.5" style={{ color: '#9A8F82' }}>
+                  Use variables like <code className="font-mono font-bold" style={{ color: '#B8860B' }}>{'{{user.name}}'}</code> — see the panel on the right for the full list.
                 </p>
               </div>
 
               {error && (
-                <p className="text-xs text-red-600 flex items-center gap-1.5">
-                  <AlertTriangle size={12} /> {error}
-                </p>
+                <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl" style={{ background: '#FEF2F2', border: '1px solid #FECACA' }}>
+                  <AlertTriangle size={13} style={{ color: '#DC2626' }} />
+                  <p className="text-xs font-semibold" style={{ color: '#991B1B' }}>{error}</p>
+                </div>
               )}
 
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="w-full px-4 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-semibold hover:bg-amber-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-2xl text-sm font-black text-white transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:translate-y-0 flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg,#B8860B,#D97706)', boxShadow: '0 6px 18px rgba(184,134,11,0.3)' }}
               >
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                {loading ? 'Saving...' : mode === 'create' ? 'Create template' : 'Save changes'}
+                {loading ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
+                {loading ? 'Saving...' : mode === 'create' ? 'Create Template' : 'Save Changes'}
               </button>
             </div>
           </div>
