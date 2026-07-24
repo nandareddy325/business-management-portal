@@ -615,24 +615,26 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
         .rev-row { transition: background 0.15s }
         .budget-edit-btn { transition: all 0.15s ease; opacity: 0.55 }
         .budget-edit-btn:hover { opacity: 1; transform: scale(1.12) }
+        .no-scrollbar::-webkit-scrollbar { display: none }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none }
       `}</style>
 
       {/* ─── TOP BAR ─── */}
-      <div className="fu1 sticky top-0 z-20 px-4 py-3 flex items-center justify-between"
+      <div className="fu1 sticky top-0 z-20 px-3 sm:px-4 py-3 flex items-center justify-between gap-2"
         style={{ background:'rgba(247,244,239,0.92)', backdropFilter:'blur(12px)', borderBottom:'1px solid rgba(0,0,0,0.06)' }}>
         <button onClick={() => router.back()}
-          className="hvr flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold"
+          className="hvr flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-full text-sm font-semibold flex-shrink-0"
           style={{ background:'#fff', border:'1px solid rgba(0,0,0,0.08)', color:'#555', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-          <ArrowLeft className="w-3.5 h-3.5"/> Back
+          <ArrowLeft className="w-3.5 h-3.5"/> <span className="hidden sm:inline">Back</span>
         </button>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
           <button onClick={() => setShowHandoverPopup(true)}
-            className="hvr flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold"
+            className="hvr flex items-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-bold flex-shrink-0 whitespace-nowrap"
             style={{ background:'#fff', border:'1px solid rgba(8,145,178,0.3)', color:'#0891B2', boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
-            📦 Handover Date
+            📦 <span className="hidden sm:inline">Handover Date</span><span className="sm:hidden">Handover</span>
           </button>
           <a href={`tel:${lead.phone}`}
-            className="hvr flex items-center gap-2 px-5 py-2 rounded-full text-sm font-black text-white"
+            className="hvr flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 rounded-full text-sm font-black text-white flex-shrink-0"
             style={{ background:'linear-gradient(135deg,#22C55E,#16A34A)', boxShadow:'0 4px 14px rgba(34,197,94,0.35)' }}>
             <Phone className="w-3.5 h-3.5"/> Call
           </a>
@@ -661,7 +663,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
                 style={{ color:curStage.color }}>{lead.phone}</a>
 
               {/* All badges — single scrollable line */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth:'none' }}>
+              <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-0.5">
                 <span className="pop-in inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black flex-shrink-0"
                   style={{ background:`${curStage.color}18`, color:curStage.color, border:`1.5px solid ${curStage.color}35` }}>
                   {curStage.icon} {curStage.label}
@@ -715,8 +717,8 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
             </div>
           </div>
 
-          {/* Info row — 5 items in one line */}
-          <div className="flex items-center justify-between gap-2 mt-4 pt-4"
+          {/* Info row — horizontally scrollable on mobile, evenly spaced on desktop */}
+          <div className="no-scrollbar flex items-center gap-2 mt-4 pt-4 overflow-x-auto sm:overflow-visible sm:justify-between"
             style={{ borderTop:'1px solid rgba(0,0,0,0.05)' }}>
             {[
               { icon:'📍', label:'City',        val:lead.city, editable:false },
@@ -725,7 +727,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
               { icon:'💰', label:'Budget',      val:lead.budget, editable:true },
               { icon:'💡', label:'Requirement', val:lead.interest, editable:false },
             ].map((x,i) => (x.val || x.editable) ? (
-              <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-2xl flex-1 relative group"
+              <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-2xl flex-shrink-0 sm:flex-1 relative group min-w-[128px] sm:min-w-0"
                 style={{ background:'#F7F4EF' }}>
                 <span className="text-sm flex-shrink-0">{x.icon}</span>
                 <div className="min-w-0 flex-1">
@@ -751,7 +753,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
       <div className="px-4 pb-3 fu3">
         <div className="rounded-3xl p-4" style={{ background:'#fff', boxShadow:'0 4px 24px rgba(0,0,0,0.07)', border:'1px solid rgba(0,0,0,0.05)' }}>
           <p className="text-[9px] font-black uppercase tracking-[3px] mb-3" style={{ color:'#C4BAB0' }}>Move to Stage</p>
-          <div className="flex items-center gap-2">
+          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto sm:overflow-visible pb-1 sm:pb-0">
             {PIPELINE_STAGES.map(stage => {
               const isActive  = lead.pipeline_stage === stage.key
               const isLoading = savingStage === stage.key
@@ -761,7 +763,7 @@ export function LeadDetailClient({ lead: initialLead, activities: initialActivit
                 <button key={stage.key}
                   onClick={() => !disabled && handleStageChange(stage.key)}
                   disabled={disabled}
-                  className="stg flex items-center justify-center gap-1.5 py-2 rounded-2xl text-xs font-bold relative flex-1"
+                  className="stg flex items-center justify-center gap-1.5 py-2 px-3 rounded-2xl text-xs font-bold relative flex-shrink-0 sm:flex-1 min-w-[86px] sm:min-w-0"
                   style={{
                     background: isActive ? stage.color : isPast ? '#F0EDE8' : `${stage.color}10`,
                     color: isActive ? '#fff' : isPast ? '#C4BAB0' : stage.color,

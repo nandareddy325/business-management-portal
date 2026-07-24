@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import { Users, Search, X, Calendar, ChevronDown } from 'lucide-react'
+import { Users, Search, X, Calendar, ChevronDown, ChevronRight } from 'lucide-react'
 import { matchStage, getStageCounts, UNIQUE_STAGES, type CanonicalStage } from '@/lib/stage-utils'
 import { fetchAllLeads } from '@/lib/fetch-all-leads'
 
@@ -110,6 +110,7 @@ export default function AllLeadsPage() {
   const [dateActive, setDateActive] = useState(false)
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false)
   const [stageDropdownOpen, setStageDropdownOpen] = useState(false)
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -136,12 +137,12 @@ export default function AllLeadsPage() {
   useEffect(() => { fetchLeads() }, [])
 
   useEffect(() => {
-    const handleClickOutside = () => { setSourceDropdownOpen(false); setStageDropdownOpen(false) }
-    if (sourceDropdownOpen || stageDropdownOpen) {
+    const handleClickOutside = () => { setSourceDropdownOpen(false); setStageDropdownOpen(false); setDateDropdownOpen(false) }
+    if (sourceDropdownOpen || stageDropdownOpen || dateDropdownOpen) {
       document.addEventListener('click', handleClickOutside)
       return () => document.removeEventListener('click', handleClickOutside)
     }
-  }, [sourceDropdownOpen, stageDropdownOpen])
+  }, [sourceDropdownOpen, stageDropdownOpen, dateDropdownOpen])
 
   const clearDate = () => {
     setFromDate('')
@@ -197,6 +198,10 @@ export default function AllLeadsPage() {
     return counts
   }, [filteredLeads])
 
+  const dateLabel = fromDate || toDate
+    ? `${fromDate ? new Date(fromDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '…'} – ${toDate ? new Date(toDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '…'}`
+    : 'Date Range'
+
   return (
     <div className="space-y-5 p-4 md:p-6" style={{ background: '#F5F0E8', minHeight: '100vh' }}>
 
@@ -207,7 +212,7 @@ export default function AllLeadsPage() {
           <h1 className="text-2xl font-bold text-[#1C1712] tracking-tight">All Leads</h1>
         </div>
         <div
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-shadow"
+          className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-shadow"
           style={{
             background: 'linear-gradient(135deg, #F5F3FF, #EFEAFF)',
             color: '#7C3AED',
@@ -250,96 +255,59 @@ export default function AllLeadsPage() {
         className="bg-white/90 backdrop-blur border border-[#EDE7DB] rounded-2xl p-3 space-y-3"
         style={{ boxShadow: '0 1px 2px rgba(28,23,18,0.04), 0 10px 24px rgba(28,23,18,0.05)' }}
       >
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 sm:flex-wrap">
 
-          {/* Stage Filter Dropdown — collapses "All / Follow Up / RNR / ..." into one control */}
-          <div className="relative inline-block" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setStageDropdownOpen(o => !o)}
-              className="flex items-center gap-2.5 pl-4 pr-3 py-2.5 rounded-xl text-xs font-black transition-all duration-200 hover:-translate-y-0.5"
-              style={{
-                background: activeFilter ? STAGE_CONFIG[activeFilter].color : '#1C1712',
-                color: '#fff',
-                boxShadow: activeFilter ? `0 4px 14px ${STAGE_CONFIG[activeFilter].color}45` : '0 4px 14px rgba(28,23,18,0.22)',
-              }}>
-              <span className="tracking-wide">{activeFilter ? STAGE_CONFIG[activeFilter].label : '👥 All Leads'}</span>
-              <span className="flex items-center justify-center rounded-full text-[10px] font-black leading-none"
-                style={{ background: 'rgba(255,255,255,0.22)', minWidth: 24, height: 22, padding: '0 6px' }}>
-                {activeFilter ? getCount(activeFilter) : totalLeads}
-              </span>
-              <ChevronDown size={12} className="transition-transform duration-200" style={{ transform: stageDropdownOpen ? 'rotate(180deg)' : 'rotate(0)' }} />
-            </button>
+          {/* Stage + Source row on mobile — side by side, each takes half width */}
+          <div className="flex items-center gap-2.5 sm:contents">
 
-            {stageDropdownOpen && (
-              <div className="absolute z-30 mt-2 w-64 rounded-2xl bg-white border border-[#EDE7DB] overflow-hidden"
-                style={{ boxShadow: '0 12px 32px rgba(28,23,18,0.14)' }}>
-                <button onClick={() => { setActiveFilter(null); setStageDropdownOpen(false) }}
-                  className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-[#FAFAF8]"
-                  style={{ borderBottom: '1px solid #F0EBE0', background: !activeFilter ? '#F5F0E8' : 'transparent' }}>
-                  <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#1C1712' }}>
-                    <span className="text-base leading-none">👥</span>
-                    <span className="tracking-wide">All Leads</span>
+            {/* Stage Filter Dropdown — collapses "All / Follow Up / RNR / ..." into one control */}
+            <div className="relative flex-1 sm:flex-initial sm:inline-block min-w-0" onClick={e => e.stopPropagation()}>
+              <button onClick={() => setStageDropdownOpen(o => !o)}
+                className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2 sm:gap-2.5 pl-3.5 sm:pl-4 pr-3 py-2.5 rounded-xl text-xs font-black transition-all duration-200 sm:hover:-translate-y-0.5"
+                style={{
+                  background: activeFilter ? STAGE_CONFIG[activeFilter].color : '#1C1712',
+                  color: '#fff',
+                  boxShadow: activeFilter ? `0 4px 14px ${STAGE_CONFIG[activeFilter].color}45` : '0 4px 14px rgba(28,23,18,0.22)',
+                }}>
+                <span className="flex items-center gap-2 min-w-0">
+                  <span className="tracking-wide truncate">{activeFilter ? STAGE_CONFIG[activeFilter].label : '👥 All Leads'}</span>
+                  <span className="flex items-center justify-center rounded-full text-[10px] font-black leading-none flex-shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.22)', minWidth: 24, height: 22, padding: '0 6px' }}>
+                    {activeFilter ? getCount(activeFilter) : totalLeads}
                   </span>
-                  <span className="flex items-center justify-center rounded-full text-[10px] font-black text-white leading-none"
-                    style={{ background: 'linear-gradient(135deg, #1C1712, #3a3128)', minWidth: 24, height: 22, padding: '0 6px' }}>
-                    {totalLeads}
-                  </span>
-                </button>
-                {UNIQUE_STAGES.map(({ key, label }, idx) => {
-                  const cnt = getCount(key)
-                  if (!cnt) return null
-                  const cfg = STAGE_CONFIG[key]
-                  const isActive = activeFilter === key
-                  return (
-                    <button key={key} onClick={() => { setActiveFilter(isActive ? null : key); setStageDropdownOpen(false) }}
-                      className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-[#FAFAF8]"
-                      style={{
-                        borderBottom: idx < UNIQUE_STAGES.length - 1 ? '1px solid #F0EBE0' : 'none',
-                        background: isActive ? cfg.bg : 'transparent',
-                      }}>
-                      <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: cfg.color }}>
-                        <span className="tracking-wide">{label}</span>
-                      </span>
-                      <span className="flex items-center justify-center rounded-full text-[10px] font-black text-white leading-none"
-                        style={{
-                          background: `linear-gradient(135deg, ${cfg.color}, ${cfg.color}CC)`,
-                          minWidth: 24, height: 22, padding: '0 6px',
-                          boxShadow: `0 2px 6px ${cfg.color}50`,
-                        }}>
-                        {cnt}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Source breakdown — collapsed into a dropdown so it scales cleanly with many sources */}
-          {Object.keys(sourceCounts).length > 0 && (
-            <div className="relative inline-block" onClick={e => e.stopPropagation()}>
-              <button onClick={() => setSourceDropdownOpen(o => !o)}
-                className="flex items-center gap-2.5 pl-4 pr-3 py-2.5 rounded-xl text-xs font-black transition-all duration-200 hover:-translate-y-0.5"
-                style={{ background: '#1C1712', color: '#fff', boxShadow: '0 4px 14px rgba(28,23,18,0.22)' }}>
-                <span className="tracking-wide">📊 Sources</span>
-                <span className="flex items-center justify-center rounded-full text-[10px] font-black leading-none"
-                  style={{ background: 'rgba(255,255,255,0.2)', minWidth: 22, height: 22, padding: '0 6px' }}>
-                  {Object.keys(sourceCounts).length}
                 </span>
-                <ChevronDown size={12} className="transition-transform duration-200" style={{ transform: sourceDropdownOpen ? 'rotate(180deg)' : 'rotate(0)' }} />
+                <ChevronDown size={12} className="flex-shrink-0 transition-transform duration-200" style={{ transform: stageDropdownOpen ? 'rotate(180deg)' : 'rotate(0)' }} />
               </button>
 
-              {sourceDropdownOpen && (
-                <div className="absolute z-30 mt-2 w-72 rounded-2xl bg-white border border-[#EDE7DB] overflow-hidden"
+              {stageDropdownOpen && (
+                <div className="absolute z-30 mt-2 w-64 max-w-[85vw] rounded-2xl bg-white border border-[#EDE7DB] overflow-hidden"
                   style={{ boxShadow: '0 12px 32px rgba(28,23,18,0.14)' }}>
-                  {Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]).map(([src, cnt], idx, arr) => {
-                    const cfg = SOURCE_CONFIG[src] ?? SOURCE_CONFIG['Other']
+                  <button onClick={() => { setActiveFilter(null); setStageDropdownOpen(false) }}
+                    className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-[#FAFAF8]"
+                    style={{ borderBottom: '1px solid #F0EBE0', background: !activeFilter ? '#F5F0E8' : 'transparent' }}>
+                    <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#1C1712' }}>
+                      <span className="text-base leading-none">👥</span>
+                      <span className="tracking-wide">All Leads</span>
+                    </span>
+                    <span className="flex items-center justify-center rounded-full text-[10px] font-black text-white leading-none"
+                      style={{ background: 'linear-gradient(135deg, #1C1712, #3a3128)', minWidth: 24, height: 22, padding: '0 6px' }}>
+                      {totalLeads}
+                    </span>
+                  </button>
+                  {UNIQUE_STAGES.map(({ key, label }, idx) => {
+                    const cnt = getCount(key)
+                    if (!cnt) return null
+                    const cfg = STAGE_CONFIG[key]
+                    const isActive = activeFilter === key
                     return (
-                      <div key={src}
-                        className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-[#FAFAF8]"
-                        style={{ borderBottom: idx < arr.length - 1 ? '1px solid #F0EBE0' : 'none' }}>
+                      <button key={key} onClick={() => { setActiveFilter(isActive ? null : key); setStageDropdownOpen(false) }}
+                        className="w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-[#FAFAF8]"
+                        style={{
+                          borderBottom: idx < UNIQUE_STAGES.length - 1 ? '1px solid #F0EBE0' : 'none',
+                          background: isActive ? cfg.bg : 'transparent',
+                        }}>
                         <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: cfg.color }}>
-                          <span className="text-base leading-none">{cfg.icon}</span>
-                          <span className="tracking-wide">{src}</span>
+                          <span className="tracking-wide">{label}</span>
                         </span>
                         <span className="flex items-center justify-center rounded-full text-[10px] font-black text-white leading-none"
                           style={{
@@ -349,23 +317,68 @@ export default function AllLeadsPage() {
                           }}>
                           {cnt}
                         </span>
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
               )}
             </div>
-          )}
 
-          {/* Search */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E2D9C8] bg-[#FAFAF8] focus-within:border-[#B8860B] focus-within:shadow-[0_0_0_3px_rgba(184,134,11,0.10)] transition-all w-64 flex-shrink-0">
+            {/* Source breakdown — collapsed into a dropdown so it scales cleanly with many sources */}
+            {Object.keys(sourceCounts).length > 0 && (
+              <div className="relative flex-1 sm:flex-initial sm:inline-block min-w-0" onClick={e => e.stopPropagation()}>
+                <button onClick={() => setSourceDropdownOpen(o => !o)}
+                  className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2 sm:gap-2.5 pl-3.5 sm:pl-4 pr-3 py-2.5 rounded-xl text-xs font-black transition-all duration-200 sm:hover:-translate-y-0.5"
+                  style={{ background: '#1C1712', color: '#fff', boxShadow: '0 4px 14px rgba(28,23,18,0.22)' }}>
+                  <span className="flex items-center gap-2">
+                    <span className="tracking-wide">📊 Sources</span>
+                    <span className="flex items-center justify-center rounded-full text-[10px] font-black leading-none"
+                      style={{ background: 'rgba(255,255,255,0.2)', minWidth: 22, height: 22, padding: '0 6px' }}>
+                      {Object.keys(sourceCounts).length}
+                    </span>
+                  </span>
+                  <ChevronDown size={12} className="flex-shrink-0 transition-transform duration-200" style={{ transform: sourceDropdownOpen ? 'rotate(180deg)' : 'rotate(0)' }} />
+                </button>
+
+                {sourceDropdownOpen && (
+                  <div className="absolute z-30 mt-2 w-72 max-w-[85vw] rounded-2xl bg-white border border-[#EDE7DB] overflow-hidden right-0 sm:right-auto"
+                    style={{ boxShadow: '0 12px 32px rgba(28,23,18,0.14)' }}>
+                    {Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]).map(([src, cnt], idx, arr) => {
+                      const cfg = SOURCE_CONFIG[src] ?? SOURCE_CONFIG['Other']
+                      return (
+                        <div key={src}
+                          className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-[#FAFAF8]"
+                          style={{ borderBottom: idx < arr.length - 1 ? '1px solid #F0EBE0' : 'none' }}>
+                          <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: cfg.color }}>
+                            <span className="text-base leading-none">{cfg.icon}</span>
+                            <span className="tracking-wide">{src}</span>
+                          </span>
+                          <span className="flex items-center justify-center rounded-full text-[10px] font-black text-white leading-none"
+                            style={{
+                              background: `linear-gradient(135deg, ${cfg.color}, ${cfg.color}CC)`,
+                              minWidth: 24, height: 22, padding: '0 6px',
+                              boxShadow: `0 2px 6px ${cfg.color}50`,
+                            }}>
+                            {cnt}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Search — full width on mobile */}
+          <div className="flex items-center gap-2 px-3 py-2.5 sm:py-2 rounded-xl border border-[#E2D9C8] bg-[#FAFAF8] focus-within:border-[#B8860B] focus-within:shadow-[0_0_0_3px_rgba(184,134,11,0.10)] transition-all w-full sm:w-64 sm:flex-shrink-0">
             <Search size={14} className="text-[#9A8F82] flex-shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search by name or phone..."
-              className="flex-1 text-sm bg-transparent outline-none text-[#1C1712] placeholder:text-[#B8B0A0]"
+              className="flex-1 text-sm bg-transparent outline-none text-[#1C1712] placeholder:text-[#B8B0A0] min-w-0"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')}
@@ -375,20 +388,74 @@ export default function AllLeadsPage() {
             )}
           </div>
 
-          {/* Date — pushed to the far right on wide screens, wraps below on narrow ones */}
-          <div className="flex items-center gap-2 flex-wrap flex-shrink-0 ml-auto">
-            <Calendar size={13} className="text-[#9A8F82] flex-shrink-0" />
-            <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setDateActive(true) }}
-              className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] focus:shadow-[0_0_0_3px_rgba(184,134,11,0.10)] font-semibold transition-all" />
-            <span className="text-xs text-[#9A8F82] font-semibold">to</span>
-            <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setDateActive(true) }}
-              className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] focus:shadow-[0_0_0_3px_rgba(184,134,11,0.10)] font-semibold transition-all" />
-            {dateActive && (
-              <button onClick={clearDate}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
-                <X size={10} /> Clear
-              </button>
+          {/* Date — collapsed dropdown on mobile to avoid raw native date inputs cramping the row; full inline pickers on desktop */}
+          <div className="relative sm:ml-auto sm:flex-shrink-0" onClick={e => e.stopPropagation()}>
+            {/* Mobile: single button opening a popover */}
+            <button onClick={() => setDateDropdownOpen(o => !o)}
+              className="sm:hidden w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all"
+              style={{
+                background: dateActive ? '#FFFBEB' : '#FAFAF8',
+                color: dateActive ? '#B8860B' : '#7A6E60',
+                border: `1px solid ${dateActive ? '#FDE68A' : '#E2D9C8'}`,
+              }}>
+              <span className="flex items-center gap-2 min-w-0">
+                <Calendar size={13} className="flex-shrink-0" />
+                <span className="truncate">{dateLabel}</span>
+              </span>
+              <span className="flex items-center gap-1.5 flex-shrink-0">
+                {dateActive && (
+                  <span onClick={(e) => { e.stopPropagation(); clearDate() }}
+                    className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center">
+                    <X size={9} className="text-red-500" />
+                  </span>
+                )}
+                <ChevronDown size={12} style={{ transform: dateDropdownOpen ? 'rotate(180deg)' : 'rotate(0)' }} className="transition-transform duration-200" />
+              </span>
+            </button>
+
+            {dateDropdownOpen && (
+              <div className="sm:hidden absolute z-30 mt-2 right-0 left-0 rounded-2xl bg-white border border-[#EDE7DB] p-4 space-y-3"
+                style={{ boxShadow: '0 12px 32px rgba(28,23,18,0.14)' }}>
+                <div>
+                  <label className="text-[9px] font-black uppercase tracking-wider text-[#9A8F82] block mb-1.5">From</label>
+                  <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setDateActive(true) }}
+                    className="w-full text-sm rounded-xl px-3 py-2.5 border border-[#E2D9C8] bg-[#FAFAF8] text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black uppercase tracking-wider text-[#9A8F82] block mb-1.5">To</label>
+                  <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setDateActive(true) }}
+                    className="w-full text-sm rounded-xl px-3 py-2.5 border border-[#E2D9C8] bg-[#FAFAF8] text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  {dateActive && (
+                    <button onClick={() => { clearDate(); setDateDropdownOpen(false) }}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold text-red-500 bg-red-50 border border-red-200">
+                      Clear
+                    </button>
+                  )}
+                  <button onClick={() => setDateDropdownOpen(false)}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold text-white" style={{ background: '#1C1712' }}>
+                    Done
+                  </button>
+                </div>
+              </div>
             )}
+
+            {/* Desktop: inline pickers, unchanged */}
+            <div className="hidden sm:flex items-center gap-2 flex-wrap flex-shrink-0">
+              <Calendar size={13} className="text-[#9A8F82] flex-shrink-0" />
+              <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setDateActive(true) }}
+                className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] focus:shadow-[0_0_0_3px_rgba(184,134,11,0.10)] font-semibold transition-all" />
+              <span className="text-xs text-[#9A8F82] font-semibold">to</span>
+              <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setDateActive(true) }}
+                className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] focus:shadow-[0_0_0_3px_rgba(184,134,11,0.10)] font-semibold transition-all" />
+              {dateActive && (
+                <button onClick={clearDate}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
+                  <X size={10} /> Clear
+                </button>
+              )}
+            </div>
           </div>
 
         </div>
@@ -496,7 +563,7 @@ export default function AllLeadsPage() {
             </table>
           </div>
 
-          {/* Mobile Cards */}
+          {/* Mobile Cards — premium card feel: avatar ring, right-aligned budget, chevron affordance */}
           <div className="md:hidden divide-y divide-[#F0EBE0]">
             {filteredLeads.map((l: Lead, i: number) => {
               const g   = GRADIENTS[i % GRADIENTS.length]
@@ -507,28 +574,31 @@ export default function AllLeadsPage() {
               return (
                 <div key={l.id}
                   onClick={() => router.push(`${LEAD_BASE}/${l.id}`)}
-                  className="px-4 py-4 hover:bg-[#FDFAF8] transition-colors cursor-pointer">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
+                  className="px-4 py-4 active:bg-[#FAFAF8] transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
                       style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 3px 10px ${g[0]}40` }}>
                       {ini(l.lead_name)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-bold text-[#1C1712]">{l.lead_name}</p>
-                        {budget && <p className="text-sm font-black flex-shrink-0" style={{ color: '#B8860B' }}>{budget}</p>}
+                        <p className="text-sm font-bold text-[#1C1712] truncate">{l.lead_name}</p>
+                        {budget && <p className="text-xs font-black flex-shrink-0" style={{ color: '#B8860B' }}>{budget}</p>}
                       </div>
                       <p className="text-xs text-[#9A8F82] mt-0.5">{l.phone ?? '—'}</p>
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: stg.bg, color: stg.color }}>{stg.label}</span>
                         {l.interest && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: int.bg, color: int.color }}>{l.interest === 'High' ? '🔥' : l.interest === 'Medium' ? '⚡' : '❄️'} {l.interest}</span>}
                         {l.source && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: src.bg, color: src.color }}>{src.icon} {l.source}</span>}
-                        {l.city && <span className="text-[10px] text-[#7A6E60]">📍 {l.city}</span>}
                       </div>
-                      <p className="text-[9px] text-[#B8B0A0] mt-1">
-                        {new Date(l.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        {l.city && <span className="text-[9px] text-[#7A6E60]">📍 {l.city}</span>}
+                        <span className="text-[9px] text-[#B8B0A0]">
+                          {new Date(l.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
                     </div>
+                    <ChevronRight size={16} className="text-[#D4CEC8] flex-shrink-0" />
                   </div>
                 </div>
               )

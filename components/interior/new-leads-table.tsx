@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useMemo } from 'react'
-import { Search, X, Calendar } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Search, X, Calendar, ChevronDown, ChevronRight } from 'lucide-react'
 
 const GRADIENTS = [
   ['#7C3AED', '#4F46E5'], ['#0891B2', '#0E7490'], ['#059669', '#047857'],
@@ -30,8 +30,17 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [dateActive, setDateActive] = useState(false)
+  const [dateDropdownOpen, setDateDropdownOpen] = useState(false)
 
   const clearDate = () => { setFromDate(''); setToDate(''); setDateActive(false) }
+
+  useEffect(() => {
+    const handleClickOutside = () => setDateDropdownOpen(false)
+    if (dateDropdownOpen) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [dateDropdownOpen])
 
   const filteredLeads = useMemo(() => {
     return leads.filter(l => {
@@ -52,21 +61,25 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
     })
   }, [leads, searchQuery, fromDate, toDate, dateActive])
 
+  const dateLabel = fromDate || toDate
+    ? `${fromDate ? new Date(fromDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '…'} – ${toDate ? new Date(toDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '…'}`
+    : 'Date Range'
+
   return (
     <>
       {/* Search + Date Filter Bar */}
       <div className="bg-white border border-[#E8E2D8] rounded-2xl p-3 shadow-sm space-y-3">
-        <div className="flex items-center gap-3 flex-wrap justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 sm:flex-wrap sm:justify-between">
 
-          {/* LEFT — Search */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-[#E2D9C8] bg-[#FAFAF8] focus-within:border-[#B8860B] transition-colors w-64 flex-shrink-0">
+          {/* Search — full width on mobile */}
+          <div className="flex items-center gap-2 px-3 py-2.5 sm:py-2 rounded-xl border border-[#E2D9C8] bg-[#FAFAF8] focus-within:border-[#B8860B] transition-colors w-full sm:w-64 sm:flex-shrink-0">
             <Search size={14} className="text-[#9A8F82] flex-shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search by name or phone..."
-              className="flex-1 text-sm bg-transparent outline-none text-[#1C1712] placeholder:text-[#B8B0A0]"
+              className="flex-1 text-sm bg-transparent outline-none text-[#1C1712] placeholder:text-[#B8B0A0] min-w-0"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')}
@@ -76,29 +89,80 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
             )}
           </div>
 
-          {/* RIGHT — Date */}
-          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
-            <Calendar size={13} className="text-[#9A8F82] flex-shrink-0" />
-            <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setDateActive(true) }}
-              className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
-            <span className="text-xs text-[#9A8F82] font-semibold">to</span>
-            <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setDateActive(true) }}
-              className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
+          {/* Date — collapsed popover on mobile, inline pickers on desktop */}
+          <div className="relative sm:flex-shrink-0" onClick={e => e.stopPropagation()}>
+            {/* Mobile trigger */}
+            <button onClick={() => setDateDropdownOpen(o => !o)}
+              className="sm:hidden w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all"
+              style={{
+                background: dateActive ? '#FFFBEB' : '#FAFAF8',
+                color: dateActive ? '#B8860B' : '#7A6E60',
+                border: `1px solid ${dateActive ? '#FDE68A' : '#E2D9C8'}`,
+              }}>
+              <span className="flex items-center gap-2 min-w-0">
+                <Calendar size={13} className="flex-shrink-0" />
+                <span className="truncate">{dateLabel}</span>
+              </span>
+              <span className="flex items-center gap-1.5 flex-shrink-0">
+                {dateActive && (
+                  <span onClick={(e) => { e.stopPropagation(); clearDate() }}
+                    className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center">
+                    <X size={9} className="text-red-500" />
+                  </span>
+                )}
+                <ChevronDown size={12} style={{ transform: dateDropdownOpen ? 'rotate(180deg)' : 'rotate(0)' }} className="transition-transform duration-200" />
+              </span>
+            </button>
 
-            {/* Presets */}
-
-            {dateActive && (
-              <button onClick={clearDate}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
-                <X size={10} /> Clear
-              </button>
+            {dateDropdownOpen && (
+              <div className="sm:hidden absolute z-30 mt-2 right-0 left-0 rounded-2xl bg-white border border-[#EDE7DB] p-4 space-y-3"
+                style={{ boxShadow: '0 12px 32px rgba(28,23,18,0.14)' }}>
+                <div>
+                  <label className="text-[9px] font-black uppercase tracking-wider text-[#9A8F82] block mb-1.5">From</label>
+                  <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setDateActive(true) }}
+                    className="w-full text-sm rounded-xl px-3 py-2.5 border border-[#E2D9C8] bg-[#FAFAF8] text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
+                </div>
+                <div>
+                  <label className="text-[9px] font-black uppercase tracking-wider text-[#9A8F82] block mb-1.5">To</label>
+                  <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setDateActive(true) }}
+                    className="w-full text-sm rounded-xl px-3 py-2.5 border border-[#E2D9C8] bg-[#FAFAF8] text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  {dateActive && (
+                    <button onClick={() => { clearDate(); setDateDropdownOpen(false) }}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold text-red-500 bg-red-50 border border-red-200">
+                      Clear
+                    </button>
+                  )}
+                  <button onClick={() => setDateDropdownOpen(false)}
+                    className="flex-1 py-2 rounded-xl text-xs font-bold text-white" style={{ background: '#1C1712' }}>
+                    Done
+                  </button>
+                </div>
+              </div>
             )}
+
+            {/* Desktop — inline pickers, unchanged */}
+            <div className="hidden sm:flex items-center gap-2 flex-wrap flex-shrink-0">
+              <Calendar size={13} className="text-[#9A8F82] flex-shrink-0" />
+              <input type="date" value={fromDate} onChange={e => { setFromDate(e.target.value); setDateActive(true) }}
+                className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
+              <span className="text-xs text-[#9A8F82] font-semibold">to</span>
+              <input type="date" value={toDate} onChange={e => { setToDate(e.target.value); setDateActive(true) }}
+                className="text-xs rounded-xl px-3 py-1.5 border border-[#E2D9C8] bg-white text-[#1C1712] outline-none focus:border-[#B8860B] font-semibold" />
+              {dateActive && (
+                <button onClick={clearDate}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors">
+                  <X size={10} /> Clear
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Filter summary */}
         {(searchQuery || dateActive) && (
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
             <span className="text-[10px] font-bold text-[#9A8F82]">Showing</span>
             <span className="text-[10px] font-black text-[#1C1712]">{filteredLeads.length}</span>
             <span className="text-[10px] text-[#9A8F82]">of {count} leads</span>
@@ -211,7 +275,7 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
             </table>
           </div>
 
-          {/* Mobile Cards */}
+          {/* Mobile Cards — premium card feel: bigger avatar, chevron affordance */}
           <div className="md:hidden divide-y divide-[#F0EBE0]">
             {filteredLeads.map((l: Lead, i: number) => {
               const g = GRADIENTS[i % GRADIENTS.length]
@@ -219,25 +283,26 @@ export function NewLeadsTable({ leads, count }: { leads: Lead[]; count: number }
               return (
                 <div key={l.id}
                   onClick={() => router.push(`${LEAD_BASE}/${l.id}`)}
-                  className="px-4 py-4 hover:bg-[#FDFAF8] transition-colors cursor-pointer">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
+                  className="px-4 py-4 active:bg-[#FAFAF8] transition-colors cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
                       style={{ background: `linear-gradient(135deg, ${g[0]}, ${g[1]})`, boxShadow: `0 3px 10px ${g[0]}40` }}>
                       {ini(l.lead_name)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-bold text-[#1C1712]">{l.lead_name}</p>
-                        {l.budget && <p className="text-sm font-black flex-shrink-0" style={{ color: '#B8860B' }}>{l.budget}</p>}
+                        <p className="text-sm font-bold text-[#1C1712] truncate">{l.lead_name}</p>
+                        {l.budget && <p className="text-xs font-black flex-shrink-0" style={{ color: '#B8860B' }}>{l.budget}</p>}
                       </div>
                       <a href={`tel:${l.phone}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1 mt-0.5 w-fit">
                         <p className="text-xs font-bold text-[#16A34A]">{l.phone ?? '—'}</p>
                       </a>
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                         {l.source && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: src.bg, color: src.color }}>{src.icon} {l.source}</span>}
-                        {l.city && <span className="text-[10px] text-[#7A6E60]">📍 {l.city}</span>}
+                        {l.city && <span className="text-[9px] text-[#7A6E60]">📍 {l.city}</span>}
                       </div>
                     </div>
+                    <ChevronRight size={16} className="text-[#D4CEC8] flex-shrink-0" />
                   </div>
                 </div>
               )
